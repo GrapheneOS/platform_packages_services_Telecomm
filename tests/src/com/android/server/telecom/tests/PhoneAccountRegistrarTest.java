@@ -23,10 +23,17 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyObject;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,6 +90,8 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -100,6 +109,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     private final String PACKAGE_2 = "PACKAGE_2";
     private final String COMPONENT_NAME = "com.android.server.telecom.tests.MockConnectionService";
     private final TelecomSystem.SyncRoot mLock = new TelecomSystem.SyncRoot() { };
+    private static final String TEST_ID = "123";
     private PhoneAccountRegistrar mRegistrar;
     @Mock private SubscriptionManager mSubscriptionManager;
     @Mock private TelecomManager mTelecomManager;
@@ -1253,6 +1263,109 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         assertEquals(Integer.toString(mTestPhoneAccountHandleSubIdInt),
                 defaultPhoneAccountHandle.phoneAccountHandle.getId());
     }
+
+   /**
+     * Ensure an IllegalArgumentException is thrown when adding more than 10 schemes for a single
+     * account
+     */
+    @Test
+    public void testLimitOnSchemeCount() {
+        PhoneAccountHandle handle = makeQuickAccountHandle(TEST_ID);
+        PhoneAccount.Builder builder = new PhoneAccount.Builder(handle, TEST_LABEL);
+        for (int i = 0; i < PhoneAccountRegistrar.MAX_PHONE_ACCOUNT_REGISTRATIONS + 1; i++) {
+            builder.addSupportedUriScheme(Integer.toString(i));
+        }
+        try {
+            mRegistrar.enforceLimitsOnSchemes(builder.build());
+            fail("should have hit exception in enforceLimitOnSchemes");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when adding more 256 chars for a single
+     * account
+     */
+    @Test
+    public void testLimitOnSchemeLength() {
+        PhoneAccountHandle handle = makeQuickAccountHandle(TEST_ID);
+        PhoneAccount.Builder builder = new PhoneAccount.Builder(handle, TEST_LABEL);
+        builder.addSupportedUriScheme(generateStringOfLen(257));
+        try {
+            mRegistrar.enforceLimitsOnSchemes(builder.build());
+            fail("should have hit exception in enforceLimitOnSchemes");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when adding an address over the limit
+     */
+    @Test
+    public void testLimitOnAddress() {
+        String text = generateStringOfLen(100);
+        PhoneAccountHandle handle = makeQuickAccountHandle(TEST_ID);
+        PhoneAccount.Builder builder = new PhoneAccount.Builder(handle,TEST_LABEL)
+                .setAddress(Uri.fromParts(text, text, text));
+        try {
+            mRegistrar.enforceCharacterLimit(builder.build());
+            fail("failed to throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+        finally {
+            mRegistrar.unregisterPhoneAccount(handle);
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when an Icon that throws an IOException is given
+     */
+    @Test
+    public void testLimitOnIcon() throws Exception {
+        Icon mockIcon = mock(Icon.class);
+        // GIVEN
+        PhoneAccount.Builder builder = new PhoneAccount.Builder(
+                makeQuickAccountHandle(TEST_ID), TEST_LABEL).setIcon(mockIcon);
+        try {
+            // WHEN
+            Mockito.doThrow(new IOException())
+                    .when(mockIcon).writeToStream(any(OutputStream.class));
+            //THEN
+            mRegistrar.enforceIconSizeLimit(builder.build());
+            fail("failed to throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // pass test
+            assertTrue(e.getMessage().contains(PhoneAccountRegistrar.ICON_ERROR_MSG));
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when providing a SubscriptionAddress that
+     * exceeds the PhoneAccountRegistrar limit.
+     */
+    @Test
+    public void testLimitOnSubscriptionAddress() throws Exception {
+        String text = generateStringOfLen(100);
+        PhoneAccount.Builder builder =  new PhoneAccount.Builder(makeQuickAccountHandle(TEST_ID),
+                TEST_LABEL).setSubscriptionAddress(Uri.fromParts(text, text, text));
+        try {
+            mRegistrar.enforceCharacterLimit(builder.build());
+            fail("failed to throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+    }
+
+   private String generateStringOfLen(int len){
+       StringBuilder sb = new StringBuilder();
+       for(int i=0; i < len; i++){
+           sb.append("a");
+       }
+       return sb.toString();
+   }
 
     private static ComponentName makeQuickConnectionServiceComponentName() {
         return new ComponentName(
