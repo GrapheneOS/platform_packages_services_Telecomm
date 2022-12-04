@@ -214,6 +214,19 @@ public class NewOutgoingCallIntentBroadcasterTest extends TelecomTestCase {
         verifyNoCallPlaced();
     }
 
+    @Test
+    public void testNoCallsPlacedWithContentUri() {
+        Uri handle = Uri.parse("content://com.android.contacts/data/1");
+        Intent intent = new Intent(Intent.ACTION_CALL, handle);
+
+        int result = processIntent(intent, true).disconnectCause;
+
+        assertEquals(DisconnectCause.NO_PHONE_NUMBER_SUPPLIED, result);
+        verify(mContext, never()).getContentResolver();
+        verifyNoBroadcastSent();
+        verifyNoCallPlaced();
+    }
+
     @SmallTest
     @Test
     public void testEmergencyCallWithNonDefaultDialer() {
