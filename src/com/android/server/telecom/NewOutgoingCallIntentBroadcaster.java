@@ -314,8 +314,18 @@ public class NewOutgoingCallIntentBroadcaster {
     }
 
     private String getNumberFromCallIntent(Intent intent) {
-        String number;
-        number = mPhoneNumberUtilsAdapter.getNumberFromIntent(intent, mContext);
+        String number = null;
+
+        Uri uri = intent.getData();
+        if (uri != null) {
+            String scheme = uri.getScheme();
+            if (scheme != null) {
+                if (scheme.equals("tel") || scheme.equals("sip")) {
+                    number = uri.getSchemeSpecificPart();
+                }
+            }
+        }
+
         if (TextUtils.isEmpty(number)) {
             Log.w(this, "Empty number obtained from the call intent.");
             return null;

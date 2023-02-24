@@ -235,12 +235,14 @@ public class CallScreeningServiceFilter extends CallFilter {
         public void onServiceDisconnected(ComponentName componentName) {
             mResultFuture.complete(mPriorStageResult);
             Log.i(this, "Service disconnected.");
+            unbindCallScreeningService();
         }
 
         @Override
         public void onBindingDied(ComponentName name) {
             mResultFuture.complete(mPriorStageResult);
             Log.i(this, "Binding died.");
+            unbindCallScreeningService();
         }
 
         @Override

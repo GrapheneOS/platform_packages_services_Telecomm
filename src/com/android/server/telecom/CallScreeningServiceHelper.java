@@ -137,6 +137,23 @@ public class CallScreeningServiceHelper {
                                 "Cancelling outgoing call screen due to service disconnect.");
                     }
                     mFuture.complete(null);
+                    mContext.unbindService(this);
+                } finally {
+                    Log.endSession();
+                }
+            }
+
+            @Override
+            public void onNullBinding(ComponentName name) {
+                // No locking needed -- CompletableFuture only lets one thread call complete.
+                Log.continueSession(mLoggingSession, "CSSH.oNB");
+                try {
+                    if (!mFuture.isDone()) {
+                        Log.w(CallScreeningServiceHelper.this,
+                                "Cancelling outgoing call screen due to null binding.");
+                    }
+                    mFuture.complete(null);
+                    mContext.unbindService(this);
                 } finally {
                     Log.endSession();
                 }
