@@ -352,4 +352,28 @@ public class CallRedirectionProcessorTest extends TelecomTestCase {
         assertEquals(REDIRECTED_GATEWAY_NUMBER_WITH_POST_DIAL,
                 gatewayInfoArgumentCaptor.getValue().getGatewayAddress());
     }
+
+    @Test
+    public void testUnbindOnNullBind() throws Exception {
+        startProcessWithNoGateWayInfo();
+        // To make sure tests are not flaky, clean all the previous handler messages
+        waitForHandlerAction(mProcessor.getHandler(), HANDLER_TIMEOUT_DELAY);
+        enableUserDefinedCallRedirectionService();
+        disableCarrierCallRedirectionService();
+
+        mProcessor.performCallRedirection();
+
+        // Capture the binder
+        ArgumentCaptor<ServiceConnection> serviceConnectionCaptor = ArgumentCaptor.forClass(
+                ServiceConnection.class);
+        // Verify binding occurred
+        verify(mContext, times(1)).bindServiceAsUser(any(Intent.class),
+                serviceConnectionCaptor.capture(), anyInt(), eq(UserHandle.CURRENT));
+        // Simulate null return from onBind
+        serviceConnectionCaptor.getValue().onNullBinding(USER_DEFINED_SERVICE_TEST_COMPONENT_NAME);
+
+        // Verify service was unbound
+        verify(mContext, times(1)).
+                unbindService(any(ServiceConnection.class));
+    }
 }
