@@ -31,6 +31,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -615,6 +616,26 @@ public class TelecomServiceImplTest extends TelecomTestCase {
             verify(mFakePhoneAccountRegistrar, never())
                     .registerPhoneAccount(any(PhoneAccount.class));
         }
+    }
+
+    @SmallTest
+    @Test
+    public void testRegisterPhoneAccountImageIconCrossUser() throws RemoteException {
+        String packageNameToUse = "com.android.officialpackage";
+        PhoneAccountHandle phHandle = new PhoneAccountHandle(new ComponentName(
+                packageNameToUse, "cs"), "test", Binder.getCallingUserHandle());
+        Icon icon = Icon.createWithContentUri("content://10@media/external/images/media/");
+        PhoneAccount phoneAccount = makePhoneAccount(phHandle).setIcon(icon).build();
+        doReturn(PackageManager.PERMISSION_GRANTED)
+                .when(mContext).checkCallingOrSelfPermission(MODIFY_PHONE_STATE);
+
+        // This should fail; security exception will be thrown.
+        registerPhoneAccountTestHelper(phoneAccount, false);
+
+        icon = Icon.createWithContentUri("content://0@media/external/images/media/");
+        phoneAccount = makePhoneAccount(phHandle).setIcon(icon).build();
+        // This should succeed.
+        registerPhoneAccountTestHelper(phoneAccount, true);
     }
 
     @SmallTest
