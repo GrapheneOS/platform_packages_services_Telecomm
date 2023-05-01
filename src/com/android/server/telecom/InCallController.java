@@ -1136,6 +1136,10 @@ public class InCallController extends CallsManagerListenerBase implements
 
     @Override
     public void onCallAdded(Call call) {
+        Log.i(this, "onCallAdded: %s", call);
+        // Track the call if we don't already know about it.
+        addCall(call);
+
         if (!isBoundAndConnectedToServices()) {
             Log.i(this, "onCallAdded: %s; not bound or connected.", call);
             // We are not bound, or we're not connected.
@@ -1147,10 +1151,6 @@ public class InCallController extends CallsManagerListenerBase implements
             // This is in case an emergency call is added while there is an existing call.
             mEmergencyCallHelper.maybeGrantTemporaryLocationPermission(call,
                     mCallsManager.getCurrentUserHandle());
-
-            Log.i(this, "onCallAdded: %s", call);
-            // Track the call if we don't already know about it.
-            addCall(call);
 
             Log.i(this, "mInCallServiceConnection isConnected=%b",
                     mInCallServiceConnection.isConnected());
