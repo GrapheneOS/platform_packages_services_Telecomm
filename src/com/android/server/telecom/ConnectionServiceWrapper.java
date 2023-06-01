@@ -23,6 +23,7 @@ import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
@@ -83,10 +84,17 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                 ParcelableConnection connection, Session.Info sessionInfo) {
             Log.startSession(sessionInfo, LogUtils.Sessions.CSW_HANDLE_CREATE_CONNECTION_COMPLETE,
                     mPackageAbbreviation);
+            UserHandle callingUserHandle = Binder.getCallingUserHandle();
             long token = Binder.clearCallingIdentity();
             try {
                 synchronized (mLock) {
                     logIncoming("handleCreateConnectionComplete %s", callId);
+                    // Check status hints image for cross user access
+                    if (connection.getStatusHints() != null) {
+                        Icon icon = connection.getStatusHints().getIcon();
+                        connection.getStatusHints().setIcon(StatusHints.
+                                validateAccountIconUserBoundary(icon, callingUserHandle));
+                    }
                     ConnectionServiceWrapper.this
                             .handleCreateConnectionComplete(callId, request, connection);
 
@@ -482,6 +490,14 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
             Log.startSession(sessionInfo, LogUtils.Sessions.CSW_ADD_CONFERENCE_CALL,
                     mPackageAbbreviation);
 
+            UserHandle callingUserHandle = Binder.getCallingUserHandle();
+            // Check status hints image for cross user access
+            if (parcelableConference.getStatusHints() != null) {
+                Icon icon = parcelableConference.getStatusHints().getIcon();
+                parcelableConference.getStatusHints().setIcon(StatusHints.
+                        validateAccountIconUserBoundary(icon, callingUserHandle));
+            }
+
             if (parcelableConference.getConnectElapsedTimeMillis() != 0
                     && mContext.checkCallingOrSelfPermission(MODIFY_PHONE_STATE)
                             != PackageManager.PERMISSION_GRANTED) {
@@ -727,10 +743,17 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         public void setStatusHints(String callId, StatusHints statusHints,
                 Session.Info sessionInfo) {
             Log.startSession(sessionInfo, "CSW.sSH", mPackageAbbreviation);
+            UserHandle callingUserHandle = Binder.getCallingUserHandle();
             long token = Binder.clearCallingIdentity();
             try {
                 synchronized (mLock) {
                     logIncoming("setStatusHints %s %s", callId, statusHints);
+                    // Check status hints image for cross user access
+                    if (statusHints != null) {
+                        Icon icon = statusHints.getIcon();
+                        statusHints.setIcon(StatusHints.validateAccountIconUserBoundary(
+                                icon, callingUserHandle));
+                    }
                     Call call = mCallIdMapper.getCall(callId);
                     if (call != null) {
                         call.setStatusHints(statusHints);
@@ -962,6 +985,14 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                                     connection.getCallDirection(),
                                     connection.getCallerNumberVerificationStatus());
                         }
+
+                        // Check status hints image for cross user access
+                        if (connection.getStatusHints() != null) {
+                            Icon icon = connection.getStatusHints().getIcon();
+                            connection.getStatusHints().setIcon(StatusHints.
+                                    validateAccountIconUserBoundary(icon, userHandle));
+                        }
+
                         // Check to see if this Connection has already been added.
                         Call alreadyAddedConnection = mCallsManager
                                 .getAlreadyAddedConnection(connectIdToCheck);
