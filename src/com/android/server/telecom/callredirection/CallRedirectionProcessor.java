@@ -175,6 +175,20 @@ public class CallRedirectionProcessor implements CallRedirectionCallback {
                     Log.endSession();
                 }
             }
+
+            @Override
+            public void onBindingDied(ComponentName componentName) {
+                // Make sure we unbind the service if binding died to avoid background stating
+                // activity leaks
+                Log.startSession("CRSC.oBD");
+                try {
+                    synchronized (mTelecomLock) {
+                        finishCallRedirection();
+                    }
+                } finally {
+                    Log.endSession();
+                }
+            }
         }
 
         private class CallRedirectionAdapter extends ICallRedirectionAdapter.Stub {
