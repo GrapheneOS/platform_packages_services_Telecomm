@@ -836,6 +836,16 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         CallAudioState oldState = mCallAudioState;
         mCallAudioState = callAudioState;
         mCallsManager.onCallAudioStateChanged(oldState, mCallAudioState);
+        updateAudioStateForTrackedCalls(mCallAudioState);
+    }
+
+    private void updateAudioStateForTrackedCalls(CallAudioState newCallAudioState) {
+        Set<Call> calls = mCallsManager.getTrackedCalls();
+        for (Call call : calls) {
+            if (call != null && call.getConnectionService() != null) {
+                call.getConnectionService().onCallAudioStateChanged(call, newCallAudioState);
+            }
+        }
     }
 
     private AudioRoute getPreferredAudioRouteFromStrategy() {

@@ -100,6 +100,8 @@
 
     <string name="postCallActivityLabel">Test Post Call Screen</string>
 
+    <string name="submitCallComposerLabel">Set Call Composer</string>
+
     <string-array name="rtt_mode_array">
         <item>Full</item>
         <item>HCO</item>

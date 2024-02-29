@@ -20,6 +20,7 @@ import android.telecom.PhoneAccount;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsRcsManager;
 import android.util.Log;
 import android.view.View;
@@ -30,9 +31,11 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 public class TestDialerActivity extends Activity {
+    private static final String TAG = TestDialerActivity.class.getSimpleName();
     private static final int REQUEST_CODE_SET_DEFAULT_DIALER = 1;
 
     private EditText mNumberView;
+    private EditText mCallComposerView;
     private CheckBox mRttCheckbox;
     private CheckBox mComposerCheckbox;
     private EditText mPriorityView;
@@ -54,6 +57,13 @@ public class TestDialerActivity extends Activity {
             @Override
             public void onClick(View v) {
                 setDefault();
+            }
+        });
+
+        findViewById(R.id.submit_composer_value).setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                setCallComposer();
             }
         });
 
@@ -79,6 +89,7 @@ public class TestDialerActivity extends Activity {
         });
 
         mNumberView = (EditText) findViewById(R.id.number);
+        mCallComposerView = (EditText) findViewById(R.id.set_composer_edit_text);
         mRttCheckbox = (CheckBox) findViewById(R.id.call_with_rtt_checkbox);
         mComposerCheckbox = (CheckBox) findViewById(R.id.add_composer_attachments_checkbox);
         findViewById(R.id.enable_car_mode).setOnClickListener(new OnClickListener() {
@@ -138,6 +149,23 @@ public class TestDialerActivity extends Activity {
         if(roleManager!= null) {
             startActivityForResult(roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER),
                     REQUEST_CODE_SET_DEFAULT_DIALER);
+        }
+    }
+
+    // Testers need a way of setting the call composer since this is currently not supported by
+    // Dialer.  In the future, this will be a Dialer setting that users can enable/disable.
+    private void setCallComposer() {
+        final TelephonyManager telephonyManager =
+                (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        String number = mCallComposerView.getText().toString();
+        try {
+            Log.i(TAG, "setCallComposer: value=[" + number + "]");
+            telephonyManager.setCallComposerStatus(Integer.parseInt(number));
+            Log.i(TAG, "setCallComposer: successfully set composer");
+        } catch (Exception e) {
+            Log.i(TAG, "setCallComposer: hit exception while setting the call composer."
+                    + " See stack trace below for more info!");
+            e.printStackTrace();
         }
     }
 

@@ -54,6 +54,23 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/cancelMissedButton" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
+    <EditText
+        android:id="@+id/set_composer_edit_text"
+        android:inputType="number"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content" />
+    <Button
+        android:id="@+id/submit_composer_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/submitCallComposerLabel" />
+    </LinearLayout>
+
     <CheckBox
         android:id="@+id/call_with_rtt_checkbox"
         android:layout_width="wrap_content"

@@ -16,6 +16,7 @@
 
 package com.android.server.telecom;
 
+import static android.provider.CallLog.AddCallParams.AddCallParametersBuilder.MAX_NUMBER_OF_CHARACTERS;
 import static android.provider.CallLog.Calls.BLOCK_REASON_NOT_BLOCKED;
 import static android.telephony.CarrierConfigManager.KEY_SUPPORT_IMS_CONFERENCE_EVENT_PACKAGE_BOOL;
 
@@ -31,6 +32,7 @@ import android.location.CountryDetector;
 import android.location.Location;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.Looper;
@@ -60,8 +62,6 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 /**
@@ -419,11 +419,24 @@ public final class CallLogManager extends CallsManagerListenerBase {
         paramBuilder.setCallType(callLogType);
         paramBuilder.setIsRead(call.isSelfManaged());
         paramBuilder.setMissedReason(call.getMissedReason());
-        if (Flags.businessCallComposer() && call.getExtras() != null) {
-            paramBuilder.setIsBusinessCall(call.getExtras().getBoolean(
-                    android.telecom.Call.EXTRA_IS_BUSINESS_CALL, false));
-            paramBuilder.setBusinessName(call.getExtras().getString(
-                    android.telecom.Call.EXTRA_ASSERTED_DISPLAY_NAME, ""));
+        if (mFeatureFlags.businessCallComposer() && call.getExtras() != null) {
+            Bundle extras = call.getExtras();
+            boolean isBusinessCall =
+                    extras.getBoolean(android.telecom.Call.EXTRA_IS_BUSINESS_CALL, false);
+            paramBuilder.setIsBusinessCall(isBusinessCall);
+            if (isBusinessCall) {
+                Log.i(TAG, "logging business call");
+                String assertedDisplayName =
+                        extras.getString(android.telecom.Call.EXTRA_ASSERTED_DISPLAY_NAME, "");
+                if (assertedDisplayName.length() > MAX_NUMBER_OF_CHARACTERS) {
+                    // avoid throwing an IllegalArgumentException and only log the first 256
+                    // characters of the name.
+                    paramBuilder.setAssertedDisplayName(
+                            assertedDisplayName.substring(0, MAX_NUMBER_OF_CHARACTERS));
+                } else {
+                    paramBuilder.setAssertedDisplayName(assertedDisplayName);
+                }
+            }
         }
         sendAddCallBroadcast(callLogType, call.getAgeMillis());
 
