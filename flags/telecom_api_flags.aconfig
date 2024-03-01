@@ -50,3 +50,10 @@ flag{
   bug: "311688497"
   is_exported: true
 }
+
+flag{
+  name: "get_last_known_cell_identity"
+  namespace: "telecom"
+  description: "Formalizes the getLastKnownCellIdentity API that Telecom reliees on as a system api"
+  bug: "327454165"
+}
