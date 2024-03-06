@@ -1,0 +1,8 @@
+package: "com.android.server.telecom.flags"
+
+flag {
+  name: "set_remote_connection_call_id"
+  namespace: "telecom"
+  description: "Sets the telecom call id for remote connections/ conferences."
+  bug: "320242200"
+}
