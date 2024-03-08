@@ -11,6 +11,14 @@ genrule {
     out: ["com/android/server/telecom/TelecomStatsLog.java"],
 }
 
+filegroup {
+    name: "telecom-shell-commands-src",
+    srcs: [
+        "src/com/android/server/telecom/TelecomShellCommand.java",
+    ],
+    path: "src",
+}
+
 android_library {
     name: "TelecomLib",
     manifest: "AndroidManifestLib.xml",
@@ -32,7 +40,6 @@ android_library {
     },
     platform_apis: true,
 }
-
 
 // Build the Telecom service.
 android_app {

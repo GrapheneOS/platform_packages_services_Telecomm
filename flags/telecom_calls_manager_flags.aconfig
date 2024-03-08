@@ -19,5 +19,5 @@ flag {
   name: "enable_call_sequencing"
   namespace: "telecom"
   description: "Enables simultaneous call sequencing for SIM PhoneAccounts"
-  bug: "297446980"
+  bug: "327038818"
 }
