@@ -472,6 +472,7 @@ public class PhoneAccountRegistrar {
         String defaultSimCallManager = null;
         CarrierConfigManager configManager = (CarrierConfigManager) mContext.getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
+        if (configManager == null) return null;
         PersistableBundle configBundle = configManager.getConfigForSubId(subId);
         if (configBundle != null) {
             defaultSimCallManager = configBundle.getString(
