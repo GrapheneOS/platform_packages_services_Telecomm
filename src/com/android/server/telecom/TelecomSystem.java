@@ -248,7 +248,7 @@ public class TelecomSystem {
         try {
             mPhoneAccountRegistrar = new PhoneAccountRegistrar(mContext, mLock, defaultDialerCache,
                     packageName -> AppLabelProxy.Util.getAppLabel(
-                            mContext.getPackageManager(), packageName), null);
+                            mContext.getPackageManager(), packageName), null, mFeatureFlags);
 
             mContactsAsyncHelper = contactsAsyncHelperFactory.create(
                     new ContactsAsyncHelper.ContentResolverAdapter() {
@@ -483,7 +483,6 @@ public class TelecomSystem {
                     Manifest.permission.CONTROL_INCALL_EXPERIENCE, null);
 
             // There is no USER_SWITCHED broadcast for user 0, handle it here explicitly.
-            final UserManager userManager = UserManager.get(mContext);
             mTelecomServiceImpl = new TelecomServiceImpl(
                     mContext, mCallsManager, mPhoneAccountRegistrar,
                     new CallIntentProcessor.AdapterImpl(defaultDialerCache),
@@ -491,7 +490,7 @@ public class TelecomSystem {
                         @Override
                         public UserCallIntentProcessor create(Context context,
                                 UserHandle userHandle) {
-                            return new UserCallIntentProcessor(context, userHandle);
+                            return new UserCallIntentProcessor(context, userHandle, featureFlags);
                         }
                     },
                     defaultDialerCache,
@@ -533,5 +532,9 @@ public class TelecomSystem {
 
     public boolean isBootComplete() {
         return mIsBootComplete;
+    }
+
+    public FeatureFlags getFeatureFlags() {
+        return mFeatureFlags;
     }
 }

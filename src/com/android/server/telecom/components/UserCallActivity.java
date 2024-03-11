@@ -18,6 +18,8 @@ package com.android.server.telecom.components;
 
 import com.android.server.telecom.CallIntentProcessor;
 import com.android.server.telecom.TelecomSystem;
+import com.android.server.telecom.flags.FeatureFlags;
+import com.android.server.telecom.flags.FeatureFlagsImpl;
 
 import android.app.Activity;
 import android.content.Context;
@@ -64,8 +66,13 @@ public class UserCallActivity extends Activity implements TelecomSystem.Componen
             // See OutgoingCallBroadcaster in services/Telephony for more.
             Intent intent = getIntent();
             verifyCallAction(intent);
-            final UserManager userManager = (UserManager) getSystemService(Context.USER_SERVICE);
-            final UserHandle userHandle = new UserHandle(userManager.getProcessUserId());
+            FeatureFlags featureFlags = getTelecomSystem() != null
+                    ? getTelecomSystem().getFeatureFlags()
+                    : new FeatureFlagsImpl();
+            final UserManager userManager = getSystemService(UserManager.class);
+            final UserHandle userHandle = new UserHandle(
+                    featureFlags.telecomResolveHiddenDependencies()
+                            ? UserHandle.myUserId() : userManager.getProcessUserId());
             // Once control flow has passed to this activity, it is no longer guaranteed that we can
             // accurately determine whether the calling package has the CALL_PHONE runtime permission.
             // At this point in time we trust that the ActivityManager has already performed this
@@ -73,9 +80,9 @@ public class UserCallActivity extends Activity implements TelecomSystem.Componen
             // Create a new instance of intent to avoid modifying the
             // ActivityThread.ActivityClientRecord#intent directly.
             // Modifying directly may be a potential risk when relaunching this activity.
-            new UserCallIntentProcessor(this, userHandle).processIntent(new Intent(intent),
-                    getCallingPackage(), false, true /* hasCallAppOp*/,
-                    false /* isLocalInvocation */);
+            new UserCallIntentProcessor(this, userHandle, featureFlags)
+                    .processIntent(new Intent(intent), getCallingPackage(), false,
+                            true /* hasCallAppOp*/, false /* isLocalInvocation */);
         } finally {
             Log.endSession();
             wakelock.release();

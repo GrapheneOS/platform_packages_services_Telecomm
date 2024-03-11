@@ -803,7 +803,7 @@ public class TelecomSystemTest extends TelecomTestCase{
 
         final UserHandle userHandle = initiatingUser;
         Context localAppContext = mComponentContextFixture.getTestDouble().getApplicationContext();
-        new UserCallIntentProcessor(localAppContext, userHandle).processIntent(
+        new UserCallIntentProcessor(localAppContext, userHandle, mFeatureFlags).processIntent(
                 actionCallIntent, null, false, true /* hasCallAppOp*/, false /* isLocal */);
         // Wait for handler to start CallerInfo lookup.
         waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);

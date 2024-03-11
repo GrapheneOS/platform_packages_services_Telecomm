@@ -154,10 +154,9 @@ public class InCallControllerTests extends TelecomTestCase {
     @Mock NotificationManager mNotificationManager;
     @Mock PermissionInfo mMockPermissionInfo;
     @Mock InCallController.InCallServiceInfo mInCallServiceInfo;
-    @Mock private AnomalyReporterAdapter mAnomalyReporterAdapter;
     @Mock UserManager mMockUserManager;
-    @Mock UserInfo mMockUserInfo;
-    @Mock UserInfo mMockChildUserInfo; //work profile
+    @Mock Context mMockCreateContextAsUser;
+    @Mock UserManager mMockCurrentUserManager;
 
     @Rule
     public TestRule compatChangeRule = new PlatformCompatChangeRule();
@@ -312,10 +311,14 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockContext.getSystemService(eq(Context.USER_SERVICE))).thenReturn(mMockUserManager);
         when(mMockContext.getSystemService(eq(UserManager.class)))
                 .thenReturn(mMockUserManager);
+        when(mMockContext.createContextAsUser(any(UserHandle.class), eq(0)))
+                .thenReturn(mMockCreateContextAsUser);
+        when(mMockCreateContextAsUser.getSystemService(eq(UserManager.class)))
+                .thenReturn(mMockCurrentUserManager);
         // Mock user info to allow binding on user stored in the phone account (mUserHandle).
-        when(mMockUserManager.getUserInfo(anyInt())).thenReturn(mMockUserInfo);
-        when(mMockUserInfo.isManagedProfile()).thenReturn(true);
         when(mFeatureFlags.separatelyBindToBtIncallService()).thenReturn(false);
+        when(mFeatureFlags.telecomResolveHiddenDependencies()).thenReturn(true);
+        when(mMockCurrentUserManager.isManagedProfile()).thenReturn(true);
         when(mFeatureFlags.profileUserSupport()).thenReturn(false);
     }
 
@@ -525,7 +528,8 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.isEmergencyCall()).thenReturn(true);
         when(mMockContext.getSystemService(eq(UserManager.class)))
             .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(false);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(false);
         when(mMockCall.isIncoming()).thenReturn(false);
         when(mMockCall.getAssociatedUser()).thenReturn(mUserHandle);
         when(mMockCall.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
@@ -599,7 +603,8 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
         when(mMockContext.getSystemService(eq(UserManager.class)))
             .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(true);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(true);
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
@@ -629,7 +634,8 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
         when(mMockContext.getSystemService(eq(UserManager.class)))
                 .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(true);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(true);
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
@@ -660,8 +666,9 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
         when(mMockContext.getSystemService(eq(UserManager.class)))
                 .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(false);
-        when(mMockUserManager.isUserAdmin(anyInt())).thenReturn(false);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(false);
+        when(mMockCurrentUserManager.isAdminUser()).thenReturn(false);
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
@@ -688,8 +695,9 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.getAssociatedUser()).thenReturn(DUMMY_USER_HANDLE);
         when(mMockContext.getSystemService(eq(UserManager.class)))
             .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(false);
-        when(mMockUserManager.isUserAdmin(anyInt())).thenReturn(true);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(false);
+        when(mMockCurrentUserManager.isAdminUser()).thenReturn(true);
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
@@ -723,7 +731,8 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.isEmergencyCall()).thenReturn(true);
         when(mMockContext.getSystemService(eq(UserManager.class)))
             .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(false);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(false);
         when(mMockCall.isIncoming()).thenReturn(false);
         when(mMockCall.getAssociatedUser()).thenReturn(mUserHandle);
         when(mMockCall.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
@@ -1001,7 +1010,8 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.isEmergencyCall()).thenReturn(true);
         when(mMockContext.getSystemService(eq(UserManager.class)))
                 .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(false);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(false);
         when(mMockCall.isIncoming()).thenReturn(false);
         when(mMockCall.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
         when(mMockCall.getIntentExtras()).thenReturn(callExtras);
@@ -1111,7 +1121,8 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.isEmergencyCall()).thenReturn(true);
         when(mMockContext.getSystemService(eq(UserManager.class)))
                 .thenReturn(mMockUserManager);
-        when(mMockUserManager.isQuietModeEnabled(any(UserHandle.class))).thenReturn(false);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(false);
         when(mMockCall.isIncoming()).thenReturn(false);
         when(mMockCall.getAssociatedUser()).thenReturn(mUserHandle);
         when(mMockCall.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
@@ -1787,7 +1798,7 @@ public class InCallControllerTests extends TelecomTestCase {
         // Force the difference between the phone account user and current user. This is supposed to
         // simulate a secondary user placing a call over an unassociated sim.
         assertFalse(mUserHandle.equals(UserHandle.USER_CURRENT));
-        when(mMockUserInfo.isManagedProfile()).thenReturn(false);
+        when(mMockCurrentUserManager.isManagedProfile()).thenReturn(false);
 
         mInCallController.bindToServices(mMockCall, false);
 
@@ -1856,9 +1867,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMocks(false /* isExternalCall */);
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         UserHandle workUser = new UserHandle(12);
-        UserManager um = mContext.getSystemService(UserManager.class);
-        when(um.getUserInfo(anyInt())).thenReturn(mMockUserInfo);
-        when(mMockUserInfo.isManagedProfile()).thenReturn(false);
+        when(mMockCurrentUserManager.isManagedProfile()).thenReturn(false);
         when(mMockCall.getAssociatedUser()).thenReturn(workUser);
         setupFakeSystemCall(mMockSystemCall1, 1);
         setupFakeSystemCall(mMockSystemCall2, 2);
@@ -1924,21 +1933,9 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockChildUserCall.visibleToInCallService()).thenReturn(true);
 
         //Setup up parent and child/work profile relation
-        when(mMockUserInfo.getUserHandle()).thenReturn(mParentUserHandle);
-        when(mMockChildUserInfo.getUserHandle()).thenReturn(mChildUserHandle);
-        when(mMockUserInfo.isManagedProfile()).thenReturn(false);
-        when(mMockChildUserInfo.isManagedProfile()).thenReturn(false);
         when(mMockChildUserCall.getAssociatedUser()).thenReturn(mChildUserHandle);
         when(mMockCallsManager.getCurrentUserHandle()).thenReturn(mParentUserHandle);
-        when(mMockUserManager.getProfileParent(mChildUserHandle.getIdentifier())).thenReturn(
-                mMockUserInfo);
         when(mMockUserManager.getProfileParent(mChildUserHandle)).thenReturn(mParentUserHandle);
-        when(mMockUserManager.getUserInfo(eq(mParentUserHandle.getIdentifier()))).thenReturn(
-                mMockUserInfo);
-        when(mMockUserManager.getUserInfo(eq(mChildUserHandle.getIdentifier()))).thenReturn(
-                mMockChildUserInfo);
-        when(mMockUserManager.isManagedProfile(mParentUserHandle.getIdentifier())).thenReturn(
-                false);
         when(mFeatureFlags.profileUserSupport()).thenReturn(true);
     }
 
@@ -1974,6 +1971,8 @@ public class InCallControllerTests extends TelecomTestCase {
 
     @Test
     public void testSeparatelyBluetoothService() {
+        setupMocks(false /* isExternalCall */);
+        setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         Intent expectedIntent = new Intent(InCallService.SERVICE_INTERFACE);
         expectedIntent.setPackage(mDefaultDialerCache.getBTInCallServicePackage());
         LinkedList<ResolveInfo> resolveInfo = new LinkedList<ResolveInfo>();

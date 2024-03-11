@@ -2576,34 +2576,26 @@ public class TelecomServiceImpl {
          * @param packageName    the package name of the app to check calls for.
          * @param userHandle     the user handle on which to check for calls.
          * @param callingPackage The caller's package name.
-         * @param detectForAllUsers indicates if calls should be detected across all users. If the
-         *                          caller does not have the ability to interact across users, get
-         *                          managed calls for the caller instead.
          * @return {@code true} if there are ongoing calls, {@code false} otherwise.
          */
         @Override
         public boolean isInSelfManagedCall(String packageName, UserHandle userHandle,
-                String callingPackage, boolean detectForAllUsers) {
+                String callingPackage) {
             try {
                 mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
                         "READ_PRIVILEGED_PHONE_STATE required.");
                 // Ensure that the caller has the INTERACT_ACROSS_USERS permission if it's trying
                 // to access calls that don't belong to it.
-                if (detectForAllUsers || (userHandle != null
-                        && !Binder.getCallingUserHandle().equals(userHandle))) {
+                if (!Binder.getCallingUserHandle().equals(userHandle)) {
                     enforceInAppCrossUserPermission();
-                } else {
-                    // If INTERACT_ACROSS_USERS doesn't need to be enforced, ensure that the user
-                    // being checked is the caller.
-                    userHandle = Binder.getCallingUserHandle();
                 }
 
                 Log.startSession("TSI.iISMC", Log.getPackageAbbreviation(callingPackage));
                 synchronized (mLock) {
                     long token = Binder.clearCallingIdentity();
                     try {
-                        return mCallsManager.isInSelfManagedCallCrossUsers(
-                                packageName, userHandle, detectForAllUsers);
+                        return mCallsManager.isInSelfManagedCall(
+                                packageName, userHandle);
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }

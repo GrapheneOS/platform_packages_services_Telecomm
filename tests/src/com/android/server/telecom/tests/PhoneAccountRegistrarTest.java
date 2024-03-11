@@ -138,7 +138,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
                 .thenReturn(TEST_LABEL);
         mRegistrar = new PhoneAccountRegistrar(
                 mComponentContextFixture.getTestDouble().getApplicationContext(), mLock, FILE_NAME,
-                mDefaultDialerCache, mAppLabelProxy, mTelephonyFeatureFlags);
+                mDefaultDialerCache, mAppLabelProxy, mTelephonyFeatureFlags, mFeatureFlags);
         when(mFeatureFlags.onlyUpdateTelephonyOnValidSubIds()).thenReturn(false);
         when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(false);
     }
@@ -159,12 +159,14 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     public void testPhoneAccountHandle() throws Exception {
         PhoneAccountHandle input = new PhoneAccountHandle(new ComponentName("pkg0", "cls0"), "id0");
         PhoneAccountHandle result = roundTripXml(this, input,
-                PhoneAccountRegistrar.sPhoneAccountHandleXml, mContext, mTelephonyFeatureFlags);
+                PhoneAccountRegistrar.sPhoneAccountHandleXml, mContext,
+                mTelephonyFeatureFlags, mFeatureFlags);
         assertPhoneAccountHandleEquals(input, result);
 
         PhoneAccountHandle inputN = new PhoneAccountHandle(new ComponentName("pkg0", "cls0"), null);
         PhoneAccountHandle resultN = roundTripXml(this, inputN,
-                PhoneAccountRegistrar.sPhoneAccountHandleXml, mContext, mTelephonyFeatureFlags);
+                PhoneAccountRegistrar.sPhoneAccountHandleXml, mContext,
+                mTelephonyFeatureFlags, mFeatureFlags);
         Log.i(this, "inputN = %s, resultN = %s", inputN, resultN);
         assertPhoneAccountHandleEquals(inputN, resultN);
     }
@@ -187,7 +189,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
                 .setIsEnabled(true)
                 .build();
         PhoneAccount result = roundTripXml(this, input, PhoneAccountRegistrar.sPhoneAccountXml,
-                mContext, mTelephonyFeatureFlags);
+                mContext, mTelephonyFeatureFlags, mFeatureFlags);
 
         assertPhoneAccountEquals(input, result);
     }
@@ -198,7 +200,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         doReturn(true).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
         // workaround: UserManager converts the user to a serial and back, we need to mock this
         // behavior, unfortunately: USER_HANDLE_10 <-> 10L
-        UserManager userManager = UserManager.get(mContext);
+        UserManager userManager = mContext.getSystemService(UserManager.class);
         doReturn(10L).when(userManager).getSerialNumberForUser(eq(USER_HANDLE_10));
         doReturn(USER_HANDLE_10).when(userManager).getUserForSerialNumber(eq(10L));
         Bundle testBundle = new Bundle();
@@ -222,7 +224,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
                 .setSimultaneousCallingRestriction(restriction)
                 .build();
         PhoneAccount result = roundTripXml(this, input, PhoneAccountRegistrar.sPhoneAccountXml,
-                mContext, mTelephonyFeatureFlags);
+                mContext, mTelephonyFeatureFlags, mFeatureFlags);
 
         assertPhoneAccountEquals(input, result);
     }
@@ -234,7 +236,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         doReturn(true).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
         // workaround: UserManager converts the user to a serial and back, we need to mock this
         // behavior, unfortunately: USER_HANDLE_10 <-> 10L
-        UserManager userManager = UserManager.get(mContext);
+        UserManager userManager = mContext.getSystemService(UserManager.class);
         doReturn(10L).when(userManager).getSerialNumberForUser(eq(USER_HANDLE_10));
         doReturn(USER_HANDLE_10).when(userManager).getUserForSerialNumber(eq(10L));
         Bundle testBundle = new Bundle();
@@ -262,7 +264,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         // Simulate turning off the flag after reboot
         doReturn(false).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
         PhoneAccount result = fromXml(xmlData, PhoneAccountRegistrar.sPhoneAccountXml, mContext,
-                mTelephonyFeatureFlags);
+                mTelephonyFeatureFlags, mFeatureFlags);
 
         assertNotNull(result);
         assertFalse(result.hasSimultaneousCallingRestriction());
@@ -292,7 +294,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         // Simulate turning on the flag after reboot
         doReturn(true).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
         PhoneAccount result = fromXml(xmlData, PhoneAccountRegistrar.sPhoneAccountXml, mContext,
-                mTelephonyFeatureFlags);
+                mTelephonyFeatureFlags, mFeatureFlags);
 
         assertPhoneAccountEquals(input, result);
     }
@@ -364,13 +366,14 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     public void testDefaultPhoneAccountHandleEmptyGroup() throws Exception {
         DefaultPhoneAccountHandle input = new DefaultPhoneAccountHandle(Process.myUserHandle(),
                 makeQuickAccountHandle("i1"), "");
-        when(UserManager.get(mContext).getSerialNumberForUser(input.userHandle))
+        UserManager userManager = mContext.getSystemService(UserManager.class);
+        when(userManager.getSerialNumberForUser(input.userHandle))
                 .thenReturn(0L);
-        when(UserManager.get(mContext).getUserForSerialNumber(0L))
+        when(userManager.getUserForSerialNumber(0L))
                 .thenReturn(input.userHandle);
         DefaultPhoneAccountHandle result = roundTripXml(this, input,
                 PhoneAccountRegistrar.sDefaultPhoneAccountHandleXml, mContext,
-                mTelephonyFeatureFlags);
+                mTelephonyFeatureFlags, mFeatureFlags);
 
         assertDefaultPhoneAccountHandleEquals(input, result);
     }
@@ -400,7 +403,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
                 .setExtras(testBundle)
                 .build();
         PhoneAccount result = roundTripXml(this, input, PhoneAccountRegistrar.sPhoneAccountXml,
-                mContext, mTelephonyFeatureFlags);
+                mContext, mTelephonyFeatureFlags, mFeatureFlags);
 
         Bundle extras = result.getExtras();
         assertFalse(extras.keySet().contains("EXTRA_STR2"));
@@ -414,7 +417,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     public void testState() throws Exception {
         PhoneAccountRegistrar.State input = makeQuickState();
         PhoneAccountRegistrar.State result = roundTripXml(this, input,
-                PhoneAccountRegistrar.sStateXml, mContext, mTelephonyFeatureFlags);
+                PhoneAccountRegistrar.sStateXml, mContext, mTelephonyFeatureFlags, mFeatureFlags);
         assertStateEquals(input, result);
     }
 
@@ -1245,6 +1248,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         // GIVEN
         mComponentContextFixture.addConnectionService(makeQuickConnectionServiceComponentName(),
                 Mockito.mock(IConnectionService.class));
+        UserManager userManager = mContext.getSystemService(UserManager.class);
 
         List<UserHandle> users = Arrays.asList(new UserHandle(0),
                 new UserHandle(1000));
@@ -1271,10 +1275,10 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         when(mContext.getPackageManager().getPackageInfo(PACKAGE_2, 0))
                 .thenThrow(new PackageManager.NameNotFoundException());
 
-        when(UserManager.get(mContext).getSerialNumberForUser(users.get(0)))
+        when(userManager.getSerialNumberForUser(users.get(0)))
                 .thenReturn(0L);
 
-        when(UserManager.get(mContext).getSerialNumberForUser(users.get(1)))
+        when(userManager.getSerialNumberForUser(users.get(1)))
                 .thenReturn(-1L);
 
         // THEN
@@ -2080,7 +2084,8 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
             T input,
             PhoneAccountRegistrar.XmlSerialization<T> xml,
             Context context,
-            FeatureFlags telephonyFeatureFlags)
+            FeatureFlags telephonyFeatureFlags,
+            com.android.server.telecom.flags.FeatureFlags telecomFeatureFlags)
             throws Exception {
         Log.d(self, "Input = %s", input);
 
@@ -2088,7 +2093,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
 
         Log.i(self, "====== XML data ======\n%s", new String(data));
 
-        T result = fromXml(data, xml, context, telephonyFeatureFlags);
+        T result = fromXml(data, xml, context, telephonyFeatureFlags, telecomFeatureFlags);
 
         Log.i(self, "result = " + result);
 
@@ -2106,11 +2111,13 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     }
 
     private static <T> T fromXml(byte[] data, PhoneAccountRegistrar.XmlSerialization<T> xml,
-            Context context, FeatureFlags telephonyFeatureFlags) throws Exception {
+            Context context, FeatureFlags telephonyFeatureFlags,
+            com.android.server.telecom.flags.FeatureFlags telecomFeatureFlags) throws Exception {
         XmlPullParser parser = Xml.newPullParser();
         parser.setInput(new BufferedInputStream(new ByteArrayInputStream(data)), null);
         parser.nextTag();
-        return xml.readFromXml(parser, MAX_VERSION, context, telephonyFeatureFlags);
+        return xml.readFromXml(parser, MAX_VERSION, context,
+                telephonyFeatureFlags, telecomFeatureFlags);
 
     }
 
@@ -2208,6 +2215,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     }
 
     private PhoneAccountRegistrar.State makeQuickStateWithTelephonyPhoneAccountHandle() {
+        UserManager userManager = mContext.getSystemService(UserManager.class);
         PhoneAccountRegistrar.State s = new PhoneAccountRegistrar.State();
         s.accounts.add(makeQuickAccount("id0", 0));
         s.accounts.add(makeQuickAccount("id1", 1));
@@ -2216,9 +2224,9 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
                 "com.android.phone",
                         "com.android.services.telephony.TelephonyConnectionService"), "id0");
         UserHandle userHandle = phoneAccountHandle.getUserHandle();
-        when(UserManager.get(mContext).getSerialNumberForUser(userHandle))
+        when(userManager.getSerialNumberForUser(userHandle))
             .thenReturn(0L);
-        when(UserManager.get(mContext).getUserForSerialNumber(0L))
+        when(userManager.getUserForSerialNumber(0L))
             .thenReturn(userHandle);
         s.defaultOutgoingAccountHandles
             .put(userHandle, new DefaultPhoneAccountHandle(userHandle, phoneAccountHandle,
@@ -2227,6 +2235,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     }
 
     private PhoneAccountRegistrar.State makeQuickState() {
+        UserManager userManager = mContext.getSystemService(UserManager.class);
         PhoneAccountRegistrar.State s = new PhoneAccountRegistrar.State();
         s.accounts.add(makeQuickAccount("id0", 0));
         s.accounts.add(makeQuickAccount("id1", 1));
@@ -2234,9 +2243,9 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         PhoneAccountHandle phoneAccountHandle = new PhoneAccountHandle(
                 new ComponentName("pkg0", "cls0"), "id0");
         UserHandle userHandle = phoneAccountHandle.getUserHandle();
-        when(UserManager.get(mContext).getSerialNumberForUser(userHandle))
+        when(userManager.getSerialNumberForUser(userHandle))
                 .thenReturn(0L);
-        when(UserManager.get(mContext).getUserForSerialNumber(0L))
+        when(userManager.getUserForSerialNumber(0L))
                 .thenReturn(userHandle);
         s.defaultOutgoingAccountHandles
                 .put(userHandle, new DefaultPhoneAccountHandle(userHandle, phoneAccountHandle,

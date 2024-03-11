@@ -168,7 +168,8 @@ public class CallIntentProcessor {
 
         if (!callsManager.isSelfManaged(phoneAccountHandle,
                 (UserHandle) intent.getParcelableExtra(KEY_INITIATING_USER))) {
-            boolean fixedInitiatingUser = fixInitiatingUserIfNecessary(context, intent);
+            boolean fixedInitiatingUser = fixInitiatingUserIfNecessary(
+                    context, intent, featureFlags);
             // Show the toast to warn user that it is a personal call though initiated in work
             // profile.
             if (fixedInitiatingUser) {
@@ -226,16 +227,18 @@ public class CallIntentProcessor {
      *
      * @return whether the initiating user is fixed.
      */
-    static boolean fixInitiatingUserIfNecessary(Context context, Intent intent) {
+    static boolean fixInitiatingUserIfNecessary(Context context, Intent intent,
+            FeatureFlags featureFlags) {
         final UserHandle initiatingUser = intent.getParcelableExtra(KEY_INITIATING_USER);
-        if (UserUtil.isManagedProfile(context, initiatingUser)) {
+        if (UserUtil.isManagedProfile(context, initiatingUser, featureFlags)) {
             boolean noDialerInstalled = DefaultDialerManager.getInstalledDialerApplications(context,
                     initiatingUser.getIdentifier()).size() == 0;
             if (noDialerInstalled) {
-                final UserManager userManager = UserManager.get(context);
-                UserHandle parentUserHandle =
-                        userManager.getProfileParent(
-                                initiatingUser.getIdentifier()).getUserHandle();
+                final UserManager userManager = context.getSystemService(UserManager.class);
+                UserHandle parentUserHandle = featureFlags.telecomResolveHiddenDependencies()
+                        ? userManager.getProfileParent(initiatingUser)
+                        : userManager.getProfileParent(initiatingUser.getIdentifier())
+                                .getUserHandle();
                 intent.putExtra(KEY_INITIATING_USER, parentUserHandle);
 
                 Log.i(CallIntentProcessor.class, "fixInitiatingUserIfNecessary: no dialer installed"

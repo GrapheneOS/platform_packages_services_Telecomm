@@ -188,7 +188,7 @@ public class CallLogManagerTest extends TelecomTestCase {
 
         when(userManager.isUserRunning(any(UserHandle.class))).thenReturn(true);
         when(userManager.isUserUnlocked(any(UserHandle.class))).thenReturn(true);
-        when(userManager.hasUserRestriction(any(String.class), any(UserHandle.class)))
+        when(userManager.hasUserRestrictionForUser(any(String.class), any(UserHandle.class)))
                 .thenReturn(false);
         when(userManager.getAliveUsers())
                 .thenReturn(Arrays.asList(userInfo, otherUserInfo, managedProfileUserInfo));
@@ -198,6 +198,7 @@ public class CallLogManagerTest extends TelecomTestCase {
         PackageManager packageManager = mContext.getPackageManager();
         when(packageManager.hasSystemFeature(PackageManager.FEATURE_WATCH)).thenReturn(false);
         when(mFeatureFlags.telecomLogExternalWearableCalls()).thenReturn(false);
+        when(mFeatureFlags.telecomResolveHiddenDependencies()).thenReturn(true);
     }
 
     @Override
@@ -666,6 +667,8 @@ public class CallLogManagerTest extends TelecomTestCase {
     @MediumTest
     @Test
     public void testLogCallDirectionOutgoingWithMultiUserCapabilityFromManagedProfile() {
+        UserManager userManager = mContext.getSystemService(UserManager.class);
+        when(userManager.isManagedProfile()).thenReturn(true);
         when(mMockPhoneAccountRegistrar.getPhoneAccountUnchecked(any(PhoneAccountHandle.class)))
                 .thenReturn(makeFakePhoneAccount(mManagedProfileAccountHandle,
                         PhoneAccount.CAPABILITY_MULTI_USER));

@@ -369,7 +369,7 @@ public final class CallLogManager extends CallsManagerListenerBase {
         if (phoneAccount != null &&
                 phoneAccount.hasCapabilities(PhoneAccount.CAPABILITY_MULTI_USER)) {
             if (initiatingUser != null &&
-                    UserUtil.isManagedProfile(mContext, initiatingUser)) {
+                    UserUtil.isManagedProfile(mContext, initiatingUser, mFeatureFlags)) {
                 paramBuilder.setUserToBeInsertedTo(initiatingUser);
                 paramBuilder.setAddForAllUsers(false);
             } else {
@@ -706,7 +706,10 @@ public final class CallLogManager extends CallsManagerListenerBase {
 
             // Use shadow provider based on current user unlock state.
             Uri providerUri;
-            if (userManager.isUserUnlocked(currentUserId)) {
+            boolean isCurrentUserUnlocked = mFeatureFlags.telecomResolveHiddenDependencies()
+                    ? userManager.isUserUnlocked(UserHandle.CURRENT)
+                    : userManager.isUserUnlocked(currentUserId);
+            if (isCurrentUserUnlocked) {
                 providerUri = Calls.CONTENT_URI;
             } else {
                 providerUri = Calls.SHADOW_CONTENT_URI;

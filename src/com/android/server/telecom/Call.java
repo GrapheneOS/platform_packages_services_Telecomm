@@ -2083,7 +2083,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                 userHandle = mTargetPhoneAccountHandle.getUserHandle();
             }
             if (userHandle != null) {
-                isWorkCall = UserUtil.isManagedProfile(mContext, userHandle);
+                isWorkCall = UserUtil.isManagedProfile(mContext, userHandle, mFlags);
             }
 
             isCallRecordingToneSupported = (phoneAccount.hasCapabilities(

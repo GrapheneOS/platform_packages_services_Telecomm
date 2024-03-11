@@ -361,7 +361,8 @@ public class InCallController extends CallsManagerListenerBase implements
             Log.i(this, "Attempting to bind to InCall %s, with %s", mInCallServiceInfo, intent);
             mIsConnected = true;
             mInCallServiceInfo.setBindingStartTime(mClockProxy.elapsedRealtime());
-            boolean isManagedProfile = UserUtil.isManagedProfile(mContext, userFromCall);
+            boolean isManagedProfile = UserUtil.isManagedProfile(mContext,
+                    userFromCall, mFeatureFlags);
             // Note that UserHandle.CURRENT fails to capture the work profile, so we need to handle
             // it separately to ensure that the ICS is bound to the appropriate user. If ECBM is
             // active, we know that a work sim was previously used to place a MO emergency call. We
@@ -3111,7 +3112,13 @@ public class InCallController extends CallsManagerListenerBase implements
             return mCallsManager.getCurrentUserHandle();
         } else {
             UserHandle userFromCall = call.getAssociatedUser();
-            UserManager userManager = mContext.getSystemService(UserManager.class);
+            UserManager userManager = mFeatureFlags.telecomResolveHiddenDependencies()
+                    ? mContext.createContextAsUser(mCallsManager.getCurrentUserHandle(), 0)
+                            .getSystemService(UserManager.class)
+                    : mContext.getSystemService(UserManager.class);
+            boolean isCurrentUserAdmin = mFeatureFlags.telecomResolveHiddenDependencies()
+                    ? userManager.isAdminUser()
+                    : userManager.isUserAdmin(mCallsManager.getCurrentUserHandle().getIdentifier());
             // Emergency call should never be blocked, so if the user associated with the target
             // phone account handle user is in quiet mode, use the current user for the ecall.
             // Note, that this only applies to incoming calls that are received on assigned
@@ -3121,8 +3128,7 @@ public class InCallController extends CallsManagerListenerBase implements
                     && (userManager.isQuietModeEnabled(userFromCall)
                     // We should also account for secondary/guest users where the profile may not
                     // necessarily be paused.
-                    || !userManager.isUserAdmin(mCallsManager.getCurrentUserHandle()
-                    .getIdentifier()))) {
+                    || !isCurrentUserAdmin)) {
                 return mCallsManager.getCurrentUserHandle();
             }
             return userFromCall;

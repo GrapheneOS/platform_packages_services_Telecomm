@@ -312,6 +312,8 @@ public class CallsManagerTest extends TelecomTestCase {
     @Mock private FeatureFlags mFeatureFlags;
     @Mock private com.android.internal.telephony.flags.FeatureFlags mTelephonyFlags;
     @Mock private IncomingCallFilterGraph mIncomingCallFilterGraph;
+    @Mock private Context mMockCreateContextAsUser;
+    @Mock private UserManager mMockCurrentUserManager;
     private CallsManager mCallsManager;
 
     @Override
@@ -406,6 +408,11 @@ public class CallsManagerTest extends TelecomTestCase {
         when(mToastFactory.makeText(any(), anyInt(), anyInt())).thenReturn(mToast);
         when(mToastFactory.makeText(any(), any(), anyInt())).thenReturn(mToast);
         when(mFeatureFlags.separatelyBindToBtIncallService()).thenReturn(false);
+        when(mFeatureFlags.telecomResolveHiddenDependencies()).thenReturn(true);
+        when(mContext.createContextAsUser(any(UserHandle.class), eq(0)))
+                .thenReturn(mMockCreateContextAsUser);
+        when(mMockCreateContextAsUser.getSystemService(UserManager.class))
+                .thenReturn(mMockCurrentUserManager);
     }
 
     @Override
@@ -2824,9 +2831,9 @@ public class CallsManagerTest extends TelecomTestCase {
         mCallsManager.addConnectionServiceRepositoryCache(WORK_HANDLE.getComponentName(),
                 WORK_HANDLE.getUserHandle(), service);
 
-        UserManager um = mContext.getSystemService(UserManager.class);
-        when(um.isUserAdmin(anyInt())).thenReturn(false);
-        when(um.isQuietModeEnabled(eq(WORK_HANDLE.getUserHandle()))).thenReturn(false);
+        when(mMockCurrentUserManager.isAdminUser()).thenReturn(false);
+        when(mMockCurrentUserManager.isQuietModeEnabled(eq(WORK_HANDLE.getUserHandle())))
+                .thenReturn(false);
         when(mPhoneAccountRegistrar.getPhoneAccountUnchecked(eq(WORK_HANDLE)))
                 .thenReturn(WORK_ACCOUNT);
         Call newCall = mCallsManager.processIncomingCallIntent(
@@ -2845,9 +2852,9 @@ public class CallsManagerTest extends TelecomTestCase {
         mCallsManager.addConnectionServiceRepositoryCache(WORK_HANDLE.getComponentName(),
                 WORK_HANDLE.getUserHandle(), service);
 
-        UserManager um = mContext.getSystemService(UserManager.class);
-        when(um.isUserAdmin(anyInt())).thenReturn(true);
-        when(um.isQuietModeEnabled(eq(WORK_HANDLE.getUserHandle()))).thenReturn(true);
+        when(mMockCurrentUserManager.isAdminUser()).thenReturn(true);
+        when(mMockCurrentUserManager.isQuietModeEnabled(any(UserHandle.class)))
+                .thenReturn(true);
         when(mPhoneAccountRegistrar.getPhoneAccountUnchecked(eq(WORK_HANDLE)))
                 .thenReturn(WORK_ACCOUNT);
         Call newCall = mCallsManager.processIncomingCallIntent(
@@ -2868,8 +2875,8 @@ public class CallsManagerTest extends TelecomTestCase {
 
         when(mEmergencyCallHelper.isLastOutgoingEmergencyCallPAH(eq(SIM_2_HANDLE)))
                 .thenReturn(true);
-        UserManager um = mContext.getSystemService(UserManager.class);
-        when(um.isQuietModeEnabled(eq(SIM_2_HANDLE.getUserHandle()))).thenReturn(true);
+        when(mMockCurrentUserManager.isQuietModeEnabled(eq(SIM_2_HANDLE.getUserHandle())))
+                .thenReturn(true);
         Call newCall = mCallsManager.processIncomingCallIntent(
                 SIM_2_HANDLE, new Bundle(), false);
 
@@ -2887,9 +2894,9 @@ public class CallsManagerTest extends TelecomTestCase {
 
         when(mEmergencyCallHelper.isLastOutgoingEmergencyCallPAH(eq(WORK_HANDLE)))
                 .thenReturn(true);
-        UserManager um = mContext.getSystemService(UserManager.class);
-        when(um.isUserAdmin(anyInt())).thenReturn(false);
-        when(um.isQuietModeEnabled(eq(WORK_HANDLE.getUserHandle()))).thenReturn(false);
+        when(mMockCurrentUserManager.isAdminUser()).thenReturn(false);
+        when(mMockCurrentUserManager.isQuietModeEnabled(eq(WORK_HANDLE.getUserHandle())))
+                .thenReturn(false);
         when(mPhoneAccountRegistrar.getPhoneAccountUnchecked(eq(WORK_HANDLE)))
                 .thenReturn(WORK_ACCOUNT);
         Call newCall = mCallsManager.processIncomingCallIntent(
@@ -2910,8 +2917,8 @@ public class CallsManagerTest extends TelecomTestCase {
         Bundle extras = new Bundle();
         extras.putParcelable(TelecomManager.EXTRA_INCOMING_CALL_ADDRESS, TEST_ADDRESS);
         TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
-        UserManager um = mContext.getSystemService(UserManager.class);
-        when(um.isQuietModeEnabled(eq(SIM_2_HANDLE.getUserHandle()))).thenReturn(true);
+        when(mMockCurrentUserManager.isQuietModeEnabled(eq(SIM_2_HANDLE.getUserHandle())))
+                .thenReturn(true);
         when(tm.isEmergencyNumber(any(String.class))).thenReturn(true);
         Call newCall = mCallsManager.processIncomingCallIntent(
                 SIM_2_HANDLE, extras, false);
@@ -3463,9 +3470,7 @@ public class CallsManagerTest extends TelecomTestCase {
         // WHEN
         when(mPhoneAccountRegistrar.getPhoneAccountUnchecked(any()))
                 .thenReturn(SM_W_DIFFERENT_PACKAGE_AND_USER);
-        UserManager um = mContext.getSystemService(UserManager.class);
-        when(um.isUserAdmin(eq(mCallsManager.getCurrentUserHandle().getIdentifier())))
-                .thenReturn(true);
+        when(mMockCurrentUserManager.isAdminUser()).thenReturn(true);
 
         // THEN
         mCallsManager.processIncomingCallIntent(SELF_MANAGED_W_CUSTOM_HANDLE, new Bundle(), false);

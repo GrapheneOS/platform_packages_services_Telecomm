@@ -34,6 +34,7 @@ import com.android.server.telecom.R;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.TelephonyUtil;
 import com.android.server.telecom.UserUtil;
+import com.android.server.telecom.flags.FeatureFlags;
 
 // TODO: Needed for move to system service: import com.android.internal.R;
 
@@ -58,10 +59,13 @@ public class UserCallIntentProcessor {
 
     private final Context mContext;
     private final UserHandle mUserHandle;
+    private FeatureFlags mFeatureFlags;
 
-    public UserCallIntentProcessor(Context context, UserHandle userHandle) {
+    public UserCallIntentProcessor(Context context, UserHandle userHandle,
+            FeatureFlags featureFlags) {
         mContext = context;
         mUserHandle = userHandle;
+        mFeatureFlags = featureFlags;
     }
 
     /**
@@ -105,8 +109,8 @@ public class UserCallIntentProcessor {
             handle = Uri.fromParts(PhoneAccount.SCHEME_SIP, uriString, null);
         }
 
-       if (UserUtil.hasOutgoingCallsUserRestriction(mContext, mUserHandle,
-               handle, isSelfManaged, UserCallIntentProcessor.class.getCanonicalName())) {
+       if (UserUtil.hasOutgoingCallsUserRestriction(mContext, mUserHandle, handle, isSelfManaged,
+               UserCallIntentProcessor.class.getCanonicalName(), mFeatureFlags)) {
            return;
        }
 

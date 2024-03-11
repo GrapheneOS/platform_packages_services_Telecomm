@@ -675,7 +675,7 @@ public class CallsManager extends Call.ListenerBase
                 () -> audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0);
 
         SystemSettingsUtil systemSettingsUtil = new SystemSettingsUtil();
-        RingtoneFactory ringtoneFactory = new RingtoneFactory(this, context);
+        RingtoneFactory ringtoneFactory = new RingtoneFactory(this, context, featureFlags);
         SystemVibrator systemVibrator = new SystemVibrator(context);
         mInCallController = inCallControllerFactory.create(context, mLock, this,
                 systemStateHelper, defaultDialerCache, mTimeoutsAdapter,
@@ -749,7 +749,7 @@ public class CallsManager extends Call.ListenerBase
         mVoipCallMonitor.startMonitor();
 
         // There is no USER_SWITCHED broadcast for user 0, handle it here explicitly.
-        final UserManager userManager = UserManager.get(mContext);
+        final UserManager userManager = mContext.getSystemService(UserManager.class);
         // Don't load missed call if it is run in split user model.
         if (userManager.isPrimaryUser()) {
             onUserSwitch(Process.myUserHandle());
@@ -1677,9 +1677,15 @@ public class CallsManager extends Call.ListenerBase
         boolean isCallHiddenFromProfile = !isCallVisibleForUser(call, mCurrentUserHandle);
         // For admins, we should check if the work profile is paused in order to reject
         // the call.
-        if (mUserManager.isUserAdmin(mCurrentUserHandle.getIdentifier())) {
-            isCallHiddenFromProfile &= mUserManager.isQuietModeEnabled(
-                call.getAssociatedUser());
+        UserManager currentUserManager = mContext.createContextAsUser(mCurrentUserHandle, 0)
+                .getSystemService(UserManager.class);
+        boolean isCurrentUserAdmin = mFeatureFlags.telecomResolveHiddenDependencies()
+                ? currentUserManager.isAdminUser()
+                : mUserManager.isUserAdmin(mCurrentUserHandle.getIdentifier());
+        if (isCurrentUserAdmin) {
+            isCallHiddenFromProfile &= mFeatureFlags.telecomResolveHiddenDependencies()
+                    ? currentUserManager.isQuietModeEnabled(call.getAssociatedUser())
+                    : mUserManager.isQuietModeEnabled(call.getAssociatedUser());
         }
 
         // We should always allow emergency calls and also allow non-emergency calls when ECBM
@@ -2136,7 +2142,7 @@ public class CallsManager extends Call.ListenerBase
                                 Uri callUri = callToPlace.getHandle();
                                 if (PhoneAccount.SCHEME_TEL.equals(callUri.getScheme())) {
                                     int managedProfileUserId = getManagedProfileUserId(mContext,
-                                            initiatingUser.getIdentifier());
+                                            initiatingUser.getIdentifier(), mFeatureFlags);
                                     if (managedProfileUserId != UserHandle.USER_NULL
                                             &&
                                             mPhoneAccountRegistrar.getCallCapablePhoneAccounts(
@@ -2311,15 +2317,35 @@ public class CallsManager extends Call.ListenerBase
         return mLatestPostSelectionProcessingFuture;
     }
 
-    private static int getManagedProfileUserId(Context context, int userId) {
-        UserManager um = context.getSystemService(UserManager.class);
-        List<UserInfo> userProfiles = um.getProfiles(userId);
-        for (UserInfo uInfo : userProfiles) {
-            if (uInfo.id == userId) {
-                continue;
+    private static int getManagedProfileUserId(Context context, int userId,
+            FeatureFlags featureFlags) {
+        UserManager um;
+        UserHandle userHandle = UserHandle.of(userId);
+        um = featureFlags.telecomResolveHiddenDependencies()
+                ? context.createContextAsUser(userHandle, 0).getSystemService(UserManager.class)
+                : context.getSystemService(UserManager.class);
+
+        if (featureFlags.telecomResolveHiddenDependencies()) {
+            List<UserHandle> userProfiles = um.getAllProfiles();
+            for (UserHandle userProfile : userProfiles) {
+                UserManager profileUserManager = context.createContextAsUser(userProfile, 0)
+                        .getSystemService(UserManager.class);
+                if (userProfile.getIdentifier() == userId) {
+                    continue;
+                }
+                if (profileUserManager.isManagedProfile()) {
+                    return userProfile.getIdentifier();
+                }
             }
-            if (uInfo.isManagedProfile()) {
-                return uInfo.id;
+        } else {
+            List<UserInfo> userInfoProfiles = um.getProfiles(userId);
+            for (UserInfo uInfo : userInfoProfiles) {
+                if (uInfo.id == userId) {
+                    continue;
+                }
+                if (uInfo.isManagedProfile()) {
+                    return uInfo.id;
+                }
             }
         }
         return UserHandle.USER_NULL;
@@ -2432,8 +2458,8 @@ public class CallsManager extends Call.ListenerBase
          boolean isSelfManaged = account != null && account.isSelfManaged();
          // Enforce outgoing call restriction for conference calls. This is handled via
          // UserCallIntentProcessor for normal MO calls.
-         if (UserUtil.hasOutgoingCallsUserRestriction(mContext, initiatingUser,
-                 null, isSelfManaged, CallsManager.class.getCanonicalName())) {
+         if (UserUtil.hasOutgoingCallsUserRestriction(mContext, initiatingUser, null,
+                 isSelfManaged, CallsManager.class.getCanonicalName(), mFeatureFlags)) {
              return;
          }
          CompletableFuture<Call> callFuture = startOutgoingCall(participants, phoneAccountHandle,
@@ -4774,19 +4800,7 @@ public class CallsManager extends Call.ListenerBase
      * @return {@code true} if the app has ongoing calls, or {@code false} otherwise.
      */
     public boolean isInSelfManagedCall(String packageName, UserHandle userHandle) {
-        return isInSelfManagedCallCrossUsers(packageName, userHandle, false);
-    }
-
-    /**
-     * Determines if there are any ongoing self-managed calls for the given package/user (unless
-     * hasCrossUsers has been enabled).
-     * @param packageName The package name to check.
-     * @param userHandle The {@link UserHandle} to check.
-     * @param hasCrossUserAccess indicates if calls across all users should be returned.
-     * @return {@code true} if the app has ongoing calls, or {@code false} otherwise.
-     */
-    public boolean isInSelfManagedCallCrossUsers(
-            String packageName, UserHandle userHandle, boolean hasCrossUserAccess) {
+        boolean hasCrossUserAccess = userHandle.equals(UserHandle.ALL);
         return mSelfManagedCallsBeingSetup.stream().anyMatch(c -> c.isSelfManaged()
                 && c.getTargetPhoneAccount().getComponentName().getPackageName().equals(packageName)
                 && (!hasCrossUserAccess
@@ -5536,10 +5550,21 @@ public class CallsManager extends Call.ListenerBase
         mCurrentUserHandle = userHandle;
         mMissedCallNotifier.setCurrentUserHandle(userHandle);
         mRoleManagerAdapter.setCurrentUserHandle(userHandle);
-        final UserManager userManager = UserManager.get(mContext);
-        List<UserInfo> profiles = userManager.getEnabledProfiles(userHandle.getIdentifier());
-        for (UserInfo profile : profiles) {
-            reloadMissedCallsOfUser(profile.getUserHandle());
+        final UserManager userManager = mFeatureFlags.telecomResolveHiddenDependencies()
+                ? mContext.createContextAsUser(userHandle, 0).getSystemService(
+                        UserManager.class)
+                : mContext.getSystemService(UserManager.class);
+        List<UserHandle> profiles = userManager.getUserProfiles();
+        List<UserInfo> userInfoProfiles = userManager.getEnabledProfiles(
+                userHandle.getIdentifier());
+        if (mFeatureFlags.telecomResolveHiddenDependencies()) {
+            for (UserHandle profileUser : profiles) {
+                reloadMissedCallsOfUser(profileUser);
+            }
+        } else {
+            for (UserInfo profile : userInfoProfiles) {
+                reloadMissedCallsOfUser(profile.getUserHandle());
+            }
         }
     }
 
@@ -5548,7 +5573,7 @@ public class CallsManager extends Call.ListenerBase
      * switched, we reload missed calls of profile that are just started here.
      */
     void onUserStarting(UserHandle userHandle) {
-        if (UserUtil.isProfile(mContext, userHandle)) {
+        if (UserUtil.isProfile(mContext, userHandle, mFeatureFlags)) {
             reloadMissedCallsOfUser(userHandle);
         }
     }
@@ -5657,8 +5682,10 @@ public class CallsManager extends Call.ListenerBase
         UserManager userManager = mContext.getSystemService(UserManager.class);
         KeyguardManager keyguardManager = mContext.getSystemService(KeyguardManager.class);
 
-        boolean isUserRestricted = userManager != null
-                && userManager.hasUserRestriction(UserManager.DISALLOW_SMS, callingUser);
+        boolean hasUserRestriction = mFeatureFlags.telecomResolveHiddenDependencies()
+                ? userManager.hasUserRestrictionForUser(UserManager.DISALLOW_SMS, callingUser)
+                : userManager.hasUserRestriction(UserManager.DISALLOW_SMS, callingUser);
+        boolean isUserRestricted = userManager != null && hasUserRestriction;
         boolean isLockscreenRestricted = keyguardManager != null
                 && keyguardManager.isDeviceLocked();
         Log.d(this, "isReplyWithSmsAllowed: isUserRestricted: %s, isLockscreenRestricted: %s",
