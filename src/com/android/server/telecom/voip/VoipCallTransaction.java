@@ -20,6 +20,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.telecom.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.LoggedHandlerExecutor;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.flags.Flags;
@@ -34,7 +35,7 @@ import java.util.function.Function;
 
 public class VoipCallTransaction {
     //TODO: add log events
-    protected static final long TIMEOUT_LIMIT = 5000L;
+    private static final long DEFAULT_TRANSACTION_TIMEOUT_MS = 5000L;
 
     /**
      * Tracks stats about a transaction for logging purposes.
@@ -129,58 +130,80 @@ public class VoipCallTransaction {
 
     protected final AtomicBoolean mCompleted = new AtomicBoolean(false);
     protected final String mTransactionName = this.getClass().getSimpleName();
-    private HandlerThread mHandlerThread;
-    protected Handler mHandler;
+    private final HandlerThread mHandlerThread;
+    protected final Handler mHandler;
     protected TransactionManager.TransactionCompleteListener mCompleteListener;
-    protected List<VoipCallTransaction> mSubTransactions;
-    protected TelecomSystem.SyncRoot mLock;
+    protected final List<VoipCallTransaction> mSubTransactions;
+    protected final TelecomSystem.SyncRoot mLock;
+    protected final long mTransactionTimeoutMs;
     protected final Stats mStats;
 
     public VoipCallTransaction(
-            List<VoipCallTransaction> subTransactions, TelecomSystem.SyncRoot lock) {
+            List<VoipCallTransaction> subTransactions, TelecomSystem.SyncRoot lock,
+            long timeoutMs) {
         mSubTransactions = subTransactions;
         mHandlerThread = new HandlerThread(this.toString());
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
         mLock = lock;
+        mTransactionTimeoutMs = timeoutMs;
         mStats = Flags.enableCallSequencing() ? new Stats() : null;
     }
 
-    public VoipCallTransaction(TelecomSystem.SyncRoot lock) {
-        this(null /** mSubTransactions */, lock);
+    public VoipCallTransaction(List<VoipCallTransaction> subTransactions,
+            TelecomSystem.SyncRoot lock) {
+        this(subTransactions, lock, DEFAULT_TRANSACTION_TIMEOUT_MS);
+    }
+    public VoipCallTransaction(TelecomSystem.SyncRoot lock, long timeoutMs) {
+        this(null /* mSubTransactions */, lock, timeoutMs);
     }
 
-    public void start() {
+    public VoipCallTransaction(TelecomSystem.SyncRoot lock) {
+        this(null /* mSubTransactions */, lock);
+    }
+
+    public final void start() {
         if (mStats != null) mStats.markStarted();
         // post timeout work
         CompletableFuture<Void> future = new CompletableFuture<>();
-        mHandler.postDelayed(() -> future.complete(null), TIMEOUT_LIMIT);
+        mHandler.postDelayed(() -> future.complete(null), mTransactionTimeoutMs);
         future.thenApplyAsync((x) -> {
-            if (mCompleted.getAndSet(true)) {
-                return null;
-            }
-            if (mCompleteListener != null) {
-                mCompleteListener.onTransactionTimeout(mTransactionName);
-            }
             timeout();
             return null;
         }, new LoggedHandlerExecutor(mHandler, mTransactionName + "@" + hashCode()
                 + ".s", mLock));
 
+        processTransactions();
+    }
+
+    /**
+     * By default, this processes this transaction. For VoipCallTransactions with sub-transactions,
+     * this implementation should be overwritten to handle also processing sub-transactions.
+     */
+    protected void processTransactions() {
         scheduleTransaction();
     }
 
-    protected void scheduleTransaction() {
+    /**
+     * This method is called when the transaction has finished either successfully or exceptionally.
+     * VoipCallTransactions that are extending this class should override this method to clean up
+     * any leftover state.
+     */
+    protected void finishTransaction() {
+
+    }
+
+    protected final void scheduleTransaction() {
         LoggedHandlerExecutor executor = new LoggedHandlerExecutor(mHandler,
                 mTransactionName + "@" + hashCode() + ".pT", mLock);
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
         future.thenComposeAsync(this::processTransaction, executor)
                 .thenApplyAsync((Function<VoipCallTransactionResult, Void>) result -> {
                     mCompleted.set(true);
+                    finish(result);
                     if (mCompleteListener != null) {
                         mCompleteListener.onTransactionCompleted(result, mTransactionName);
                     }
-                    finish(result);
                     return null;
                     }, executor)
                 .exceptionallyAsync((throwable -> {
@@ -189,25 +212,38 @@ public class VoipCallTransaction {
                 }), executor);
     }
 
-    public CompletionStage<VoipCallTransactionResult> processTransaction(Void v) {
+    protected CompletionStage<VoipCallTransactionResult> processTransaction(Void v) {
         return CompletableFuture.completedFuture(
                 new VoipCallTransactionResult(VoipCallTransactionResult.RESULT_SUCCEED, null));
     }
 
-    public void setCompleteListener(TransactionManager.TransactionCompleteListener listener) {
+    public final void setCompleteListener(TransactionManager.TransactionCompleteListener listener) {
         mCompleteListener = listener;
     }
 
-    public void timeout() {
+    @VisibleForTesting
+    public final void timeout() {
+        if (mCompleted.getAndSet(true)) {
+            return;
+        }
         finish(true, null);
+        if (mCompleteListener != null) {
+            mCompleteListener.onTransactionTimeout(mTransactionName);
+        }
     }
 
-    public void finish(VoipCallTransactionResult result) {
+    @VisibleForTesting
+    public final Handler getHandler() {
+        return mHandler;
+    }
+
+    public final void finish(VoipCallTransactionResult result) {
         finish(false, result);
     }
 
-    public void finish(boolean isTimedOut, VoipCallTransactionResult result) {
+    private void finish(boolean isTimedOut, VoipCallTransactionResult result) {
         if (mStats != null) mStats.markComplete(isTimedOut, result);
+        finishTransaction();
         // finish all sub transactions
         if (mSubTransactions != null && !mSubTransactions.isEmpty()) {
             mSubTransactions.forEach( t -> t.finish(isTimedOut, result));
@@ -218,7 +254,7 @@ public class VoipCallTransaction {
     /**
      * @return Stats related to this transaction if stats are enabled, null otherwise.
      */
-    public Stats getStats() {
+    public final Stats getStats() {
         return mStats;
     }
 }

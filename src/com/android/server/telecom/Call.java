@@ -3053,16 +3053,24 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     public void awaitCallStateChangeAndMaybeDisconnectCall(int targetCallState,
             boolean shouldDisconnectUponTimeout, String callingMethod) {
         TransactionManager tm = TransactionManager.getInstance();
-        tm.addTransaction(new VerifyCallStateChangeTransaction(mCallsManager,
-                this, targetCallState, shouldDisconnectUponTimeout), new OutcomeReceiver<>() {
+        tm.addTransaction(new VerifyCallStateChangeTransaction(mCallsManager.getLock(),
+                this, targetCallState), new OutcomeReceiver<>() {
             @Override
             public void onResult(VoipCallTransactionResult result) {
+                Log.i(this, "awaitCallStateChangeAndMaybeDisconnectCall: %s: onResult:"
+                        + " due to CallException=[%s]", callingMethod, result);
             }
 
             @Override
             public void onError(CallException e) {
                 Log.i(this, "awaitCallStateChangeAndMaybeDisconnectCall: %s: onError"
                         + " due to CallException=[%s]", callingMethod, e);
+                if (shouldDisconnectUponTimeout) {
+                    mCallsManager.markCallAsDisconnected(Call.this,
+                            new DisconnectCause(DisconnectCause.ERROR,
+                                    "did not hold in timeout window"));
+                    mCallsManager.markCallAsRemoved(Call.this);
+                }
             }
         });
     }

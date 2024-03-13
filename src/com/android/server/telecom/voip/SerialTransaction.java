@@ -37,86 +37,71 @@ public class SerialTransaction extends VoipCallTransaction {
     }
 
     @Override
-    public void start() {
-        if (mStats != null) mStats.markStarted();
-        // post timeout work
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        mHandler.postDelayed(() -> future.complete(null), TIMEOUT_LIMIT);
-        future.thenApplyAsync((x) -> {
-            if (mCompleted.getAndSet(true)) {
-                return null;
-            }
-            if (mCompleteListener != null) {
-                mCompleteListener.onTransactionTimeout(mTransactionName);
-            }
-            timeout();
-            return null;
-        }, new LoggedHandlerExecutor(mHandler, mTransactionName + "@" + hashCode()
-                + ".s", mLock));
+    public void processTransactions() {
+        if (mSubTransactions == null || mSubTransactions.isEmpty()) {
+            scheduleTransaction();
+            return;
+        }
+        TransactionManager.TransactionCompleteListener subTransactionListener =
+                new TransactionManager.TransactionCompleteListener() {
+                    private final AtomicInteger mTransactionIndex = new AtomicInteger(0);
 
-        if (mSubTransactions != null && mSubTransactions.size() > 0) {
-            TransactionManager.TransactionCompleteListener subTransactionListener =
-                    new TransactionManager.TransactionCompleteListener() {
-                        private final AtomicInteger mTransactionIndex = new AtomicInteger(0);
-
-                        @Override
-                        public void onTransactionCompleted(VoipCallTransactionResult result,
-                                String transactionName) {
-                            if (result.getResult() != VoipCallTransactionResult.RESULT_SUCCEED) {
-                                handleTransactionFailure();
-                                CompletableFuture.completedFuture(null).thenApplyAsync(
-                                        (x) -> {
-                                            VoipCallTransactionResult mainResult =
-                                                    new VoipCallTransactionResult(
-                                                            VoipCallTransactionResult.RESULT_FAILED,
-                                                            String.format(
-                                                                    "sub transaction %s failed",
-                                                                    transactionName));
-                                            mCompleteListener.onTransactionCompleted(mainResult,
-                                                    mTransactionName);
-                                            finish(mainResult);
-                                            return null;
-                                        }, new LoggedHandlerExecutor(mHandler,
-                                                mTransactionName + "@" + hashCode()
-                                                        + ".oTC", mLock));
-                            } else {
-                                int currTransactionIndex = mTransactionIndex.incrementAndGet();
-                                if (currTransactionIndex < mSubTransactions.size()) {
-                                    VoipCallTransaction transaction = mSubTransactions.get(
-                                            currTransactionIndex);
-                                    transaction.setCompleteListener(this);
-                                    transaction.start();
-                                } else {
-                                    scheduleTransaction();
-                                }
-                            }
-                        }
-
-                        @Override
-                        public void onTransactionTimeout(String transactionName) {
+                    @Override
+                    public void onTransactionCompleted(VoipCallTransactionResult result,
+                            String transactionName) {
+                        if (result.getResult() != VoipCallTransactionResult.RESULT_SUCCEED) {
                             handleTransactionFailure();
                             CompletableFuture.completedFuture(null).thenApplyAsync(
                                     (x) -> {
                                         VoipCallTransactionResult mainResult =
                                                 new VoipCallTransactionResult(
-                                                VoipCallTransactionResult.RESULT_FAILED,
-                                                String.format("sub transaction %s timed out",
-                                                        transactionName));
+                                                        VoipCallTransactionResult.RESULT_FAILED,
+                                                        String.format(
+                                                                "sub transaction %s failed",
+                                                                transactionName));
+                                        finish(mainResult);
                                         mCompleteListener.onTransactionCompleted(mainResult,
                                                 mTransactionName);
-                                        finish(mainResult);
                                         return null;
                                     }, new LoggedHandlerExecutor(mHandler,
                                             mTransactionName + "@" + hashCode()
-                                                    + ".oTT", mLock));
+                                                    + ".oTC", mLock));
+                        } else {
+                            int currTransactionIndex = mTransactionIndex.incrementAndGet();
+                            if (currTransactionIndex < mSubTransactions.size()) {
+                                VoipCallTransaction transaction = mSubTransactions.get(
+                                        currTransactionIndex);
+                                transaction.setCompleteListener(this);
+                                transaction.start();
+                            } else {
+                                scheduleTransaction();
+                            }
                         }
-                    };
-            VoipCallTransaction transaction = mSubTransactions.get(0);
-            transaction.setCompleteListener(subTransactionListener);
-            transaction.start();
-        } else {
-            scheduleTransaction();
-        }
+                    }
+
+                    @Override
+                    public void onTransactionTimeout(String transactionName) {
+                        handleTransactionFailure();
+                        CompletableFuture.completedFuture(null).thenApplyAsync(
+                                (x) -> {
+                                    VoipCallTransactionResult mainResult =
+                                            new VoipCallTransactionResult(
+                                            VoipCallTransactionResult.RESULT_FAILED,
+                                            String.format("sub transaction %s timed out",
+                                                    transactionName));
+                                    finish(mainResult);
+                                    mCompleteListener.onTransactionCompleted(mainResult,
+                                            mTransactionName);
+                                    return null;
+                                }, new LoggedHandlerExecutor(mHandler,
+                                        mTransactionName + "@" + hashCode()
+                                                + ".oTT", mLock));
+                    }
+                };
+        VoipCallTransaction transaction = mSubTransactions.get(0);
+        transaction.setCompleteListener(subTransactionListener);
+        transaction.start();
+
     }
 
     public void handleTransactionFailure() {}

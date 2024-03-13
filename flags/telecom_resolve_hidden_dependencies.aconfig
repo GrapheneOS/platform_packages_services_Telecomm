@@ -3,6 +3,7 @@ container: "system"
 
 flag {
     name: "telecom_resolve_hidden_dependencies"
+    is_exported: true
     namespace: "telecom"
     description: "Mainland cleanup for hidden dependencies"
     bug: "323414215"

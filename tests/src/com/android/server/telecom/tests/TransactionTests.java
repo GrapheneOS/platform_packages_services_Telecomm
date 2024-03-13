@@ -17,11 +17,13 @@
 package com.android.server.telecom.tests;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.isA;
@@ -61,6 +63,7 @@ import com.android.server.telecom.voip.IncomingCallTransaction;
 import com.android.server.telecom.voip.OutgoingCallTransaction;
 import com.android.server.telecom.voip.MaybeHoldCallForNewCallTransaction;
 import com.android.server.telecom.voip.RequestNewActiveCallTransaction;
+import com.android.server.telecom.voip.TransactionManager;
 import com.android.server.telecom.voip.VerifyCallStateChangeTransaction;
 import com.android.server.telecom.voip.VoipCallTransactionResult;
 
@@ -271,27 +274,24 @@ public class TransactionTests extends TelecomTestCase {
      */
     @SmallTest
     @Test
-    public void testCallStateChangeTimesOut()
-            throws ExecutionException, InterruptedException, TimeoutException {
+    public void testCallStateChangeTimesOut() {
         when(mFeatureFlags.transactionalCsVerifier()).thenReturn(true);
-        VerifyCallStateChangeTransaction t = new VerifyCallStateChangeTransaction(mCallsManager,
-                mMockCall1, CallState.ON_HOLD, true);
+        VerifyCallStateChangeTransaction t = new VerifyCallStateChangeTransaction(
+                mLock, mMockCall1, CallState.ON_HOLD);
+        TransactionManager.TransactionCompleteListener listener =
+                mock(TransactionManager.TransactionCompleteListener.class);
+        t.setCompleteListener(listener);
         // WHEN
         setupHoldableCall();
 
         // simulate the transaction being processed and the CompletableFuture timing out
         t.processTransaction(null);
-        CompletableFuture<Integer> timeoutFuture = t.getCallStateOrTimeoutResult();
-        timeoutFuture.complete(VerifyCallStateChangeTransaction.FAILURE_CODE);
+        t.timeout();
 
         // THEN
         verify(mMockCall1, times(1)).addCallStateListener(t.getCallStateListenerImpl());
-        assertEquals(timeoutFuture.get().intValue(), VerifyCallStateChangeTransaction.FAILURE_CODE);
-        assertEquals(VoipCallTransactionResult.RESULT_FAILED,
-                t.getTransactionResult().get(2, TimeUnit.SECONDS).getResult());
+        verify(listener).onTransactionTimeout(anyString());
         verify(mMockCall1, atLeastOnce()).removeCallStateListener(any());
-        verify(mCallsManager, times(1)).markCallAsDisconnected(eq(mMockCall1), any());
-        verify(mCallsManager, times(1)).markCallAsRemoved(eq(mMockCall1));
     }
 
     /**
@@ -303,25 +303,23 @@ public class TransactionTests extends TelecomTestCase {
     public void testCallStateIsSuccessfullyChanged()
             throws ExecutionException, InterruptedException, TimeoutException {
         when(mFeatureFlags.transactionalCsVerifier()).thenReturn(true);
-        VerifyCallStateChangeTransaction t = new VerifyCallStateChangeTransaction(mCallsManager,
-                mMockCall1, CallState.ON_HOLD, true);
+        VerifyCallStateChangeTransaction t = new VerifyCallStateChangeTransaction(
+                mLock, mMockCall1, CallState.ON_HOLD);
         // WHEN
         setupHoldableCall();
 
         // simulate the transaction being processed and the setOnHold() being called / state change
         t.processTransaction(null);
+        doReturn(CallState.ON_HOLD).when(mMockCall1).getState();
         t.getCallStateListenerImpl().onCallStateChanged(CallState.ON_HOLD);
-        when(mMockCall1.getState()).thenReturn(CallState.ON_HOLD);
+        t.finish(null);
+
 
         // THEN
         verify(mMockCall1, times(1)).addCallStateListener(t.getCallStateListenerImpl());
-        assertEquals(t.getCallStateOrTimeoutResult().get().intValue(),
-                VerifyCallStateChangeTransaction.SUCCESS_CODE);
         assertEquals(VoipCallTransactionResult.RESULT_SUCCEED,
                 t.getTransactionResult().get(2, TimeUnit.SECONDS).getResult());
         verify(mMockCall1, atLeastOnce()).removeCallStateListener(any());
-        verify(mCallsManager, never()).markCallAsDisconnected(eq(mMockCall1), any());
-        verify(mCallsManager, never()).markCallAsRemoved(eq(mMockCall1));
     }
 
     private Call createSpyCall(PhoneAccountHandle targetPhoneAccount, int initialState, String id) {

@@ -125,7 +125,7 @@ public class CallEventCallbackAckTransaction extends VoipCallTransaction {
 
         try {
             // wait for the client to ack that CallEventCallback
-            boolean success = latch.await(VoipCallTransaction.TIMEOUT_LIMIT, TimeUnit.MILLISECONDS);
+            boolean success = latch.await(mTransactionTimeoutMs, TimeUnit.MILLISECONDS);
             if (!success) {
                 // client send onError and failed to complete transaction
                 Log.i(TAG, String.format("CallEventCallbackAckTransaction:"
