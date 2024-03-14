@@ -95,8 +95,10 @@ import com.android.server.telecom.voip.VoipCallTransactionResult;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -2114,12 +2116,24 @@ public class TelecomServiceImpl {
                 // Look away, a forbidden technique (reflection) is being used to allow us to get
                 // all flag configs without having to add them manually to this method.
                 Method[] methods = FeatureFlags.class.getMethods();
+                int maxLength = Arrays.stream(methods)
+                        .map(Method::getName)
+                        .map(String::length)
+                        .max(Integer::compare)
+                        .get();
+                String format = "\t%s: %-" + maxLength + "s %s";
+
                 if (methods.length == 0) {
                     pw.println("NONE");
                     return;
                 }
+
                 for (Method m : methods) {
-                    pw.println(m.getName() + "-> " + m.invoke(mFeatureFlags));
+                    String flagEnabled = (Boolean) m.invoke(mFeatureFlags) ? "[✅]": "[❌]";
+                    String methodName = m.getName();
+                    String camelCaseName = methodName.replaceAll("([a-z])([A-Z]+)", "$1_$2")
+                            .toLowerCase(Locale.US);
+                    pw.println(String.format(format, flagEnabled, methodName, camelCaseName));
                 }
             } catch (Exception e) {
                 pw.println("[ERROR]");

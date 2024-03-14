@@ -2428,7 +2428,9 @@ public class InCallController extends CallsManagerListenerBase implements
         }
 
         String bluetoothPackage = mDefaultDialerCache.getBTInCallServicePackage();
-        if (serviceInfo.packageName != null && serviceInfo.packageName.equals(bluetoothPackage)
+        if (mFeatureFlags.separatelyBindToBtIncallService()
+                && serviceInfo.packageName != null
+                && serviceInfo.packageName.equals(bluetoothPackage)
                 && (hasControlInCallPermission || hasAppOpsPermittedManageOngoingCalls)) {
             return IN_CALL_SERVICE_TYPE_BLUETOOTH;
         }
