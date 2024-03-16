@@ -1,6 +1,7 @@
 package: "com.android.server.telecom.flags"
 container: "system"
 
+# OWNER=tgunn TARGET=24Q3
 flag {
   name: "is_new_outgoing_call_broadcast_unblocking"
   namespace: "telecom"

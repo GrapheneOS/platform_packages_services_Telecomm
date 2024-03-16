@@ -63,7 +63,7 @@
     <string name="change_default_call_screening_dialog_affirmative" msgid="7162433828280058647">"Nastavit jako výchozí"</string>
     <string name="change_default_call_screening_dialog_negative" msgid="1839266125623106342">"Zrušit"</string>
     <string name="blocked_numbers" msgid="8322134197039865180">"Blokovaná čísla"</string>
-    <string name="blocked_numbers_msg" msgid="2797422132329662697">"Ze zablokovaných čísel už nebudete přijímat hovory ani zprávy SMS."</string>
+    <string name="blocked_numbers_msg" msgid="2797422132329662697">"Od zablokovaných čísel už nebudete přijímat hovory ani zprávy SMS."</string>
     <string name="block_number" msgid="3784343046852802722">"Přidat číslo"</string>
     <string name="unblock_dialog_body" msgid="2723393535797217261">"Odblokovat číslo <xliff:g id="NUMBER_TO_BLOCK">%1$s</xliff:g>?"</string>
     <string name="unblock_button" msgid="8732021675729981781">"Odblokovat"</string>
@@ -113,7 +113,7 @@
     <string name="phone_settings_private_num_summary_txt" msgid="6755758240544021037">"Blokovat volající, kteří skrývají své číslo"</string>
     <string name="phone_settings_payphone_txt" msgid="5003987966052543965">"Z veřejných telefonů"</string>
     <string name="phone_settings_payphone_summary_txt" msgid="3936631076065563665">"Blokovat hovory z veřejných telefonů"</string>
-    <string name="phone_settings_unknown_txt" msgid="3577926178354772728">"Z nerozpoznaných čísel"</string>
+    <string name="phone_settings_unknown_txt" msgid="3577926178354772728">"Nerozpoznaná čísla"</string>
     <string name="phone_settings_unknown_summary_txt" msgid="5446657192535779645">"Blokovat hovory od nerozpoznaných volajících"</string>
     <string name="phone_settings_unavailable_txt" msgid="825918186053980858">"Neznámé"</string>
     <string name="phone_settings_unavailable_summary_txt" msgid="8221686031038282633">"Blokovat hovory z neznámých čísel"</string>

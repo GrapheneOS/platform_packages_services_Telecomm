@@ -1,6 +1,7 @@
 package: "com.android.server.telecom.flags"
 container: "system"
 
+# OWNER=grantmenke TARGET=24Q2
 flag {
   name: "updated_rcs_call_count_tracking"
   namespace: "telecom"

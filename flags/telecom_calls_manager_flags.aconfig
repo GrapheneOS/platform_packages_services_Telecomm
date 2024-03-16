@@ -1,6 +1,7 @@
 package: "com.android.server.telecom.flags"
 container: "system"
 
+# OWNER=pmadapurmath TARGET=24Q3
 flag {
   name: "use_improved_listener_order"
   namespace: "telecom"
@@ -8,6 +9,7 @@ flag {
   bug: "24244713"
 }
 
+# OWNER=tjstuart TARGET=24Q3
 flag {
   name: "fix_audio_flicker_for_outgoing_calls"
   namespace: "telecom"
@@ -15,6 +17,7 @@ flag {
   bug: "309540769"
 }
 
+# OWNER=breadley TARGET=24Q3
 flag {
   name: "enable_call_sequencing"
   namespace: "telecom"

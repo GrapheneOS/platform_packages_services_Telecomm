@@ -1,6 +1,7 @@
 package: "com.android.server.telecom.flags"
 container: "system"
 
+# OWNER=tjstuart TARGET=24Q3
 flag {
   name: "only_update_telephony_on_valid_sub_ids"
   namespace: "telecom"
@@ -8,6 +9,7 @@ flag {
   bug: "234846282"
 }
 
+# OWNER=tjstuart TARGET=24Q3
 flag {
   name: "telephony_has_default_but_telecom_does_not"
   namespace: "telecom"

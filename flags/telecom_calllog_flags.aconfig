@@ -1,6 +1,7 @@
 package: "com.android.server.telecom.flags"
 container: "system"
 
+# OWNER=qingzhong TARGET=24Q2
 flag {
   name: "telecom_log_external_wearable_calls"
   namespace: "telecom"
@@ -8,6 +9,7 @@ flag {
   bug: "292600751"
 }
 
+# OWNER=ranamouawi TARGET=24Q2
 flag {
   name: "telecom_skip_log_based_on_extra"
   namespace: "telecom"

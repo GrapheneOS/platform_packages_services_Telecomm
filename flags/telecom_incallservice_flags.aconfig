@@ -1,6 +1,7 @@
 package: "com.android.server.telecom.flags"
 container: "system"
 
+# OWNER=qingzhong TARGET=24Q2
 flag {
   name: "early_binding_to_incall_service"
   namespace: "telecom"
@@ -8,6 +9,7 @@ flag {
   bug: "282113261"
 }
 
+# OWNER=pmadapurmath TARGET=24Q2
 flag {
   name: "ecc_keyguard"
   namespace: "telecom"
@@ -15,6 +17,7 @@ flag {
   bug: "306582821"
 }
 
+# OWNER=pmadapurmath TARGET=24Q3
 flag {
   name: "separately_bind_to_bt_incall_service"
   namespace: "telecom"

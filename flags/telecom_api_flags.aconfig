@@ -1,6 +1,7 @@
 package: "com.android.server.telecom.flags"
 container: "system"
 
+# OWNER=grantmenke TARGET=24Q3
 flag {
   name: "voip_app_actions_support"
   is_exported: true
@@ -9,6 +10,7 @@ flag {
   bug: "296934278"
 }
 
+# OWNER=grantmenke TARGET=24Q3
 flag {
   name: "call_details_id_changes"
   is_exported: true
@@ -17,7 +19,8 @@ flag {
   bug: "301713560"
 }
 
-flag{
+# OWNER=kunduz TARGET=24Q2
+flag {
   name: "add_call_uri_for_missed_calls"
   is_exported: true
   namespace: "telecom"
@@ -25,7 +28,8 @@ flag{
   bug: "292597423"
 }
 
-flag{
+# OWNER=tjstuart TARGET=24Q3
+flag {
   name: "set_mute_state"
   is_exported: true
   namespace: "telecom"
@@ -33,7 +37,8 @@ flag{
   bug: "310669304"
 }
 
-flag{
+# OWNER=tjstuart TARGET=24Q3
+flag {
   name: "get_registered_phone_accounts"
   is_exported: true
   namespace: "telecom"
@@ -41,7 +46,8 @@ flag{
   bug: "317132586"
 }
 
-flag{
+# OWNER=tjstuart TARGET=24Q3
+flag {
   name: "transactional_video_state"
   is_exported: true
   namespace: "telecom"
@@ -49,7 +55,8 @@ flag{
   bug: "311265260"
 }
 
-flag{
+# OWNER=tjstuart TARGET=24Q3
+flag {
   name: "business_call_composer"
   is_exported: true
   namespace: "telecom"
@@ -58,7 +65,8 @@ flag{
   is_exported: true
 }
 
-flag{
+# OWNER=tgunn TARGET=25Q3
+flag {
   name: "get_last_known_cell_identity"
   is_exported: true
   namespace: "telecom"
