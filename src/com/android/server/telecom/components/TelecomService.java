@@ -27,6 +27,7 @@ import android.os.PowerManager;
 import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.provider.BlockedNumberContract;
+import android.provider.BlockedNumbersManager;
 import android.telecom.Log;
 
 import android.telecom.CallerInfoAsyncQuery;
@@ -104,6 +105,7 @@ public class TelecomService extends Service implements TelecomSystem.Component {
     static void initializeTelecomSystem(Context context,
             InternalServiceRetrieverAdapter internalServiceRetriever) {
         if (TelecomSystem.getInstance() == null) {
+            FeatureFlags featureFlags = new FeatureFlagsImpl();
             NotificationChannelManager notificationChannelManager =
                     new NotificationChannelManager();
             notificationChannelManager.createChannels(context);
@@ -223,8 +225,11 @@ public class TelecomService extends Service implements TelecomSystem.Component {
                                 @Override
                                 public boolean shouldShowEmergencyCallNotification(Context
                                         context) {
-                                    return BlockedNumberContract.BlockedNumbers
-                                            .shouldShowEmergencyCallNotification(context);
+                                    return featureFlags.telecomMainlineBlockedNumbersManager()
+                                            ? context.getSystemService(BlockedNumbersManager.class)
+                                            .shouldShowEmergencyCallNotification()
+                                            : BlockedNumberContract.SystemContract
+                                                    .shouldShowEmergencyCallNotification(context);
                                 }
 
                                 @Override
@@ -234,7 +239,7 @@ public class TelecomService extends Service implements TelecomSystem.Component {
                                             showNotification);
                                 }
                             },
-                            new FeatureFlagsImpl(),
+                            featureFlags,
                             new com.android.internal.telephony.flags.FeatureFlagsImpl()));
         }
     }

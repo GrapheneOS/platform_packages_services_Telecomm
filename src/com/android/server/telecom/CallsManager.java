@@ -79,7 +79,7 @@ import android.os.Trace;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.BlockedNumberContract;
-import android.provider.BlockedNumberContract.BlockedNumbers;
+import android.provider.BlockedNumbersManager;
 import android.provider.CallLog.Calls;
 import android.provider.Settings;
 import android.telecom.CallAttributes;
@@ -488,6 +488,7 @@ public class CallsManager extends Call.ListenerBase
     private final TransactionManager mTransactionManager;
     private final UserManager mUserManager;
     private final CallStreamingNotification mCallStreamingNotification;
+    private final BlockedNumbersManager mBlockedNumbersManager;
     private final FeatureFlags mFeatureFlags;
     private final com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
@@ -556,7 +557,8 @@ public class CallsManager extends Call.ListenerBase
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)
-                    || BlockedNumbers.ACTION_BLOCK_SUPPRESSION_STATE_CHANGED.equals(action)) {
+                    || BlockedNumbersManager
+                    .ACTION_BLOCK_SUPPRESSION_STATE_CHANGED.equals(action)) {
                 updateEmergencyCallNotificationAsync(context);
             }
         }
@@ -718,6 +720,9 @@ public class CallsManager extends Call.ListenerBase
         mCallStreamingNotification = callStreamingNotification;
         mFeatureFlags = featureFlags;
         mTelephonyFeatureFlags = telephonyFlags;
+        mBlockedNumbersManager = mFeatureFlags.telecomMainlineBlockedNumbersManager()
+                ? mContext.getSystemService(BlockedNumbersManager.class)
+                : null;
 
         if (mFeatureFlags.useImprovedListenerOrder()) {
             mListeners.add(mInCallController);
@@ -758,7 +763,7 @@ public class CallsManager extends Call.ListenerBase
         IntentFilter intentFilter = new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intentFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
-        intentFilter.addAction(BlockedNumbers.ACTION_BLOCK_SUPPRESSION_STATE_CHANGED);
+        intentFilter.addAction(BlockedNumbersManager.ACTION_BLOCK_SUPPRESSION_STATE_CHANGED);
         context.registerReceiver(mReceiver, intentFilter, Context.RECEIVER_EXPORTED);
         mGraphHandlerThreads = new LinkedList<>();
 
@@ -912,7 +917,7 @@ public class CallsManager extends Call.ListenerBase
         DirectToVoicemailFilter voicemailFilter = new DirectToVoicemailFilter(incomingCall,
                 mCallerInfoLookupHelper);
         BlockCheckerFilter blockCheckerFilter = new BlockCheckerFilter(mContext, incomingCall,
-                mCallerInfoLookupHelper, new BlockCheckerAdapter());
+                mCallerInfoLookupHelper, new BlockCheckerAdapter(mFeatureFlags));
         DndCallFilter dndCallFilter = new DndCallFilter(incomingCall, getRinger());
         CallScreeningServiceFilter carrierCallScreeningServiceFilter =
                 new CallScreeningServiceFilter(incomingCall, carrierPackageName,
@@ -2958,9 +2963,13 @@ public class CallsManager extends Call.ListenerBase
         }
 
         if (call.isEmergencyCall()) {
-            Executors.defaultThreadFactory().newThread(() ->
-                    BlockedNumberContract.BlockedNumbers.notifyEmergencyContact(mContext))
-                    .start();
+            Executors.defaultThreadFactory().newThread(() -> {
+                if (mBlockedNumbersManager != null) {
+                    mBlockedNumbersManager.notifyEmergencyContact();
+                } else {
+                    BlockedNumberContract.SystemContract.notifyEmergencyContact(mContext);
+                }
+            }).start();
         }
 
         final boolean requireCallCapableAccountByHandle = mContext.getResources().getBoolean(

@@ -23,7 +23,6 @@ import android.content.ContentValues;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.BlockedNumberContract;
-import com.android.server.telecom.R;
 
 /**
  * Retained fragment that runs an async task to add a blocked number.

@@ -73,6 +73,7 @@ import android.os.UserManager;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.permission.PermissionCheckerManager;
+import android.provider.BlockedNumbersManager;
 import android.telecom.ConnectionService;
 import android.telecom.Log;
 import android.telecom.InCallService;
@@ -251,6 +252,8 @@ public class ComponentContextFixture implements TestFixture<Context> {
                     return mSensorPrivacyManager;
                 case Context.ACCESSIBILITY_SERVICE:
                     return mAccessibilityManager;
+                case Context.BLOCKED_NUMBERS_SERVICE:
+                    return mBlockedNumbersManager;
                 default:
                     return null;
             }
@@ -292,6 +295,8 @@ public class ComponentContextFixture implements TestFixture<Context> {
                 return Context.BUGREPORT_SERVICE;
             } else if (svcClass == TelecomManager.class) {
                 return Context.TELECOM_SERVICE;
+            } else if (svcClass == BlockedNumbersManager.class) {
+                return Context.BLOCKED_NUMBERS_SERVICE;
             }
             throw new UnsupportedOperationException(svcClass.getName());
         }
@@ -635,6 +640,7 @@ public class ComponentContextFixture implements TestFixture<Context> {
     private final List<BroadcastReceiver> mBroadcastReceivers = new ArrayList<>();
 
     private TelecomManager mTelecomManager = mock(TelecomManager.class);
+    private BlockedNumbersManager mBlockedNumbersManager = mock(BlockedNumbersManager.class);
 
     public ComponentContextFixture(FeatureFlags featureFlags) {
         MockitoAnnotations.initMocks(this);

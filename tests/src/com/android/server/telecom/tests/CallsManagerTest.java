@@ -64,7 +64,7 @@ import android.os.ResultReceiver;
 import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.provider.BlockedNumberContract;
+import android.provider.BlockedNumbersManager;
 import android.telecom.CallException;
 import android.telecom.CallScreeningService;
 import android.telecom.CallerInfo;
@@ -3440,18 +3440,14 @@ public class CallsManagerTest extends TelecomTestCase {
         when(mBlockedNumbersAdapter.shouldShowEmergencyCallNotification(any(Context.class)))
                 .thenReturn(true);
         mComponentContextFixture.getBroadcastReceivers().forEach(c -> c.onReceive(mContext,
-                new Intent(
-                        BlockedNumberContract.BlockedNumbers
-                                .ACTION_BLOCK_SUPPRESSION_STATE_CHANGED)));
+                new Intent(BlockedNumbersManager.ACTION_BLOCK_SUPPRESSION_STATE_CHANGED)));
         verify(mBlockedNumbersAdapter).updateEmergencyCallNotification(any(Context.class),
                 eq(true));
 
         when(mBlockedNumbersAdapter.shouldShowEmergencyCallNotification(any(Context.class)))
                 .thenReturn(false);
         mComponentContextFixture.getBroadcastReceivers().forEach(c -> c.onReceive(mContext,
-                new Intent(
-                        BlockedNumberContract.BlockedNumbers
-                                .ACTION_BLOCK_SUPPRESSION_STATE_CHANGED)));
+                new Intent(BlockedNumbersManager.ACTION_BLOCK_SUPPRESSION_STATE_CHANGED)));
         verify(mBlockedNumbersAdapter).updateEmergencyCallNotification(any(Context.class),
                 eq(false));
     }

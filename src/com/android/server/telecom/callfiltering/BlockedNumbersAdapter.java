@@ -20,10 +20,10 @@ import android.content.Context;
 
 /**
  * Adapter interface that wraps methods from
- * {@link android.provider.BlockedNumberContract.BlockedNumbers} and
+ * {@link android.provider.BlockedNumbersManager} and
  * {@link com.android.server.telecom.settings.BlockedNumbersUtil} to make things testable.
  */
 public interface BlockedNumbersAdapter {
-    boolean shouldShowEmergencyCallNotification (Context context);
+    boolean shouldShowEmergencyCallNotification(Context context);
     void updateEmergencyCallNotification(Context context, boolean showNotification);
 }

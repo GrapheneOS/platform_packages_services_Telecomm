@@ -60,6 +60,7 @@ import android.os.ResultReceiver;
 import android.os.ShellCallback;
 import android.os.UserHandle;
 import android.provider.BlockedNumberContract;
+import android.provider.BlockedNumbersManager;
 import android.provider.Settings;
 import android.telecom.CallAttributes;
 import android.telecom.CallException;
@@ -2010,7 +2011,11 @@ public class TelecomServiceImpl {
                 synchronized (mLock) {
                     long token = Binder.clearCallingIdentity();
                     try {
-                        BlockedNumberContract.BlockedNumbers.endBlockSuppression(mContext);
+                        if (mBlockedNumbersManager != null) {
+                            mBlockedNumbersManager.endBlockSuppression();
+                        } else {
+                            BlockedNumberContract.SystemContract.endBlockSuppression(mContext);
+                        }
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }
@@ -2686,6 +2691,7 @@ public class TelecomServiceImpl {
     private final TelecomSystem.SyncRoot mLock;
     private TransactionManager mTransactionManager;
     private final TransactionalServiceRepository mTransactionalServiceRepository;
+    private final BlockedNumbersManager mBlockedNumbersManager;
     private final FeatureFlags mFeatureFlags;
     private final com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
@@ -2737,6 +2743,9 @@ public class TelecomServiceImpl {
 
         mTransactionManager = TransactionManager.getInstance();
         mTransactionalServiceRepository = new TransactionalServiceRepository();
+        mBlockedNumbersManager = mFeatureFlags.telecomMainlineBlockedNumbersManager()
+                ? mContext.getSystemService(BlockedNumbersManager.class)
+                : null;
     }
 
     @VisibleForTesting

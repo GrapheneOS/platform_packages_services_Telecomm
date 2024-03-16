@@ -34,6 +34,7 @@ import android.content.Loader;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.BlockedNumberContract;
+import android.provider.BlockedNumbersManager;
 import android.telephony.PhoneNumberFormattingTextWatcher;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
@@ -54,6 +55,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.server.telecom.R;
+import com.android.server.telecom.flags.FeatureFlags;
+import com.android.server.telecom.flags.FeatureFlagsImpl;
 
 
 /**
@@ -75,8 +78,10 @@ public class BlockedNumbersActivity extends ListActivity
             BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER + " NOTNULL) AND (" +
             BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER + " != '' ))";
 
+    private BlockedNumbersManager mBlockedNumbersManager;
     private BlockNumberTaskFragment mBlockNumberTaskFragment;
     private BlockedNumbersAdapter mAdapter;
+    private FeatureFlags mFeatureFlags;
     private TextView mAddButton;
     private ProgressBar mProgressBar;
     private RelativeLayout mButterBar;
@@ -114,6 +119,7 @@ public class BlockedNumbersActivity extends ListActivity
             return;
         }
 
+        mFeatureFlags = new FeatureFlagsImpl();
         FragmentManager fm = getFragmentManager();
         mBlockNumberTaskFragment =
                 (BlockNumberTaskFragment) fm.findFragmentByTag(TAG_BLOCK_NUMBER_TASK_FRAGMENT);
@@ -155,12 +161,15 @@ public class BlockedNumbersActivity extends ListActivity
             }
         };
         IntentFilter blockStatusIntentFilter = new IntentFilter(
-                BlockedNumberContract.BlockedNumbers.ACTION_BLOCK_SUPPRESSION_STATE_CHANGED);
+                BlockedNumbersManager.ACTION_BLOCK_SUPPRESSION_STATE_CHANGED);
         blockStatusIntentFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
         registerReceiver(mBlockingStatusReceiver, blockStatusIntentFilter,
                 Context.RECEIVER_EXPORTED);
 
         getLoaderManager().initLoader(0, null, this);
+        mBlockedNumbersManager = mFeatureFlags.telecomMainlineBlockedNumbersManager()
+                ? getSystemService(BlockedNumbersManager.class)
+                : null;
     }
 
     @Override
@@ -183,8 +192,10 @@ public class BlockedNumbersActivity extends ListActivity
     }
 
     private void updateButterBar() {
-        if (BlockedNumberContract.BlockedNumbers
-                .getBlockSuppressionStatus(this).getIsSuppressed()) {
+        boolean isBlockSuppressionEnabled = mBlockedNumbersManager != null
+                ? mBlockedNumbersManager.getBlockSuppressionStatus().getIsSuppressed()
+                : BlockedNumberContract.SystemContract.getBlockSuppressionStatus(this).isSuppressed;
+        if (isBlockSuppressionEnabled) {
             mButterBar.setVisibility(View.VISIBLE);
         } else {
             mButterBar.setVisibility(View.GONE);
@@ -239,7 +250,11 @@ public class BlockedNumbersActivity extends ListActivity
         if (view == mAddButton) {
             showAddBlockedNumberDialog();
         } else if (view == mReEnableButton) {
-            BlockedNumberContract.BlockedNumbers.endBlockSuppression(this);
+            if (mBlockedNumbersManager != null) {
+                mBlockedNumbersManager.endBlockSuppression();
+            } else {
+                BlockedNumberContract.SystemContract.endBlockSuppression(this);
+            }
             mButterBar.setVisibility(View.GONE);
         }
     }

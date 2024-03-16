@@ -23,7 +23,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
-import android.provider.BlockedNumberContract.BlockedNumbers;
+import android.provider.BlockedNumberContract;
+import android.provider.BlockedNumbersManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.text.BidiFormatter;
@@ -34,6 +35,7 @@ import android.widget.Toast;
 
 import com.android.server.telecom.R;
 import com.android.server.telecom.SystemSettingsUtil;
+import com.android.server.telecom.flags.FeatureFlags;
 import com.android.server.telecom.ui.NotificationChannelManager;
 
 import java.util.Locale;
@@ -148,8 +150,11 @@ public final class BlockedNumbersUtil {
      * @return If {@code true} means the key enabled in the SharedPreferences,
      *            {@code false} otherwise.
      */
-    public static boolean getBlockedNumberSetting(Context context, String key) {
-        return BlockedNumbers.getBlockedNumberSetting(context, key);
+    public static boolean getBlockedNumberSetting(Context context, String key,
+            FeatureFlags featureFlags) {
+        return featureFlags.telecomMainlineBlockedNumbersManager()
+                ? context.getSystemService(BlockedNumbersManager.class).getBlockedNumberSetting(key)
+                : BlockedNumberContract.SystemContract.getEnhancedBlockSetting(context, key);
     }
 
     /**
@@ -159,7 +164,13 @@ public final class BlockedNumbersUtil {
      * @param key preference key of SharedPreferences.
      * @param value the register value to the SharedPreferences.
      */
-    public static void setBlockedNumberSetting(Context context, String key, boolean value) {
-        BlockedNumbers.setBlockedNumberSetting(context, key, value);
+    public static void setBlockedNumberSetting(Context context, String key, boolean value,
+            FeatureFlags featureFlags) {
+        if (featureFlags.telecomMainlineBlockedNumbersManager()) {
+            context.getSystemService(BlockedNumbersManager.class).setBlockedNumberSetting(key,
+                    value);
+        } else {
+            BlockedNumberContract.SystemContract.setEnhancedBlockSetting(context, key, value);
+        }
     }
 }
