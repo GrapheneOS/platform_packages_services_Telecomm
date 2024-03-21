@@ -304,7 +304,7 @@ public class TelecomSystem {
                 @Override
                 public CallEndpointController create(Context context, SyncRoot lock,
                         CallsManager callsManager) {
-                    return new CallEndpointController(context, callsManager);
+                    return new CallEndpointController(context, callsManager, featureFlags);
                 }
             };
 

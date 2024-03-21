@@ -40,6 +40,7 @@ import com.android.server.telecom.CallAudioManager;
 import com.android.server.telecom.CallEndpointController;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.ConnectionServiceWrapper;
+import com.android.server.telecom.flags.FeatureFlags;
 
 import org.junit.Before;
 import org.junit.After;
@@ -101,7 +102,10 @@ public class CallEndpointControllerTest extends TelecomTestCase {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        mCallEndpointController = new CallEndpointController(mMockContext, mCallsManager);
+        mCallEndpointController = new CallEndpointController(
+                mMockContext,
+                mCallsManager,
+                mFeatureFlags);
         doReturn(new HashSet<>(Arrays.asList(mCall))).when(mCallsManager).getTrackedCalls();
         doReturn(mConnectionService).when(mCall).getConnectionService();
         doReturn(mCallAudioManager).when(mCallsManager).getCallAudioManager();

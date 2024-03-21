@@ -62,7 +62,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * on a per-client basis which is tied to a {@link PhoneAccountHandle}
  */
 public class TransactionalServiceWrapper implements
-        ConnectionServiceFocusManager.ConnectionServiceFocus {
+        ConnectionServiceFocusManager.ConnectionServiceFocus, CallSourceService {
     private static final String TAG = TransactionalServiceWrapper.class.getSimpleName();
 
     // CallControl : Client (ex. voip app) --> Telecom
@@ -552,6 +552,7 @@ public class TransactionalServiceWrapper implements
         }
     }
 
+    @Override
     public void onCallEndpointChanged(Call call, CallEndpoint endpoint) {
         if (call != null) {
             try {
@@ -561,6 +562,7 @@ public class TransactionalServiceWrapper implements
         }
     }
 
+    @Override
     public void onAvailableCallEndpointsChanged(Call call, Set<CallEndpoint> endpoints) {
         if (call != null) {
             try {
@@ -571,6 +573,7 @@ public class TransactionalServiceWrapper implements
         }
     }
 
+    @Override
     public void onMuteStateChanged(Call call, boolean isMuted) {
         if (call != null) {
             try {

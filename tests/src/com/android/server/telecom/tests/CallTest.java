@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -40,6 +42,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.UserHandle;
 import android.telecom.CallAttributes;
+import android.telecom.CallEndpoint;
 import android.telecom.CallerInfo;
 import android.telecom.Connection;
 import android.telecom.DisconnectCause;
@@ -56,6 +59,9 @@ import android.widget.Toast;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
+import com.android.server.telecom.CachedAvailableEndpointsChange;
+import com.android.server.telecom.CachedCurrentEndpointChange;
+import com.android.server.telecom.CachedMuteStateChange;
 import com.android.server.telecom.Call;
 import com.android.server.telecom.CallIdMapper;
 import com.android.server.telecom.CallState;
@@ -78,6 +84,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.Set;
 
 @RunWith(AndroidJUnit4.class)
 public class CallTest extends TelecomTestCase {
@@ -135,6 +142,148 @@ public class CallTest extends TelecomTestCase {
         assertTrue(call.hasGoneActiveBefore());
         call.setState(CallState.AUDIO_PROCESSING, "");
         assertTrue(call.hasGoneActiveBefore());
+    }
+
+    @Test
+    public void testMultipleCachedMuteStateChanges() {
+        when(mFeatureFlags.cacheCallAudioCallbacks()).thenReturn(true);
+        TransactionalServiceWrapper tsw = Mockito.mock(TransactionalServiceWrapper.class);
+        Call call = createCall("1", Call.CALL_DIRECTION_INCOMING);
+
+        assertNull(call.getTransactionServiceWrapper());
+
+        call.cacheServiceCallback(new CachedMuteStateChange(true));
+        assertEquals(1, call.getCachedServiceCallbacks().size());
+
+        call.cacheServiceCallback(new CachedMuteStateChange(false));
+        assertEquals(1, call.getCachedServiceCallbacks().size());
+
+        CachedMuteStateChange currentCacheMuteState = (CachedMuteStateChange) call
+                .getCachedServiceCallbacks()
+                .get(CachedMuteStateChange.ID);
+
+        assertFalse(currentCacheMuteState.isMuted());
+
+        call.setTransactionServiceWrapper(tsw);
+        verify(tsw, times(1)).onMuteStateChanged(any(), eq(false));
+        assertEquals(0, call.getCachedServiceCallbacks().size());
+    }
+
+    @Test
+    public void testMultipleCachedCurrentEndpointChanges() {
+        when(mFeatureFlags.cacheCallAudioCallbacks()).thenReturn(true);
+        TransactionalServiceWrapper tsw = Mockito.mock(TransactionalServiceWrapper.class);
+        CallEndpoint earpiece = Mockito.mock(CallEndpoint.class);
+        CallEndpoint speaker = Mockito.mock(CallEndpoint.class);
+        when(earpiece.getEndpointType()).thenReturn(CallEndpoint.TYPE_EARPIECE);
+        when(speaker.getEndpointType()).thenReturn(CallEndpoint.TYPE_SPEAKER);
+
+        Call call = createCall("1", Call.CALL_DIRECTION_INCOMING);
+
+        assertNull(call.getTransactionServiceWrapper());
+
+        call.cacheServiceCallback(new CachedCurrentEndpointChange(earpiece));
+        assertEquals(1, call.getCachedServiceCallbacks().size());
+
+        call.cacheServiceCallback(new CachedCurrentEndpointChange(speaker));
+        assertEquals(1, call.getCachedServiceCallbacks().size());
+
+        CachedCurrentEndpointChange currentEndpointChange = (CachedCurrentEndpointChange) call
+                .getCachedServiceCallbacks()
+                .get(CachedCurrentEndpointChange.ID);
+
+        assertEquals(CallEndpoint.TYPE_SPEAKER,
+                currentEndpointChange.getCurrentCallEndpoint().getEndpointType());
+
+        call.setTransactionServiceWrapper(tsw);
+        verify(tsw, times(1)).onCallEndpointChanged(any(), any());
+        assertEquals(0, call.getCachedServiceCallbacks().size());
+    }
+
+    @Test
+    public void testMultipleCachedAvailableEndpointChanges() {
+        when(mFeatureFlags.cacheCallAudioCallbacks()).thenReturn(true);
+        TransactionalServiceWrapper tsw = Mockito.mock(TransactionalServiceWrapper.class);
+        CallEndpoint earpiece = Mockito.mock(CallEndpoint.class);
+        CallEndpoint bluetooth = Mockito.mock(CallEndpoint.class);
+        Set<CallEndpoint> initialSet = Set.of(earpiece);
+        Set<CallEndpoint> finalSet = Set.of(earpiece, bluetooth);
+        when(earpiece.getEndpointType()).thenReturn(CallEndpoint.TYPE_EARPIECE);
+        when(bluetooth.getEndpointType()).thenReturn(CallEndpoint.TYPE_BLUETOOTH);
+
+        Call call = createCall("1", Call.CALL_DIRECTION_INCOMING);
+
+        assertNull(call.getTransactionServiceWrapper());
+
+        call.cacheServiceCallback(new CachedAvailableEndpointsChange(initialSet));
+        assertEquals(1, call.getCachedServiceCallbacks().size());
+
+        call.cacheServiceCallback(new CachedAvailableEndpointsChange(finalSet));
+        assertEquals(1, call.getCachedServiceCallbacks().size());
+
+        CachedAvailableEndpointsChange availableEndpoints = (CachedAvailableEndpointsChange) call
+                .getCachedServiceCallbacks()
+                .get(CachedAvailableEndpointsChange.ID);
+
+        assertEquals(2, availableEndpoints.getAvailableEndpoints().size());
+
+        call.setTransactionServiceWrapper(tsw);
+        verify(tsw, times(1)).onAvailableCallEndpointsChanged(any(), any());
+        assertEquals(0, call.getCachedServiceCallbacks().size());
+    }
+
+    /**
+     * verify that if multiple types of cached callbacks are added to the call, the call executes
+     * all the callbacks once the service is set.
+     */
+    @Test
+    public void testAllCachedCallbacks() {
+        when(mFeatureFlags.cacheCallAudioCallbacks()).thenReturn(true);
+        TransactionalServiceWrapper tsw = Mockito.mock(TransactionalServiceWrapper.class);
+        CallEndpoint earpiece = Mockito.mock(CallEndpoint.class);
+        CallEndpoint bluetooth = Mockito.mock(CallEndpoint.class);
+        Set<CallEndpoint> availableEndpointsSet = Set.of(earpiece, bluetooth);
+        when(earpiece.getEndpointType()).thenReturn(CallEndpoint.TYPE_EARPIECE);
+        when(bluetooth.getEndpointType()).thenReturn(CallEndpoint.TYPE_BLUETOOTH);
+        Call call = createCall("1", Call.CALL_DIRECTION_INCOMING);
+
+        // The call should have a null service so that callbacks are cached
+        assertNull(call.getTransactionServiceWrapper());
+
+        // add cached callbacks
+        call.cacheServiceCallback(new CachedMuteStateChange(false));
+        assertEquals(1, call.getCachedServiceCallbacks().size());
+        call.cacheServiceCallback(new CachedCurrentEndpointChange(earpiece));
+        assertEquals(2, call.getCachedServiceCallbacks().size());
+        call.cacheServiceCallback(new CachedAvailableEndpointsChange(availableEndpointsSet));
+        assertEquals(3, call.getCachedServiceCallbacks().size());
+
+        // verify the cached callbacks are stored properly within the cache map and the values
+        // can be evaluated
+        CachedMuteStateChange currentCacheMuteState = (CachedMuteStateChange) call
+                .getCachedServiceCallbacks()
+                .get(CachedMuteStateChange.ID);
+        CachedCurrentEndpointChange currentEndpointChange = (CachedCurrentEndpointChange) call
+                .getCachedServiceCallbacks()
+                .get(CachedCurrentEndpointChange.ID);
+        CachedAvailableEndpointsChange availableEndpoints = (CachedAvailableEndpointsChange) call
+                .getCachedServiceCallbacks()
+                .get(CachedAvailableEndpointsChange.ID);
+        assertFalse(currentCacheMuteState.isMuted());
+        assertEquals(CallEndpoint.TYPE_EARPIECE,
+                currentEndpointChange.getCurrentCallEndpoint().getEndpointType());
+        assertEquals(2, availableEndpoints.getAvailableEndpoints().size());
+
+        // set the service to a non-null value
+        call.setTransactionServiceWrapper(tsw);
+
+        // ensure the cached callbacks were executed
+        verify(tsw, times(1)).onMuteStateChanged(any(), anyBoolean());
+        verify(tsw, times(1)).onCallEndpointChanged(any(), any());
+        verify(tsw, times(1)).onAvailableCallEndpointsChanged(any(), any());
+
+        // the cache map should be cleared
+        assertEquals(0, call.getCachedServiceCallbacks().size());
     }
 
     /**
