@@ -575,17 +575,10 @@ public final class CallLogManager extends CallsManagerListenerBase {
                 AddCallArgs c = callList[i];
                 mListeners[i] = c.logCallCompletedListener;
                 try {
-                    Pair<Integer, Integer> startStats = getCallLogStats(c.call);
-                    Log.i(TAG, "LogCall; about to log callId=%s, "
-                                    + "startCount=%d, startMaxId=%d",
-                            c.call.getId(), startStats.first, startStats.second);
-
                     result[i] = Calls.addCall(c.context, c.params);
-                    Pair<Integer, Integer> endStats = getCallLogStats(c.call);
-                    Log.i(TAG, "LogCall; logged callId=%s, uri=%s, "
-                                    + "endCount=%d, endMaxId=%s",
-                            c.call.getId(), result, endStats.first, endStats.second);
-                    if ((endStats.second - startStats.second) <= 0) {
+                    Log.i(TAG, "LogCall; logged callId=%s, uri=%s",
+                            c.call.getId(), result[i]);
+                    if (result[i] == null) {
                         // No call was added or even worse we lost a call in the log.  Trigger an
                         // anomaly report.  Note: it technically possible that an app modified the
                         // call log while we were writing to it here; that is pretty unlikely, and
@@ -683,55 +676,6 @@ public final class CallLogManager extends CallsManagerListenerBase {
             }
         } finally {
             Log.endSession();
-        }
-    }
-
-    /**
-     * Returns a pair containing the number of rows in the call log, as well as the maximum call log
-     * ID.  There is a limit of 500 entries in the call log for a phone account, so once we hit 500
-     * we can reasonably expect that number to not change before and after logging a call.
-     * We determine the maximum ID in the call log since this is a way we can objectively check if
-     * the provider did record a call log entry or not.  Ideally there should be more call log
-     * entries after logging than before, and certainly not less.
-     * @return pair with number of rows in the call log and max id.
-     */
-    private Pair<Integer, Integer> getCallLogStats(@NonNull Call call) {
-        try {
-            // Ensure we query the call log based on the current user.
-            final Context currentUserContext = mContext.createContextAsUser(
-                    call.getAssociatedUser(), /* flags= */ 0);
-            final ContentResolver currentUserResolver = currentUserContext.getContentResolver();
-            final UserManager userManager = currentUserContext.getSystemService(UserManager.class);
-            final int currentUserId = userManager.getProcessUserId();
-
-            // Use shadow provider based on current user unlock state.
-            Uri providerUri;
-            boolean isCurrentUserUnlocked = mFeatureFlags.telecomResolveHiddenDependencies()
-                    ? userManager.isUserUnlocked(UserHandle.CURRENT)
-                    : userManager.isUserUnlocked(currentUserId);
-            if (isCurrentUserUnlocked) {
-                providerUri = Calls.CONTENT_URI;
-            } else {
-                providerUri = Calls.SHADOW_CONTENT_URI;
-            }
-            int maxCallId = -1;
-            int numFound;
-            try (Cursor countCursor = currentUserResolver.query(providerUri,
-                    new String[]{Calls._ID},
-                    null,
-                    null,
-                    Calls._ID + " DESC")) {
-                numFound = countCursor.getCount();
-                if (numFound > 0) {
-                    countCursor.moveToFirst();
-                    maxCallId = countCursor.getInt(0);
-                }
-            }
-            return new Pair<>(numFound, maxCallId);
-        } catch (Exception e) {
-            // Oh jeepers, we crashed getting the call count.
-            Log.e(TAG, e, "getCountOfCallLogRows: failed");
-            return new Pair<>(-1, -1);
         }
     }
 

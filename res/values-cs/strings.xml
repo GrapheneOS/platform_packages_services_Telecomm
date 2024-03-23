@@ -36,7 +36,7 @@
     <string name="accessibility_call_muted" msgid="2968461092554300779">"Hovor ztlumen."</string>
     <string name="accessibility_speakerphone_enabled" msgid="555386652061614267">"Reproduktor je zapnutý."</string>
     <string name="respond_via_sms_canned_response_1" msgid="6332561460870382561">"Teď nemůžu mluvit, o co jde?"</string>
-    <string name="respond_via_sms_canned_response_2" msgid="2052951316129952406">"Zavolám později."</string>
+    <string name="respond_via_sms_canned_response_2" msgid="2052951316129952406">"Zavolám zpátky."</string>
     <string name="respond_via_sms_canned_response_3" msgid="6656147963478092035">"Zavolám později."</string>
     <string name="respond_via_sms_canned_response_4" msgid="9141132488345561047">"Nemůžu telefonovat. Zavoláš později?"</string>
     <string name="respond_via_sms_setting_title" msgid="4762275482898830160">"Rychlé odpovědi"</string>
