@@ -254,12 +254,11 @@ public final class CallLogManager extends CallsManagerListenerBase {
                 return false;
             }
 
-            PersistableBundle b = mCarrierConfigManager.getConfigForSubId(subscriptionId);
-            if (b == null) {
+            if (mCarrierConfigManager == null) {
                 return false;
             }
-
-            if (b.getBoolean(KEY_SUPPORT_IMS_CONFERENCE_EVENT_PACKAGE_BOOL, true)) {
+            PersistableBundle b = mCarrierConfigManager.getConfigForSubId(subscriptionId);
+            if (b == null || b.getBoolean(KEY_SUPPORT_IMS_CONFERENCE_EVENT_PACKAGE_BOOL, true)) {
                 return false;
             }
         }

@@ -1841,7 +1841,12 @@ public class PhoneAccountRegistrar {
             } else {
                 pw.println(defaultOutgoing);
             }
-            pw.println("defaultVoiceSubId: " + SubscriptionManager.getDefaultVoiceSubscriptionId());
+            // SubscriptionManager will throw if FEATURE_TELEPHONY_SUBSCRIPTION is not present.
+            if (mContext.getPackageManager().hasSystemFeature(
+                    PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION)) {
+                pw.println("defaultVoiceSubId: "
+                        + SubscriptionManager.getDefaultVoiceSubscriptionId());
+            }
             pw.println("simCallManager: " + getSimCallManager(mCurrentUserHandle));
             pw.println("phoneAccounts:");
             pw.increaseIndent();
