@@ -174,8 +174,9 @@ public class CallIntentProcessor {
             // profile.
             if (fixedInitiatingUser) {
                 if (featureFlags.telecomResolveHiddenDependencies()) {
-                    Toast.makeText(context, context.getString(R.string.toast_personal_call_msg),
-                            Toast.LENGTH_LONG).show();
+                    context.getMainExecutor().execute(() ->
+                            Toast.makeText(context, context.getString(
+                                    R.string.toast_personal_call_msg), Toast.LENGTH_LONG).show());
                 } else {
                     Toast.makeText(context, Looper.getMainLooper(),
                             context.getString(R.string.toast_personal_call_msg),

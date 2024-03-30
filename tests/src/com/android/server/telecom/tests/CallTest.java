@@ -107,7 +107,6 @@ public class CallTest extends TelecomTestCase {
     @Mock private PhoneAccountRegistrar mMockPhoneAccountRegistrar;
     @Mock private ClockProxy mMockClockProxy;
     @Mock private ToastFactory mMockToastProxy;
-    @Mock private Toast mMockToast;
     @Mock private PhoneNumberUtilsAdapter mMockPhoneNumberUtilsAdapter;
     @Mock private ConnectionServiceWrapper mMockConnectionService;
     @Mock private TransactionalServiceWrapper mMockTransactionalService;
@@ -124,7 +123,6 @@ public class CallTest extends TelecomTestCase {
                 eq(SIM_1_HANDLE));
         doReturn(new ComponentName(mContext, CallTest.class))
                 .when(mMockConnectionService).getComponentName();
-        doReturn(mMockToast).when(mMockToastProxy).makeText(any(), anyInt(), anyInt());
         doReturn(UserHandle.CURRENT).when(mMockCallsManager).getCurrentUserHandle();
     }
 
@@ -453,7 +451,6 @@ public class CallTest extends TelecomTestCase {
         doReturn(true).when(mMockCallsManager).isInEmergencyCall();
         call.pullExternalCall();
         verify(mMockConnectionService, never()).pullExternalCall(any());
-        verify(mMockToast).show();
     }
 
     @Test

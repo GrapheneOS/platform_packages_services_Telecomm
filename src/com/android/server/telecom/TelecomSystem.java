@@ -346,22 +346,23 @@ public class TelecomSystem {
 
             ToastFactory toastFactory = new ToastFactory() {
                 @Override
-                public Toast makeText(Context context, int resId, int duration) {
+                public void makeText(Context context, int resId, int duration) {
                     if (mFeatureFlags.telecomResolveHiddenDependencies()) {
-                        return Toast.makeText(context, resId, duration);
+                        context.getMainExecutor().execute(() ->
+                                Toast.makeText(context, resId, duration).show());
                     } else {
-                        return Toast.makeText(context, context.getMainLooper(),
-                                context.getString(resId),
-                                duration);
+                        Toast.makeText(context, context.getMainLooper(),
+                                context.getString(resId), duration).show();
                     }
                 }
 
                 @Override
-                public Toast makeText(Context context, CharSequence text, int duration) {
+                public void makeText(Context context, CharSequence text, int duration) {
                     if (mFeatureFlags.telecomResolveHiddenDependencies()) {
-                        return Toast.makeText(context, text, duration);
+                        context.getMainExecutor().execute(() ->
+                                Toast.makeText(context, text, duration).show());
                     } else {
-                        return Toast.makeText(context, context.getMainLooper(), text, duration);
+                        Toast.makeText(context, context.getMainLooper(), text, duration).show();
                     }
                 }
             };

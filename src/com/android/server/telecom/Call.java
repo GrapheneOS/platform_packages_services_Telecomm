@@ -3473,7 +3473,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             Log.w(this, "pullExternalCall = pullExternalCall - call %s is external but can not be"
                     + " pulled while an emergency call is in progress.", mId);
             mToastFactory.makeText(mContext, R.string.toast_emergency_can_not_pull_call,
-                    Toast.LENGTH_LONG).show();
+                    Toast.LENGTH_LONG);
             return;
         }
 

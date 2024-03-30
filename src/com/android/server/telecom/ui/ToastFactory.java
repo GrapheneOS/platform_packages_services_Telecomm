@@ -21,6 +21,6 @@ import android.content.Context;
 import android.widget.Toast;
 
 public interface ToastFactory {
-    Toast makeText(Context context, @StringRes int resId, int duration);
-    Toast makeText(Context context, CharSequence text, int duration);
+    void makeText(Context context, @StringRes int resId, int duration);
+    void makeText(Context context, CharSequence text, int duration);
 }

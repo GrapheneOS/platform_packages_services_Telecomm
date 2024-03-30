@@ -298,7 +298,6 @@ public class CallsManagerTest extends TelecomTestCase {
     @Mock private BluetoothStateReceiver mBluetoothStateReceiver;
     @Mock private RoleManagerAdapter mRoleManagerAdapter;
     @Mock private ToastFactory mToastFactory;
-    @Mock private Toast mToast;
     @Mock private CallAnomalyWatchdog mCallAnomalyWatchdog;
 
     @Mock private EmergencyCallDiagnosticLogger mEmergencyCallDiagnosticLogger;
@@ -405,8 +404,6 @@ public class CallsManagerTest extends TelecomTestCase {
                 eq(CALL_PROVIDER_HANDLE), any())).thenReturn(CALL_PROVIDER_ACCOUNT);
         when(mPhoneAccountRegistrar.getPhoneAccount(
                 eq(WORK_HANDLE), any())).thenReturn(WORK_ACCOUNT);
-        when(mToastFactory.makeText(any(), anyInt(), anyInt())).thenReturn(mToast);
-        when(mToastFactory.makeText(any(), any(), anyInt())).thenReturn(mToast);
         when(mFeatureFlags.separatelyBindToBtIncallService()).thenReturn(false);
         when(mFeatureFlags.telecomResolveHiddenDependencies()).thenReturn(true);
         when(mContext.createContextAsUser(any(UserHandle.class), eq(0)))

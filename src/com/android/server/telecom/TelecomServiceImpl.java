@@ -2696,7 +2696,6 @@ public class TelecomServiceImpl {
     private final FeatureFlags mFeatureFlags;
     private final com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
-
     public TelecomServiceImpl(
             Context context,
             CallsManager callsManager,
