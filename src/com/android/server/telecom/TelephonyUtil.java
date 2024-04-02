@@ -74,7 +74,7 @@ public final class TelephonyUtil {
             TelephonyManager tm = (TelephonyManager) context.getSystemService(
                     Context.TELEPHONY_SERVICE);
             return handle != null && tm.isEmergencyNumber(handle.getSchemeSpecificPart());
-        } catch (IllegalStateException ise) {
+        } catch (UnsupportedOperationException | IllegalStateException ignored) {
             return false;
         }
     }

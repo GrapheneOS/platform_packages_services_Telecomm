@@ -623,6 +623,9 @@ public class NewOutgoingCallIntentBroadcaster {
         try {
             return mContext.getSystemService(TelephonyManager.class).isEmergencyNumber(
                     number);
+        } catch (UnsupportedOperationException uoe) {
+            Log.w(this, "isEmergencyNumber: Telephony not supported");
+            return false;
         } catch (Exception e) {
             Log.e(this, e, "isEmergencyNumber: Telephony threw an exception.");
             return false;

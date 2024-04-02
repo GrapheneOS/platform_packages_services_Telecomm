@@ -122,13 +122,18 @@ final class CreateConnectionTimeout extends Runnable {
     private long getTimeoutLengthMillis() {
         // If the radio is off then use a longer timeout. This gives us more time to power on the
         // radio.
-        TelephonyManager telephonyManager =
-            (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        if (telephonyManager.isRadioOn()) {
+        try {
+            TelephonyManager telephonyManager =
+                    (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+            if (telephonyManager.isRadioOn()) {
+                return Timeouts.getEmergencyCallTimeoutMillis(mContext.getContentResolver());
+            } else {
+                return Timeouts.getEmergencyCallTimeoutRadioOffMillis(
+                        mContext.getContentResolver());
+            }
+        } catch (UnsupportedOperationException uoe) {
+            Log.e(this, uoe, "getTimeoutLengthMillis - telephony is not supported");
             return Timeouts.getEmergencyCallTimeoutMillis(mContext.getContentResolver());
-        } else {
-            return Timeouts.getEmergencyCallTimeoutRadioOffMillis(
-                    mContext.getContentResolver());
         }
     }
 }

@@ -143,15 +143,25 @@ public class CallRedirectionProcessorHelper {
         return PhoneNumberUtils.extractPostDialPortion(handle.getSchemeSpecificPart());
     }
 
-    protected Uri formatNumberToE164(Uri handle) {
+    @VisibleForTesting
+    public Uri formatNumberToE164(Uri handle) {
         String number = handle.getSchemeSpecificPart();
 
         // Format number to E164
         TelephonyManager tm = (TelephonyManager) mContext.getSystemService(
                 Context.TELEPHONY_SERVICE);
         Log.i(this, "formatNumberToE164, original number: " + Log.pii(number));
-        number = PhoneNumberUtils.formatNumberToE164(number, tm.getNetworkCountryIso());
-        Log.i(this, "formatNumberToE164, formatted E164 number: " + Log.pii(number));
+        String networkCountryIso;
+        try {
+            number = PhoneNumberUtils.formatNumberToE164(number, tm.getNetworkCountryIso());
+            Log.i(this, "formatNumberToE164, formatted E164 number: " + Log.pii(number));
+        } catch (UnsupportedOperationException ignored) {
+            // Note: Yes, this could default back to the system locale, however redirection when
+            // there is no telephony is NOT expected.  Hence in reality we shouldn't really hit this
+            // code path in practice; this is a "just in case" to ensure we don't crash.
+            Log.w(this, "formatNumberToE164: no telephony; use original format");
+            number = null;
+        }
         // if there is a problem with parsing the phone number, formatNumberToE164 will return null;
         // and should just use the original number in that case.
         if (number == null) {

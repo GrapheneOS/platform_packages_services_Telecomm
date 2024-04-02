@@ -54,6 +54,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.R;
 import com.android.server.telecom.flags.FeatureFlags;
 import com.android.server.telecom.flags.FeatureFlagsImpl;
@@ -317,12 +318,13 @@ public class BlockedNumbersActivity extends ListActivity
         }
     }
 
-    private boolean isEmergencyNumber(Context context, String number) {
+    @VisibleForTesting
+    public static boolean isEmergencyNumber(Context context, String number) {
         try {
             TelephonyManager tm = (TelephonyManager) context.getSystemService(
                     Context.TELEPHONY_SERVICE);
             return tm.isEmergencyNumber(number);
-        } catch (IllegalStateException ise) {
+        } catch (UnsupportedOperationException | IllegalStateException ignored) {
             return false;
         }
     }

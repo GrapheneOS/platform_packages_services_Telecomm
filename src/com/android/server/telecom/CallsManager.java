@@ -856,10 +856,16 @@ public class CallsManager extends Call.ListenerBase
                 ? new Bundle()
                 : phoneAccount.getExtras();
         TelephonyManager telephonyManager = getTelephonyManager();
+        boolean isInEmergencySmsMode;
+        try {
+            isInEmergencySmsMode = telephonyManager.isInEmergencySmsMode();
+        } catch (UnsupportedOperationException uoe) {
+            isInEmergencySmsMode = false;
+        }
         boolean performDndFilter = mFeatureFlags.skipFilterPhoneAccountPerformDndFilter();
         if (incomingCall.hasProperty(Connection.PROPERTY_EMERGENCY_CALLBACK_MODE) ||
                 incomingCall.hasProperty(Connection.PROPERTY_NETWORK_IDENTIFIED_EMERGENCY_CALL) ||
-                telephonyManager.isInEmergencySmsMode() ||
+                isInEmergencySmsMode ||
                 incomingCall.isSelfManaged() ||
                 (!performDndFilter && extras.getBoolean(PhoneAccount.EXTRA_SKIP_CALL_FILTERING))) {
             Log.i(this, "Skipping call filtering for %s (ecm=%b, "
@@ -868,7 +874,7 @@ public class CallsManager extends Call.ListenerBase
                     incomingCall.getId(),
                     incomingCall.hasProperty(Connection.PROPERTY_EMERGENCY_CALLBACK_MODE),
                     incomingCall.hasProperty(Connection.PROPERTY_NETWORK_IDENTIFIED_EMERGENCY_CALL),
-                    telephonyManager.isInEmergencySmsMode(),
+                    isInEmergencySmsMode,
                     incomingCall.isSelfManaged(),
                     extras.getBoolean(PhoneAccount.EXTRA_SKIP_CALL_FILTERING));
             onCallFilteringComplete(incomingCall, new Builder()
@@ -1406,7 +1412,7 @@ public class CallsManager extends Call.ListenerBase
         return mCallEndpointController;
     }
 
-    EmergencyCallHelper getEmergencyCallHelper() {
+    public EmergencyCallHelper getEmergencyCallHelper() {
         return mEmergencyCallHelper;
     }
 
@@ -1914,19 +1920,25 @@ public class CallsManager extends Call.ListenerBase
 
             // Log info for emergency call
             if (call.isEmergencyCall()) {
-                String simNumeric = "";
-                String networkNumeric = "";
-                int defaultVoiceSubId = SubscriptionManager.getDefaultVoiceSubscriptionId();
-                if (defaultVoiceSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                    TelephonyManager tm = getTelephonyManager().createForSubscriptionId(
-                            defaultVoiceSubId);
-                    CellIdentity cellIdentity = tm.getLastKnownCellIdentity();
-                    simNumeric = tm.getSimOperatorNumeric();
-                    networkNumeric = (cellIdentity != null) ? cellIdentity.getPlmn() : "";
-                }
-                TelecomStatsLog.write(TelecomStatsLog.EMERGENCY_NUMBER_DIALED,
+                try {
+                    String simNumeric = "";
+                    String networkNumeric = "";
+                    int defaultVoiceSubId = SubscriptionManager.getDefaultVoiceSubscriptionId();
+                    if (defaultVoiceSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        TelephonyManager tm = getTelephonyManager().createForSubscriptionId(
+                                defaultVoiceSubId);
+                        CellIdentity cellIdentity = tm.getLastKnownCellIdentity();
+                        simNumeric = tm.getSimOperatorNumeric();
+                        networkNumeric = (cellIdentity != null) ? cellIdentity.getPlmn() : "";
+                    }
+                    TelecomStatsLog.write(TelecomStatsLog.EMERGENCY_NUMBER_DIALED,
                             handle.getSchemeSpecificPart(),
                             callingPackage, simNumeric, networkNumeric);
+                } catch (UnsupportedOperationException uoe) {
+                    // Ignore; likely we should not be able to get here since emergency calls
+                    // require Telephony at the current time, however that could change in the
+                    // future, so we best be safe.
+                }
             }
 
             // Ensure new calls related to self-managed calls/connections are set as such.  This
@@ -2681,6 +2693,9 @@ public class CallsManager extends Call.ListenerBase
             isEmergencyNumber =
                     handle != null && getTelephonyManager().isEmergencyNumber(
                             handle.getSchemeSpecificPart());
+        } catch (UnsupportedOperationException uoe) {
+            // If device has no telephony, we can't check if it is an emergency call.
+            isEmergencyNumber = false;
         } catch (IllegalStateException ise) {
             isEmergencyNumber = false;
         } catch (RuntimeException r) {
@@ -3481,11 +3496,15 @@ public class CallsManager extends Call.ListenerBase
     }
 
     // Returns whether the device is capable of 2 simultaneous active voice calls on different subs.
-    private boolean isDsdaCallingPossible() {
+    @VisibleForTesting
+    public boolean isDsdaCallingPossible() {
         try {
             return getTelephonyManager().getMaxNumberOfSimultaneouslyActiveSims() > 1
                     || getTelephonyManager().getPhoneCapability()
                            .getMaxActiveVoiceSubscriptions() > 1;
+        } catch(UnsupportedOperationException uoe) {
+            Log.w(this, "Telephony not supported");
+            return false;
         } catch (Exception e) {
             Log.w(this, "exception in isDsdaCallingPossible(): ", e);
             return false;

@@ -3022,15 +3022,34 @@ public class InCallController extends CallsManagerListenerBase implements
         mIsCallUsingMicrophone = mIsTrackingManagedAliveCall && !isMuted
                 && !isCarrierPrivilegedUsingMicDuringVoipCall();
         if (wasUsingMicrophone != mIsCallUsingMicrophone) {
+            int opPackageUid = getOpPackageUid();
             if (mIsCallUsingMicrophone) {
                 // Note, not checking return value, as this op call is merely for tracing use
-                mAppOpsManager.startOp(AppOpsManager.OP_PHONE_CALL_MICROPHONE, myUid(),
+                mAppOpsManager.startOp(AppOpsManager.OP_PHONE_CALL_MICROPHONE, opPackageUid,
                         mContext.getOpPackageName(), false, null, null);
                 mSensorPrivacyManager.showSensorUseDialog(SensorPrivacyManager.Sensors.MICROPHONE);
             } else {
-                mAppOpsManager.finishOp(AppOpsManager.OP_PHONE_CALL_MICROPHONE, myUid(),
+                mAppOpsManager.finishOp(AppOpsManager.OP_PHONE_CALL_MICROPHONE, opPackageUid,
                         mContext.getOpPackageName(), null);
             }
+        }
+    }
+
+    /**
+     * Returns the uid of the package in the current user to be used for app ops attribution.
+     */
+    private int getOpPackageUid() {
+        UserHandle user = mCallsManager.getCurrentUserHandle();
+
+        try {
+            PackageManager pkgManager = mContext.getPackageManager();
+            return pkgManager.getPackageUidAsUser(mContext.getOpPackageName(),
+                    user.getIdentifier());
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e(this, e, "getPackageForAssociatedUser: could not find package %s"
+                    + " for user %s", mContext.getOpPackageName(), user);
+            // fallback to current process id - this should not happen
+            return myUid();
         }
     }
 

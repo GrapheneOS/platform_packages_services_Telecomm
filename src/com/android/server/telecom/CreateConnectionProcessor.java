@@ -103,21 +103,31 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
         int getSlotIndex(int subId);
     }
 
-    private ITelephonyManagerAdapter mTelephonyAdapter = new ITelephonyManagerAdapter() {
+    public static class ITelephonyManagerAdapterImpl implements ITelephonyManagerAdapter {
         @Override
         public int getSubIdForPhoneAccount(Context context, PhoneAccount account) {
             TelephonyManager manager = context.getSystemService(TelephonyManager.class);
             if (manager == null) {
                 return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
             }
-            return manager.getSubscriptionId(account.getAccountHandle());
+            try {
+                return manager.getSubscriptionId(account.getAccountHandle());
+            } catch (UnsupportedOperationException uoe) {
+                return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+            }
         }
 
         @Override
         public int getSlotIndex(int subId) {
-            return SubscriptionManager.getSlotIndex(subId);
+            try {
+                return SubscriptionManager.getSlotIndex(subId);
+            } catch (UnsupportedOperationException uoe) {
+                return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+            }
         }
     };
+
+    private ITelephonyManagerAdapter mTelephonyAdapter = new ITelephonyManagerAdapterImpl();
 
     private final Call mCall;
     private final ConnectionServiceRepository mRepository;

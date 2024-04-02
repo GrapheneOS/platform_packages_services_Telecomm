@@ -16,10 +16,13 @@
 
 package com.android.server.telecom.tests;
 
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -27,6 +30,7 @@ import android.os.UserHandle;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.server.telecom.settings.BlockedNumbersActivity;
 import com.android.server.telecom.settings.BlockedNumbersUtil;
 
 import org.junit.Before;
@@ -57,5 +61,17 @@ public class BlockedNumbersUtilTests extends TelecomTestCase {
         BlockedNumbersUtil.updateEmergencyCallNotification(mContext, false);
         NotificationManager mgr = mComponentContextFixture.getNotificationManager();
         verify(mgr).cancelAsUser(isNull(), anyInt(), any(UserHandle.class));
+    }
+
+    /**
+     * Verify that when Telephony isn't present we can still check if a number is an emergency
+     * number in the {@link BlockedNumbersActivity} and not crash.
+     */
+    @SmallTest
+    @Test
+    public void testBlockedNumbersActivityEmergencyCheckWithNoTelephony() {
+        when(mComponentContextFixture.getTelephonyManager().isEmergencyNumber(anyString()))
+                .thenThrow(new UnsupportedOperationException("Bee boop"));
+        assertFalse(BlockedNumbersActivity.isEmergencyNumber(mContext, "911"));
     }
 }

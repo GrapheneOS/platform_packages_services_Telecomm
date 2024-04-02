@@ -720,15 +720,19 @@ public class Analytics {
     }
 
     private static int getCarrierId(Context context) {
-        SubscriptionManager subscriptionManager =
-                context.getSystemService(SubscriptionManager.class).createForAllUserProfiles();
-        List<SubscriptionInfo> subInfos = subscriptionManager.getActiveSubscriptionInfoList();
-        if (subInfos == null) {
+        try {
+            SubscriptionManager subscriptionManager =
+                    context.getSystemService(SubscriptionManager.class).createForAllUserProfiles();
+            List<SubscriptionInfo> subInfos = subscriptionManager.getActiveSubscriptionInfoList();
+            if (subInfos == null) {
+                return -1;
+            }
+            return subInfos.stream()
+                    .max(Comparator.comparing(Analytics::scoreSubscriptionInfo))
+                    .map(SubscriptionInfo::getCarrierId).orElse(-1);
+        } catch (UnsupportedOperationException ignored) {
             return -1;
         }
-        return subInfos.stream()
-                .max(Comparator.comparing(Analytics::scoreSubscriptionInfo))
-                .map(SubscriptionInfo::getCarrierId).orElse(-1);
     }
 
     // Copied over from Telephony's server-side logic for consistency

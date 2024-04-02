@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -1869,7 +1870,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
                 makeQuickAccountHandle(TEST_ID)).setIcon(mockIcon);
         try {
             // WHEN
-            Mockito.doThrow(new IOException())
+            doThrow(new IOException())
                     .when(mockIcon).writeToStream(any(OutputStream.class));
             //THEN
             mRegistrar.enforceIconSizeLimit(builder.build());
@@ -1963,6 +1964,36 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         // Return the account visible for the user if no account exactly matches the user
         assertEquals(1, accountsForUser.size());
         assertTrue(accountsForUser.contains(accountForAll));
+    }
+
+    @SmallTest
+    @Test
+    public void testGetSubscriptionIdForPhoneAccountWhenNoTelephony() throws Exception {
+        mComponentContextFixture.addConnectionService(makeQuickConnectionServiceComponentName(),
+                Mockito.mock(IConnectionService.class));
+
+        PhoneAccount simAccount =
+                makeQuickAccountBuilder("simzor", 1, null)
+                        .setCapabilities(
+                                PhoneAccount.CAPABILITY_CALL_PROVIDER
+                                        | PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)
+                        .setIsEnabled(true)
+                        .build();
+        registerAndEnableAccount(simAccount);
+        when(mComponentContextFixture.getTelephonyManager()
+                .getSubscriptionId(any(PhoneAccountHandle.class)))
+                .thenThrow(new UnsupportedOperationException("Bee-boop"));
+        assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                mRegistrar.getSubscriptionIdForPhoneAccount(simAccount.getAccountHandle()));
+
+        // One more thing; we'll test
+        doThrow(new UnsupportedOperationException("Bee boop!"))
+                .when(mComponentContextFixture.getSubscriptionManager())
+                .setDefaultVoiceSubscriptionId(anyInt());
+        mRegistrar.setUserSelectedOutgoingPhoneAccount(simAccount.getAccountHandle(),
+                simAccount.getAccountHandle().getUserHandle());
+
+        // There is nothing to verify, we just want to ensure that we didn't crash.
     }
 
     private static PhoneAccount.Builder makeBuilderWithBindCapabilities(PhoneAccountHandle handle) {

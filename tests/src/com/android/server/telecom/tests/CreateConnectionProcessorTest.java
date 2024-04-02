@@ -16,8 +16,10 @@
 
 package com.android.server.telecom.tests;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.any;
@@ -93,8 +95,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     CreateConnectionProcessor mTestCreateConnectionProcessor;
 
     private ArrayList<PhoneAccount> phoneAccounts;
-    private HashMap<Integer,Integer> mSubToSlot;
-    private HashMap<PhoneAccount,Integer> mAccountToSub;
+    private HashMap<Integer, Integer> mSubToSlot;
+    private HashMap<PhoneAccount, Integer> mAccountToSub;
 
     @Override
     @Before
@@ -117,7 +119,7 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
                          return null;
                      }
                  }
-                ).when(mConnectionServiceFocusManager).requestFocus(any(), any());
+        ).when(mConnectionServiceFocusManager).requestFocus(any(), any());
 
         mTestCreateConnectionProcessor = new CreateConnectionProcessor(mMockCall,
                 mMockConnectionServiceRepository, mMockCreateConnectionResponse,
@@ -300,7 +302,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
 
     /**
      * Ensure that when a test emergency number is being dialed and we restrict the usable
-     * PhoneAccounts using {@link PhoneAccountRegistrar#filterRestrictedPhoneAccounts(List)}, the
+     * PhoneAccounts using {@link PhoneAccountRegistrar#filterRestrictedPhoneAccounts(List)},
+     * the
      * test emergency call is sent on the filtered PhoneAccount.
      */
     @SmallTest
@@ -338,7 +341,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     }
 
     /**
-     * Ensure that when no phone accounts (visible to the user) are available for the call, we use
+     * Ensure that when no phone accounts (visible to the user) are available for the call, we
+     * use
      * an available sim from other another user (on the condition that the user has the
      * INTERACT_ACROSS_USERS permission).
      */
@@ -368,7 +372,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     }
 
     /**
-     * Ensure that the non-emergency capable PhoneAccount and the SIM manager is not chosen to place
+     * Ensure that the non-emergency capable PhoneAccount and the SIM manager is not chosen to
+     * place
      * the emergency call if there is an emergency capable PhoneAccount available as well.
      */
     @SmallTest
@@ -405,7 +410,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     }
 
     /**
-     * 1) Ensure that if there is a non-SIM PhoneAccount, it is not chosen as the Phone Account to
+     * 1) Ensure that if there is a non-SIM PhoneAccount, it is not chosen as the Phone Account
+     * to
      * dial the emergency call.
      * 2) Register multiple emergency capable PhoneAccounts. Since there is not preference, we
      * default to sending on the lowest slot.
@@ -445,8 +451,10 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     }
 
     /**
-     * Ensure that the call goes out on the PhoneAccount that has the CAPABILITY_EMERGENCY_PREFERRED
-     * capability, even if the user specifically chose the other emergency capable PhoneAccount.
+     * Ensure that the call goes out on the PhoneAccount that has the
+     * CAPABILITY_EMERGENCY_PREFERRED
+     * capability, even if the user specifically chose the other emergency capable
+     * PhoneAccount.
      */
     @SmallTest
     @Test
@@ -478,7 +486,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     }
 
     /**
-     * If there is no phone account with CAPABILITY_EMERGENCY_PREFERRED capability, choose the user
+     * If there is no phone account with CAPABILITY_EMERGENCY_PREFERRED capability, choose the
+     * user
      * chosen target account.
      */
     @SmallTest
@@ -552,7 +561,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     }
 
     /**
-     * If the user preferred PhoneAccount is associated with an invalid slot, place on the other,
+     * If the user preferred PhoneAccount is associated with an invalid slot, place on the
+     * other,
      * valid slot.
      */
     @SmallTest
@@ -690,7 +700,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
 
     /**
      * Tests to verify that the
-     * {@link CreateConnectionProcessor#sortSimPhoneAccountsForEmergency(List, PhoneAccount)} can
+     * {@link CreateConnectionProcessor#sortSimPhoneAccountsForEmergency(List, PhoneAccount)}
+     * can
      * successfully sort without running into sort issues related to the hashcodes of the
      * PhoneAccounts.
      */
@@ -705,6 +716,24 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         } catch (Exception e) {
             fail("Failed to sort phone accounts");
         }
+    }
+
+    /**
+     * Verifies when telephony is not available that we just get invalid sub id for a phone acct.
+     */
+    @SmallTest
+    @Test
+    public void testTelephonyAdapterWhenNoTelephony() {
+        PhoneAccount telephonyAcct = makePhoneAccount("test-acct",
+                PhoneAccount.CAPABILITY_CALL_PROVIDER
+                        | PhoneAccount.CAPABILITY_PLACE_EMERGENCY_CALLS);
+
+        CreateConnectionProcessor.ITelephonyManagerAdapterImpl impl
+                = new CreateConnectionProcessor.ITelephonyManagerAdapterImpl();
+        when(mComponentContextFixture.getTelephonyManager().
+                getSubscriptionId(any(PhoneAccountHandle.class)))
+                .thenThrow(new UnsupportedOperationException("Bee boop"));
+        assertEquals(-1, impl.getSubIdForPhoneAccount(mContext, telephonyAcct));
     }
 
     /**

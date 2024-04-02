@@ -378,4 +378,22 @@ public class CallRedirectionProcessorTest extends TelecomTestCase {
         verify(mContext, times(1)).
                 unbindService(any(ServiceConnection.class));
     }
+
+    /**
+     * Verifies that calling formatNumberToE164 will not crash when Telephony is not present and
+     * we can't ascertain the network country ISO.
+     */
+    @Test
+    public void testFormatNumberToE164WhenNoTelephony() {
+        // Need to do this even though we're just testing the helper
+        startProcessWithNoGateWayInfo();
+
+        CallRedirectionProcessorHelper helper = new CallRedirectionProcessorHelper(mContext,
+                mCallsManager, mPhoneAccountRegistrar);
+        when(mComponentContextFixture.getTelephonyManager().getNetworkCountryIso())
+                .thenThrow(new UnsupportedOperationException("Bee boop"));
+        assertEquals(Uri.fromParts("tel", "6505551212", null),
+                helper.formatNumberToE164(
+                        Uri.fromParts("tel", "6505551212", null)));
+    }
 }

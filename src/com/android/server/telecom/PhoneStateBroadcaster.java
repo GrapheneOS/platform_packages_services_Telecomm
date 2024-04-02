@@ -16,6 +16,7 @@
 
 package com.android.server.telecom;
 
+import android.content.pm.PackageManager;
 import android.telecom.Log;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionInfo;
@@ -23,6 +24,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
+
+import com.android.internal.annotations.VisibleForTesting;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,7 +35,7 @@ import java.util.Optional;
  * Send a {@link TelephonyManager#ACTION_PHONE_STATE_CHANGED} broadcast when the call state
  * changes.
  */
-final class PhoneStateBroadcaster extends CallsManagerListenerBase {
+public final class PhoneStateBroadcaster extends CallsManagerListenerBase {
 
     private final CallsManager mCallsManager;
     private final TelephonyRegistryManager mRegistry;
@@ -136,25 +139,34 @@ final class PhoneStateBroadcaster extends CallsManagerListenerBase {
                     .flatMap(List::stream)
                     .filter(numberObj -> Objects.equals(numberObj.getNumber(), strippedNumber))
                     .findFirst();
+        } catch (UnsupportedOperationException ignored) {
+            emergencyNumber = Optional.empty();
         } catch (IllegalStateException ie) {
             emergencyNumber = Optional.empty();
         } catch (RuntimeException r) {
             emergencyNumber = Optional.empty();
         }
 
-        int subscriptionId = tm.getSubscriptionId(call.getTargetPhoneAccount());
-        SubscriptionManager subscriptionManager =
-                mCallsManager.getContext().getSystemService(SubscriptionManager.class);
-        int simSlotIndex = SubscriptionManager.DEFAULT_PHONE_INDEX;
-        if (subscriptionManager != null) {
-            SubscriptionInfo subInfo =
-                    subscriptionManager.getActiveSubscriptionInfo(subscriptionId);
-            if (subInfo != null) {
-                simSlotIndex = subInfo.getSimSlotIndex();
-            }
-        }
-
         if (emergencyNumber.isPresent()) {
+            int subscriptionId;
+            int simSlotIndex;
+            try {
+                subscriptionId = tm.getSubscriptionId(call.getTargetPhoneAccount());
+                SubscriptionManager subscriptionManager =
+                        mCallsManager.getContext().getSystemService(SubscriptionManager.class);
+                simSlotIndex = SubscriptionManager.DEFAULT_PHONE_INDEX;
+                if (subscriptionManager != null) {
+                    SubscriptionInfo subInfo =
+                            subscriptionManager.getActiveSubscriptionInfo(subscriptionId);
+                    if (subInfo != null) {
+                        simSlotIndex = subInfo.getSimSlotIndex();
+                    }
+                }
+            } catch (UnsupportedOperationException ignored) {
+                subscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+                simSlotIndex = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
+            }
+
             mRegistry.notifyOutgoingEmergencyCall(
                     simSlotIndex, subscriptionId, emergencyNumber.get());
         }

@@ -692,6 +692,25 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
                 nullable(Notification.class), eq(PRIMARY_USER));
     }
 
+    /**
+     * Ensure when Telephony is not present on a device and getNetworkCountryIso throws an
+     * unsupported operation exception that we will still fallback to the device locale.
+     */
+    @SmallTest
+    @Test
+    public void testGetCountryIsoWithNoTelephony() {
+        Notification.Builder builder1 = makeNotificationBuilder("builder1");
+        MissedCallNotifierImpl.NotificationBuilderFactory fakeBuilderFactory =
+                makeNotificationBuilderFactory(builder1);
+        MissedCallNotifierImpl missedCallNotifier = new MissedCallNotifierImpl(mContext,
+                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory,
+                mDeviceIdleControllerAdapter, mFeatureFlags);
+
+        when(mComponentContextFixture.getTelephonyManager().getNetworkCountryIso())
+                .thenThrow(new UnsupportedOperationException("Bee boop"));
+        assertNotNull(missedCallNotifier.getCurrentCountryIso(mContext));
+    }
+
     private Notification.Builder makeNotificationBuilder(String label) {
         Notification.Builder builder = spy(new Notification.Builder(mContext));
         Notification notification = mock(Notification.class);

@@ -997,6 +997,9 @@ public class TelecomServiceImpl {
                         }
                     }
                     return getTelephonyManager(subId).getVoiceMailNumber();
+                } catch (UnsupportedOperationException ignored) {
+                    Log.w(this, "getVoiceMailNumber: no Telephony");
+                    return null;
                 } catch (Exception e) {
                     Log.e(this, e, "getSubscriptionIdForPhoneAccount");
                     throw e;
@@ -1033,6 +1036,9 @@ public class TelecomServiceImpl {
                                 accountHandle);
                     }
                     return getTelephonyManager(subId).getLine1Number();
+                } catch (UnsupportedOperationException ignored) {
+                    Log.w(this, "getLine1Number: no telephony");
+                    return null;
                 } catch (Exception e) {
                     Log.e(this, e, "getSubscriptionIdForPhoneAccount");
                     throw e;
@@ -1511,8 +1517,13 @@ public class TelecomServiceImpl {
                         subId = mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(
                                 accountHandle);
                     }
-                    retval = getTelephonyManager(subId)
-                            .handlePinMmiForSubscriber(subId, dialString);
+                    try {
+                        retval = getTelephonyManager(subId)
+                                .handlePinMmiForSubscriber(subId, dialString);
+                    } catch (UnsupportedOperationException uoe) {
+                        Log.w(this, "handlePinMmiForPhoneAccount: no telephony");
+                        retval = false;
+                    }
                 } finally {
                     Binder.restoreCallingIdentity(token);
                 }

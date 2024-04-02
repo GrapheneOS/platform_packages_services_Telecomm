@@ -146,6 +146,19 @@ public class DisconnectedCallNotifierTest extends TelecomTestCase {
         verify(mNotificationManager).cancelAsUser(anyString(), anyInt(), any());
     }
 
+    /**
+     * Verifies when there is no telephony available, that we'll still be able to determine a
+     * country iso.
+     */
+    @Test
+    @SmallTest
+    public void testGetCountryIsoWithNoTelephony() {
+        DisconnectedCallNotifier notifier = new DisconnectedCallNotifier(mContext, mCallsManager);
+        when(mComponentContextFixture.getTelephonyManager().getNetworkCountryIso())
+                .thenThrow(new UnsupportedOperationException("Bee boop"));
+        assertNotNull(notifier.getCurrentCountryIso(mContext));
+    }
+
     private Call createCall(DisconnectCause cause) {
         Call call = mock(Call.class);
         when(call.getDisconnectCause()).thenReturn(cause);

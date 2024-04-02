@@ -843,6 +843,10 @@ public class ComponentContextFixture implements TestFixture<Context> {
         mSubscriptionManager = subscriptionManager;
     }
 
+    public SubscriptionManager getSubscriptionManager() {
+        return mSubscriptionManager;
+    }
+
     public TelephonyManager getTelephonyManager() {
         return mTelephonyManager;
     }
@@ -861,6 +865,10 @@ public class ComponentContextFixture implements TestFixture<Context> {
 
     public List<BroadcastReceiver> getBroadcastReceivers() {
         return mBroadcastReceivers;
+    }
+
+    public TelephonyRegistryManager getTelephonyRegistryManager() {
+        return mTelephonyRegistryManager;
     }
 
     private void addService(String action, ComponentName name, IInterface service) {

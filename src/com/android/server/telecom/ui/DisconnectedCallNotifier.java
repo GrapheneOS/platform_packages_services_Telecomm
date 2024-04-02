@@ -41,6 +41,7 @@ import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.Call;
 import com.android.server.telecom.CallState;
 import com.android.server.telecom.CallsManager;
@@ -285,12 +286,18 @@ public class DisconnectedCallNotifier extends CallsManagerListenerBase {
      *      network location.  If the network location does not exist, fall back to the locale
      *      setting.
      */
-    private String getCurrentCountryIso(Context context) {
+    @VisibleForTesting
+    public String getCurrentCountryIso(Context context) {
         // Without framework function calls, this seems to be the most accurate location service
         // we can rely on.
         final TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        String countryIso = telephonyManager.getNetworkCountryIso().toUpperCase();
+        String countryIso;
+        try {
+            countryIso = telephonyManager.getNetworkCountryIso().toUpperCase();
+        } catch (UnsupportedOperationException ignored) {
+            countryIso = null;
+        }
 
         if (countryIso == null) {
             countryIso = Locale.getDefault().getCountry();

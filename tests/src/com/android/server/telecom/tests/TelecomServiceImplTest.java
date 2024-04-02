@@ -2092,6 +2092,23 @@ public class TelecomServiceImplTest extends TelecomTestCase {
                 mTSIBinder.getLine1Number(TEL_PA_HANDLE_CURRENT, DEFAULT_DIALER_PACKAGE, null));
     }
 
+    /**
+     * Verify that when Telephony is not present that getLine1Number returns null as expected.
+     * @throws Exception
+     */
+    @SmallTest
+    @Test
+    public void testGetLine1NumberWithNoTelephony() throws Exception {
+        setupGetLine1NumberTest();
+        grantPermissionAndAppOp(READ_PHONE_NUMBERS, AppOpsManager.OPSTR_READ_PHONE_NUMBERS);
+        TelephonyManager mockTelephonyManager =
+                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        when(mockTelephonyManager.getLine1Number()).thenThrow(
+                new UnsupportedOperationException("Bee-boop"));
+
+        assertNull(mTSIBinder.getLine1Number(TEL_PA_HANDLE_CURRENT, DEFAULT_DIALER_PACKAGE, null));
+    }
+
     private String setupGetLine1NumberTest() throws Exception {
         int subId = 58374;
         String line1Number = "9482752023479";

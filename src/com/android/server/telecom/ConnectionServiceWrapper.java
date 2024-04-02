@@ -1407,20 +1407,23 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         }
     }
 
-    private CellIdentity getLastKnownCellIdentity() {
+    @VisibleForTesting
+    public CellIdentity getLastKnownCellIdentity() {
         TelephonyManager telephonyManager = mContext.getSystemService(TelephonyManager.class);
         if (telephonyManager != null) {
-            CellIdentity lastKnownCellIdentity = telephonyManager.getLastKnownCellIdentity();
             try {
+                CellIdentity lastKnownCellIdentity = telephonyManager.getLastKnownCellIdentity();
                 mAppOpsManager.noteOp(AppOpsManager.OP_FINE_LOCATION,
                         mContext.getPackageManager().getPackageUid(
                                 getComponentName().getPackageName(), 0),
                         getComponentName().getPackageName());
+                return lastKnownCellIdentity;
+            } catch (UnsupportedOperationException ignored) {
+                Log.w(this, "getLastKnownCellIdentity - no telephony on this device");
             } catch (PackageManager.NameNotFoundException nameNotFoundException) {
                 Log.e(this, nameNotFoundException, "could not find the package -- %s",
                         getComponentName().getPackageName());
             }
-            return lastKnownCellIdentity;
         }
         return null;
     }

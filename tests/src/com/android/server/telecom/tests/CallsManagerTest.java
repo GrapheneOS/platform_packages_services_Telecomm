@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -1440,6 +1441,36 @@ public class CallsManagerTest extends TelecomTestCase {
         verify(incomingCall).setIsUsingCallFiltering(eq(false));
     }
 
+    /**
+     * Verify the ability to skip call filtering when Telephony reports we are in emergency SMS mode
+     * and also verify that when Telephony is not available we will not try to skip filtering.
+     */
+    @SmallTest
+    @Test
+    public void testFilteringWhenEmergencySmsCheckFails() {
+        // First see if it works when Telephony is present.
+        Call incomingCall = addSpyCall(CallState.NEW);
+        doReturn(true).when(mComponentContextFixture.getTelephonyManager()).isInEmergencySmsMode();
+        mCallsManager.onSuccessfulIncomingCall(incomingCall);
+        verify(incomingCall).setIsUsingCallFiltering(eq(false));
+
+        // Ensure when there is no telephony it doesn't try to skip filtering.
+        Call incomingCall2 = addSpyCall(CallState.NEW);
+        doThrow(new UnsupportedOperationException("Bee-boop")).when(
+                mComponentContextFixture.getTelephonyManager()).isInEmergencySmsMode();
+        mCallsManager.onSuccessfulIncomingCall(incomingCall2);
+        verify(incomingCall2).setIsUsingCallFiltering(eq(true));
+    }
+
+    @SmallTest
+    @Test
+    public void testDsdaAvailableCheckWhenNoTelephony() {
+        doThrow(new UnsupportedOperationException("Bee-boop")).when(
+                mComponentContextFixture.getTelephonyManager())
+                        .getMaxNumberOfSimultaneouslyActiveSims();
+        assertFalse(mCallsManager.isDsdaCallingPossible());
+    }
+
     @SmallTest
     @Test
     public void testNoFilteringOfNetworkIdentifiedEmergencyCalls() {
@@ -2724,6 +2755,24 @@ public class CallsManagerTest extends TelecomTestCase {
         ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
         verify(callSpy).disconnect(argumentCaptor.capture());
         assertTrue(argumentCaptor.getValue().contains("Unavailable phoneAccountHandle"));
+    }
+
+    /**
+     * Verify when Telephony is not available we don't try to block redirection due to the failed
+     * isEmergency check.
+     */
+    @SmallTest
+    @Test
+    public void testEmergencyCheckFailsOnRedirectionCheckCompleteDueToNoTelephony() {
+        when(mComponentContextFixture.getTelephonyManager().isEmergencyNumber(anyString()))
+                .thenThrow(new UnsupportedOperationException("Bee boop"));
+
+        Call callSpy = addSpyCall(CallState.NEW);
+        mCallsManager.onCallRedirectionComplete(callSpy, Uri.parse("tel:911"),
+                SIM_1_HANDLE_SECONDARY,
+                new GatewayInfo("foo", TEST_ADDRESS2, TEST_ADDRESS), true /* speakerphoneOn */,
+                VideoProfile.STATE_AUDIO_ONLY, false /* shouldCancelCall */, "" /* uiAction */);
+        verify(callSpy, never()).disconnect(anyString());
     }
 
     /**

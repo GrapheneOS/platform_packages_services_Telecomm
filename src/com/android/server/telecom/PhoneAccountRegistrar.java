@@ -242,7 +242,11 @@ public class PhoneAccountRegistrar {
         PhoneAccount account = getPhoneAccountUnchecked(accountHandle);
 
         if (account != null && account.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)) {
-            return mTelephonyManager.getSubscriptionId(accountHandle);
+            try {
+                return mTelephonyManager.getSubscriptionId(accountHandle);
+            } catch (UnsupportedOperationException ignored) {
+                // Ignore; fall back to invalid below.
+            }
         }
         return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
@@ -425,18 +429,23 @@ public class PhoneAccountRegistrar {
                 Log.i(this, "setUserSelectedOutgoingPhoneAccount: %s is not a sub", accountHandle);
             }
         }
+
         write();
         fireDefaultOutgoingChanged();
     }
 
     private void updateDefaultVoiceSubId(int newSubId, PhoneAccountHandle accountHandle){
-        int currentVoiceSubId = mSubscriptionManager.getDefaultVoiceSubscriptionId();
-        if (newSubId != currentVoiceSubId) {
-            Log.i(this, "setUserSelectedOutgoingPhoneAccount: update voice sub; "
-                    + "account=%s, subId=%d", accountHandle, newSubId);
-            mSubscriptionManager.setDefaultVoiceSubscriptionId(newSubId);
-        } else {
-            Log.i(this, "setUserSelectedOutgoingPhoneAccount: no change to voice sub");
+        try {
+            int currentVoiceSubId = mSubscriptionManager.getDefaultVoiceSubscriptionId();
+            if (newSubId != currentVoiceSubId) {
+                Log.i(this, "setUserSelectedOutgoingPhoneAccount: update voice sub; "
+                        + "account=%s, subId=%d", accountHandle, newSubId);
+                mSubscriptionManager.setDefaultVoiceSubscriptionId(newSubId);
+            } else {
+                Log.i(this, "setUserSelectedOutgoingPhoneAccount: no change to voice sub");
+            }
+        } catch (UnsupportedOperationException uoe) {
+            Log.w(this, "setUserSelectedOutgoingPhoneAccount: no telephony");
         }
     }
 
@@ -465,8 +474,13 @@ public class PhoneAccountRegistrar {
     }
 
     boolean isUserSelectedSmsPhoneAccount(PhoneAccountHandle accountHandle) {
-        return getSubscriptionIdForPhoneAccount(accountHandle) ==
-                SubscriptionManager.getDefaultSmsSubscriptionId();
+        try {
+            return getSubscriptionIdForPhoneAccount(accountHandle) ==
+                    SubscriptionManager.getDefaultSmsSubscriptionId();
+        } catch (UnsupportedOperationException uoe) {
+            Log.w(this, "isUserSelectedSmsPhoneAccount: no telephony");
+            return false;
+        }
     }
 
     public ComponentName getSystemSimCallManagerComponent() {
@@ -475,13 +489,18 @@ public class PhoneAccountRegistrar {
 
     public ComponentName getSystemSimCallManagerComponent(int subId) {
         String defaultSimCallManager = null;
-        CarrierConfigManager configManager = (CarrierConfigManager) mContext.getSystemService(
-                Context.CARRIER_CONFIG_SERVICE);
-        if (configManager == null) return null;
-        PersistableBundle configBundle = configManager.getConfigForSubId(subId);
-        if (configBundle != null) {
-            defaultSimCallManager = configBundle.getString(
-                    CarrierConfigManager.KEY_DEFAULT_SIM_CALL_MANAGER_STRING);
+        try {
+            CarrierConfigManager configManager = (CarrierConfigManager) mContext.getSystemService(
+                    Context.CARRIER_CONFIG_SERVICE);
+            if (configManager == null) return null;
+            PersistableBundle configBundle = configManager.getConfigForSubId(subId);
+            if (configBundle != null) {
+                defaultSimCallManager = configBundle.getString(
+                        CarrierConfigManager.KEY_DEFAULT_SIM_CALL_MANAGER_STRING);
+            }
+        } catch (UnsupportedOperationException ignored) {
+            Log.w(this, "getSystemSimCallManagerComponent: no telephony");
+            // Fall through to empty below.
         }
         return TextUtils.isEmpty(defaultSimCallManager)
                 ?  null : ComponentName.unflattenFromString(defaultSimCallManager);
@@ -1465,16 +1484,22 @@ public class PhoneAccountRegistrar {
                 "Notifying telephony of voice service override change for %d SIMs, hasService = %b",
                 simHandlesToNotify.size(),
                 hasService);
-        for (PhoneAccountHandle simHandle : simHandlesToNotify) {
-            // This may be null if there are no active SIMs but the device is still camped for
-            // emergency calls and registered a SIM_SUBSCRIPTION for that purpose.
-            TelephonyManager simTm = mTelephonyManager.createForPhoneAccountHandle(simHandle);
-            if (simTm == null) {
-                Log.i(this, "maybeNotifyTelephonyForVoiceServiceState: "
-                        + "simTm is null.");
-                continue;
+        try {
+            for (PhoneAccountHandle simHandle : simHandlesToNotify) {
+                // This may be null if there are no active SIMs but the device is still camped for
+                // emergency calls and registered a SIM_SUBSCRIPTION for that purpose.
+                TelephonyManager simTm = mTelephonyManager.createForPhoneAccountHandle(simHandle);
+                if (simTm == null) {
+                    Log.i(this, "maybeNotifyTelephonyForVoiceServiceState: "
+                            + "simTm is null.");
+                    continue;
+                }
+                simTm.setVoiceServiceStateOverride(hasService);
             }
-            simTm.setVoiceServiceStateOverride(hasService);
+        } catch (UnsupportedOperationException ignored) {
+            // No telephony, so we can't override the sim service state.
+            // Realistically we shouldn't get here because there should be no sim subs in this case.
+            Log.w(this, "maybeNotifyTelephonyForVoiceServiceState: no telephony");
         }
     }
 
