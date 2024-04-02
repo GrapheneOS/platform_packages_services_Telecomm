@@ -2475,7 +2475,9 @@ public class TelecomServiceImpl {
                     com.android.internal.R.string.config_emergency_dialer_package);
             Intent intent = new Intent(Intent.ACTION_DIAL_EMERGENCY)
                     .setPackage(packageName);
-            ResolveInfo resolveInfo = mPackageManager.resolveActivity(intent, 0 /* flags*/);
+            PackageManager pm = mContext.createContextAsUser(Binder.getCallingUserHandle(), 0)
+                    .getPackageManager();
+            ResolveInfo resolveInfo = pm.resolveActivity(intent, 0 /* flags*/);
             if (resolveInfo == null) {
                 // No matching activity from config, fallback to default platform implementation
                 intent.setPackage(null);
