@@ -16,13 +16,18 @@
 
 package com.android.server.telecom;
 
+import static com.android.internal.telephony.flags.Flags.carrierEnabledSatelliteFlag;
+
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.telecom.Log;
 import android.telecom.Logging.Runnable;
+import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.TelephonyManager;
+
+import com.android.internal.annotations.VisibleForTesting;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -30,7 +35,8 @@ import java.util.Objects;
 /**
  * Registers a timeout for a call and disconnects the call when the timeout expires.
  */
-final class CreateConnectionTimeout extends Runnable {
+@VisibleForTesting
+public final class CreateConnectionTimeout extends Runnable {
     private final Context mContext;
     private final PhoneAccountRegistrar mPhoneAccountRegistrar;
     private final ConnectionServiceWrapper mConnectionService;
@@ -39,7 +45,8 @@ final class CreateConnectionTimeout extends Runnable {
     private boolean mIsRegistered;
     private boolean mIsCallTimedOut;
 
-    CreateConnectionTimeout(Context context, PhoneAccountRegistrar phoneAccountRegistrar,
+    @VisibleForTesting
+    public CreateConnectionTimeout(Context context, PhoneAccountRegistrar phoneAccountRegistrar,
             ConnectionServiceWrapper service, Call call) {
         super("CCT", null /*lock*/);
         mContext = context;
@@ -48,7 +55,8 @@ final class CreateConnectionTimeout extends Runnable {
         mCall = call;
     }
 
-    boolean isTimeoutNeededForCall(Collection<PhoneAccountHandle> accounts,
+    @VisibleForTesting
+    public boolean isTimeoutNeededForCall(Collection<PhoneAccountHandle> accounts,
             PhoneAccountHandle currentAccount) {
         // Non-emergency calls timeout automatically at the radio layer. No need for a timeout here.
         if (!mCall.isEmergencyCall()) {
@@ -73,6 +81,17 @@ final class CreateConnectionTimeout extends Runnable {
                 mPhoneAccountRegistrar.getSystemSimCallManagerComponent())) {
             Log.d(this, "isTimeoutNeededForCall, not a system sim call manager");
             return false;
+        }
+
+        // Timeout is not required if carrier is not in service.
+        if (carrierEnabledSatelliteFlag() && connectionManager != null) {
+            PhoneAccount account = mPhoneAccountRegistrar.getPhoneAccount(connectionManager,
+                    connectionManager.getUserHandle());
+            if (account.hasCapabilities(PhoneAccount.CAPABILITY_SUPPORTS_VOICE_CALLING_INDICATIONS)
+                    && !account.hasCapabilities(PhoneAccount.CAPABILITY_VOICE_CALLING_AVAILABLE)) {
+                Log.d(this, "isTimeoutNeededForCall, carrier is not in service.");
+                return false;
+            }
         }
 
         Log.i(this, "isTimeoutNeededForCall, returning true");
