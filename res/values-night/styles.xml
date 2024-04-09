@@ -23,6 +23,11 @@
         <item name="android:actionOverflowButtonStyle">@style/TelecomDialerSettingsActionOverflowButtonStyle</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowContentOverlay">@null</item>
+
+        <!--
+            TODO(b/309578419): Make activities handle insets properly and then remove this.
+        -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 
     <style name="Theme.Telecom.BlockedNumbers" parent="@android:style/Theme.DeviceDefault.Light">
@@ -31,6 +36,11 @@
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:listDivider">@null</item>
+
+        <!--
+            TODO(b/309578419): Make activities handle insets properly and then remove this.
+        -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 
 </resources>
