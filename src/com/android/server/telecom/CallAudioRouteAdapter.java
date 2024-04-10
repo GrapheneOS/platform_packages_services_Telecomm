@@ -134,5 +134,6 @@ public interface CallAudioRouteAdapter {
     CallAudioState getCurrentCallAudioState();
     boolean isHfpDeviceAvailable();
     Handler getAdapterHandler();
+    PendingAudioRoute getPendingAudioRoute();
     void dump(IndentingPrintWriter pw);
 }

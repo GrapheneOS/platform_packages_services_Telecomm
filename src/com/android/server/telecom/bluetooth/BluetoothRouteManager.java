@@ -40,14 +40,12 @@ import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.Timeouts;
 import com.android.server.telecom.flags.FeatureFlags;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -1047,5 +1045,9 @@ public class BluetoothRouteManager extends StateMachine {
         } else if (deviceType == BluetoothDeviceManager.DEVICE_TYPE_HEADSET) {
             mHfpActiveDeviceCache = device;
         }
+    }
+
+    public BluetoothDeviceManager getDeviceManager() {
+        return mDeviceManager;
     }
 }

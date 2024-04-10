@@ -22,6 +22,8 @@ import static com.android.server.telecom.CallAudioRouteAdapter.BT_AUDIO_CONNECTE
 import static com.android.server.telecom.CallAudioRouteAdapter.BT_AUDIO_DISCONNECTED;
 import static com.android.server.telecom.CallAudioRouteAdapter.BT_DEVICE_ADDED;
 import static com.android.server.telecom.CallAudioRouteAdapter.BT_DEVICE_REMOVED;
+import static com.android.server.telecom.CallAudioRouteAdapter.PENDING_ROUTE_FAILED;
+import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_BLUETOOTH;
 import static com.android.server.telecom.bluetooth.BluetoothRouteManager.BT_AUDIO_IS_ON;
 import static com.android.server.telecom.bluetooth.BluetoothRouteManager.BT_AUDIO_LOST;
 
@@ -44,6 +46,7 @@ import com.android.internal.os.SomeArgs;
 import com.android.server.telecom.AudioRoute;
 import com.android.server.telecom.CallAudioCommunicationDeviceTracker;
 import com.android.server.telecom.CallAudioRouteAdapter;
+import com.android.server.telecom.CallAudioRouteController;
 import com.android.server.telecom.flags.FeatureFlags;
 import com.android.server.telecom.flags.Flags;
 
@@ -218,6 +221,24 @@ public class BluetoothStateReceiver extends BroadcastReceiver {
             } else {
                 mCallAudioRouteAdapter.sendMessageWithSessionInfo(BT_ACTIVE_DEVICE_PRESENT,
                         audioRouteType, device.getAddress());
+                if (deviceType == BluetoothDeviceManager.DEVICE_TYPE_HEARING_AID
+                        || deviceType == BluetoothDeviceManager.DEVICE_TYPE_LE_AUDIO) {
+                    if (!mBluetoothDeviceManager.setCommunicationDeviceForAddress(
+                            device.getAddress())) {
+                        Log.i(this, "handleActiveDeviceChanged: Failed to set "
+                                + "communication device for %s. Sending PENDING_ROUTE_FAILED to "
+                                + "pending audio route.", device);
+                        mCallAudioRouteAdapter.getPendingAudioRoute()
+                                .onMessageReceived(PENDING_ROUTE_FAILED, device.getAddress());
+                    } else {
+                        // Track the currently set communication device.
+                        int routeType = deviceType == BluetoothDeviceManager.DEVICE_TYPE_LE_AUDIO
+                                ? AudioRoute.TYPE_BLUETOOTH_LE
+                                : AudioRoute.TYPE_BLUETOOTH_HA;
+                        mCallAudioRouteAdapter.getPendingAudioRoute()
+                                .setCommunicationDeviceType(routeType);
+                    }
+                }
             }
         } else {
             mBluetoothRouteManager.onActiveDeviceChanged(device, deviceType);
