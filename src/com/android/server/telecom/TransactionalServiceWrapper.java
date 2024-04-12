@@ -21,6 +21,7 @@ import static android.telecom.CallException.TRANSACTION_EXCEPTION_KEY;
 import static android.telecom.TelecomManager.TELECOM_TRANSACTION_SUCCESS;
 
 import android.content.ComponentName;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.OutcomeReceiver;
@@ -185,10 +186,12 @@ public class TransactionalServiceWrapper implements
         @Override
         public void setActive(String callId, android.os.ResultReceiver callback)
                 throws RemoteException {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.sA");
                 createTransactions(callId, callback, SET_ACTIVE);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -196,10 +199,12 @@ public class TransactionalServiceWrapper implements
         @Override
         public void answer(int videoState, String callId, android.os.ResultReceiver callback)
                 throws RemoteException {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.a");
                 createTransactions(callId, callback, ANSWER, videoState);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -207,10 +212,12 @@ public class TransactionalServiceWrapper implements
         @Override
         public void setInactive(String callId, android.os.ResultReceiver callback)
                 throws RemoteException {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.sI");
                 createTransactions(callId, callback, SET_INACTIVE);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -219,10 +226,12 @@ public class TransactionalServiceWrapper implements
         public void disconnect(String callId, DisconnectCause disconnectCause,
                 android.os.ResultReceiver callback)
                 throws RemoteException {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.d");
                 createTransactions(callId, callback, DISCONNECT, disconnectCause);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -230,11 +239,13 @@ public class TransactionalServiceWrapper implements
         @Override
         public void setMuteState(boolean isMuted, android.os.ResultReceiver callback)
                 throws RemoteException {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.sMS");
                 addTransactionsToManager(
                         new SetMuteStateTransaction(mCallsManager, isMuted), callback);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -242,10 +253,12 @@ public class TransactionalServiceWrapper implements
         @Override
         public void startCallStreaming(String callId, android.os.ResultReceiver callback)
                 throws RemoteException {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.sCS");
                 createTransactions(callId, callback, START_STREAMING);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -253,10 +266,12 @@ public class TransactionalServiceWrapper implements
         @Override
         public void requestVideoState(int videoState, String callId, ResultReceiver callback)
                 throws RemoteException {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.rVS");
                 createTransactions(callId, callback, REQUEST_VIDEO_STATE, videoState);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -334,11 +349,13 @@ public class TransactionalServiceWrapper implements
 
         @Override
         public void requestCallEndpointChange(CallEndpoint endpoint, ResultReceiver callback) {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.rCEC");
                 addTransactionsToManager(new EndpointChangeTransaction(endpoint, mCallsManager),
                         callback);
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
@@ -348,6 +365,7 @@ public class TransactionalServiceWrapper implements
          */
         @Override
         public void sendEvent(String callId, String event, Bundle extras) {
+            long token = Binder.clearCallingIdentity();
             try {
                 Log.startSession("TSW.sE");
                 Call call = mTrackedCalls.get(callId);
@@ -359,6 +377,7 @@ public class TransactionalServiceWrapper implements
                                     + "found. Most likely the call has been disconnected");
                 }
             } finally {
+                Binder.restoreCallingIdentity(token);
                 Log.endSession();
             }
         }
