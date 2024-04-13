@@ -44,15 +44,17 @@ public final class CreateConnectionTimeout extends Runnable {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private boolean mIsRegistered;
     private boolean mIsCallTimedOut;
+    private final Timeouts.Adapter mTimeoutsAdapter;
 
     @VisibleForTesting
     public CreateConnectionTimeout(Context context, PhoneAccountRegistrar phoneAccountRegistrar,
-            ConnectionServiceWrapper service, Call call) {
+            ConnectionServiceWrapper service, Call call, Timeouts.Adapter timeoutsAdapter) {
         super("CCT", null /*lock*/);
         mContext = context;
         mPhoneAccountRegistrar = phoneAccountRegistrar;
         mConnectionService = service;
         mCall = call;
+        mTimeoutsAdapter = timeoutsAdapter;
     }
 
     @VisibleForTesting
@@ -60,6 +62,7 @@ public final class CreateConnectionTimeout extends Runnable {
             PhoneAccountHandle currentAccount) {
         // Non-emergency calls timeout automatically at the radio layer. No need for a timeout here.
         if (!mCall.isEmergencyCall()) {
+            Log.d(this, "isTimeoutNeededForCall, not an emergency call");
             return false;
         }
 
@@ -68,11 +71,13 @@ public final class CreateConnectionTimeout extends Runnable {
         PhoneAccountHandle connectionManager =
                 mPhoneAccountRegistrar.getSimCallManagerFromCall(mCall);
         if (!accounts.contains(connectionManager)) {
+            Log.d(this, "isTimeoutNeededForCall, no connection manager");
             return false;
         }
 
         // No need to add a timeout if the current attempt is over the connection manager.
         if (Objects.equals(connectionManager, currentAccount)) {
+            Log.d(this, "isTimeoutNeededForCall, already attempting over connection manager");
             return false;
         }
 
@@ -81,17 +86,6 @@ public final class CreateConnectionTimeout extends Runnable {
                 mPhoneAccountRegistrar.getSystemSimCallManagerComponent())) {
             Log.d(this, "isTimeoutNeededForCall, not a system sim call manager");
             return false;
-        }
-
-        // Timeout is not required if carrier is not in service.
-        if (carrierEnabledSatelliteFlag() && connectionManager != null) {
-            PhoneAccount account = mPhoneAccountRegistrar.getPhoneAccount(connectionManager,
-                    connectionManager.getUserHandle());
-            if (account.hasCapabilities(PhoneAccount.CAPABILITY_SUPPORTS_VOICE_CALLING_INDICATIONS)
-                    && !account.hasCapabilities(PhoneAccount.CAPABILITY_VOICE_CALLING_AVAILABLE)) {
-                Log.d(this, "isTimeoutNeededForCall, carrier is not in service.");
-                return false;
-            }
         }
 
         Log.i(this, "isTimeoutNeededForCall, returning true");
@@ -123,8 +117,31 @@ public final class CreateConnectionTimeout extends Runnable {
 
     @Override
     public void loggedRun() {
+        if (!carrierEnabledSatelliteFlag()) {
+            timeoutCallIfNeeded();
+            return;
+        }
+
+        PhoneAccountHandle connectionManager =
+                mPhoneAccountRegistrar.getSimCallManagerFromCall(mCall);
+        if (connectionManager != null) {
+            PhoneAccount account = mPhoneAccountRegistrar.getPhoneAccount(connectionManager,
+                    connectionManager.getUserHandle());
+            if (account != null && account.hasCapabilities(
+                    (PhoneAccount.CAPABILITY_SUPPORTS_VOICE_CALLING_INDICATIONS
+                            | PhoneAccount.CAPABILITY_VOICE_CALLING_AVAILABLE))) {
+                // If we have encountered the timeout and there is an in service
+                // ConnectionManager, disconnect the call so that it can be attempted over
+                // the ConnectionManager.
+                timeoutCallIfNeeded();
+                return;
+            }
+        }
+    }
+
+    private void timeoutCallIfNeeded() {
         if (mIsRegistered && isCallBeingPlaced(mCall)) {
-            Log.i(this, "run, call timed out, calling disconnect");
+            Log.i(this, "timeoutCallIfNeeded, call timed out, calling disconnect");
             mIsCallTimedOut = true;
             mConnectionService.disconnect(mCall);
         }
@@ -145,14 +162,15 @@ public final class CreateConnectionTimeout extends Runnable {
             TelephonyManager telephonyManager =
                     (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
             if (telephonyManager.isRadioOn()) {
-                return Timeouts.getEmergencyCallTimeoutMillis(mContext.getContentResolver());
+                return mTimeoutsAdapter.getEmergencyCallTimeoutMillis(
+                        mContext.getContentResolver());
             } else {
-                return Timeouts.getEmergencyCallTimeoutRadioOffMillis(
+                return mTimeoutsAdapter.getEmergencyCallTimeoutRadioOffMillis(
                         mContext.getContentResolver());
             }
         } catch (UnsupportedOperationException uoe) {
             Log.e(this, uoe, "getTimeoutLengthMillis - telephony is not supported");
-            return Timeouts.getEmergencyCallTimeoutMillis(mContext.getContentResolver());
+            return mTimeoutsAdapter.getEmergencyCallTimeoutMillis(mContext.getContentResolver());
         }
     }
 }

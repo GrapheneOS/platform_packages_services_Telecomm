@@ -61,6 +61,14 @@ public final class Timeouts {
             return Timeouts.getEmergencyCallbackWindowMillis(cr);
         }
 
+        public long getEmergencyCallTimeoutMillis(ContentResolver cr) {
+            return Timeouts.getEmergencyCallTimeoutMillis(cr);
+        }
+
+        public long getEmergencyCallTimeoutRadioOffMillis(ContentResolver cr) {
+            return Timeouts.getEmergencyCallTimeoutRadioOffMillis(cr);
+        }
+
         public long getUserDefinedCallRedirectionTimeoutMillis(ContentResolver cr) {
             return Timeouts.getUserDefinedCallRedirectionTimeoutMillis(cr);
         }
@@ -127,7 +135,6 @@ public final class Timeouts {
 
         public int getDaysBackToSearchEmergencyDiagnosticEntries(){
             return Timeouts.getDaysBackToSearchEmergencyDiagnosticEntries();
-
         }
     }
 

@@ -61,9 +61,14 @@ public class AppUninstallBroadcastReceiver extends BroadcastReceiver {
                 return;
             }
 
-            String packageName = uri.getSchemeSpecificPart();
-            handlePackageRemoved(context, packageName);
-            handleUninstallOfCallScreeningService(context, packageName);
+            final PendingResult result = goAsync();
+            // Move computation off into a separate thread to prevent ANR.
+            new Thread(() -> {
+                String packageName = uri.getSchemeSpecificPart();
+                handlePackageRemoved(context, packageName);
+                handleUninstallOfCallScreeningService(context, packageName);
+                result.finish();
+            }).start();
         }
     }
 

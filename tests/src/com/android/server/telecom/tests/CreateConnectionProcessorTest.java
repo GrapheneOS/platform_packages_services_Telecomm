@@ -21,11 +21,11 @@ import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -50,6 +50,7 @@ import androidx.test.filters.SmallTest;
 import com.android.internal.telephony.flags.Flags;
 import com.android.server.telecom.Call;
 import com.android.server.telecom.CallIdMapper;
+import com.android.server.telecom.CallState;
 import com.android.server.telecom.ConnectionServiceFocusManager;
 import com.android.server.telecom.ConnectionServiceRepository;
 import com.android.server.telecom.ConnectionServiceWrapper;
@@ -57,7 +58,7 @@ import com.android.server.telecom.CreateConnectionProcessor;
 import com.android.server.telecom.CreateConnectionResponse;
 import com.android.server.telecom.CreateConnectionTimeout;
 import com.android.server.telecom.PhoneAccountRegistrar;
-import com.android.server.telecom.flags.FeatureFlags;
+import com.android.server.telecom.Timeouts;
 
 import org.junit.After;
 import org.junit.Before;
@@ -70,6 +71,7 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -98,6 +100,7 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     Call mMockCall;
     @Mock
     ConnectionServiceFocusManager mConnectionServiceFocusManager;
+    @Mock Timeouts.Adapter mTimeoutsAdapter;
 
     CreateConnectionProcessor mTestCreateConnectionProcessor;
     CreateConnectionTimeout mTestCreateConnectionTimeout;
@@ -131,7 +134,7 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
 
         mTestCreateConnectionProcessor = new CreateConnectionProcessor(mMockCall,
                 mMockConnectionServiceRepository, mMockCreateConnectionResponse,
-                mMockAccountRegistrar, mContext, mFeatureFlags);
+                mMockAccountRegistrar, mContext, mFeatureFlags, mTimeoutsAdapter);
 
         mAccountToSub = new HashMap<>();
         phoneAccounts = new ArrayList<>();
@@ -156,7 +159,7 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
                 thenReturn(Binder.getCallingUserHandle());
 
         mTestCreateConnectionTimeout = new CreateConnectionTimeout(mContext, mMockAccountRegistrar,
-                makeConnectionServiceWrapper(), mMockCall);
+                makeConnectionServiceWrapper(), mMockCall, mTimeoutsAdapter);
 
         mSetFlagsRule.enableFlags(Flags.FLAG_CARRIER_ENABLED_SATELLITE_FLAG);
     }
@@ -786,30 +789,6 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     }
 
     @Test
-    public void testIsTimeoutNeededForCall_carrierNotInService() {
-        when(mMockCall.isEmergencyCall()).thenReturn(true);
-        when(mMockAccountRegistrar.getSystemSimCallManagerComponent()).thenReturn(
-                new ComponentName(TEST_PACKAGE, TEST_CLASS));
-
-        List<PhoneAccountHandle> phoneAccountHandles = new ArrayList<>();
-        // Put in a regular phone account handle
-        PhoneAccount regularAccount = makePhoneAccount("tel_acct1",
-                PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION);
-        phoneAccountHandles.add(regularAccount.getAccountHandle());
-        // Create a connection manager for the call and include it in phoneAccountHandles
-        int capability = PhoneAccount.CAPABILITY_SUPPORTS_VOICE_CALLING_INDICATIONS;
-        PhoneAccount callManagerPA = createNewConnectionManagerPhoneAccountForCall(mMockCall,
-                "cm_acct", capability);
-        PhoneAccount phoneAccountWithoutService = makeQuickAccount("cm_acct", capability, null);
-        when(mMockAccountRegistrar.getPhoneAccount(callManagerPA.getAccountHandle(),
-                callManagerPA.getAccountHandle().getUserHandle()))
-                .thenReturn(phoneAccountWithoutService);
-        phoneAccountHandles.add(callManagerPA.getAccountHandle());
-
-        assertFalse(mTestCreateConnectionTimeout.isTimeoutNeededForCall(phoneAccountHandles, null));
-    }
-
-    @Test
     public void testIsTimeoutNeededForCall() {
         when(mMockCall.isEmergencyCall()).thenReturn(true);
         when(mMockAccountRegistrar.getSystemSimCallManagerComponent()).thenReturn(
@@ -832,6 +811,79 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         phoneAccountHandles.add(callManagerPA.getAccountHandle());
 
         assertTrue(mTestCreateConnectionTimeout.isTimeoutNeededForCall(phoneAccountHandles, null));
+    }
+
+    @Test
+    public void testConnTimeout_carrierSatelliteEnabled_noInServiceConnManager_callNeverTimesOut() {
+        when(mMockCall.isEmergencyCall()).thenReturn(true);
+        when(mMockCall.isTestEmergencyCall()).thenReturn(false);
+        when(mMockCall.getHandle()).thenReturn(Uri.parse(""));
+        when(mMockCall.getState()).thenReturn(CallState.DIALING);
+        // Primary phone account, meant to fail
+        PhoneAccount regularAccount = makePhoneAccount("tel_acct1",
+                PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION
+                        | PhoneAccount.CAPABILITY_PLACE_EMERGENCY_CALLS);
+        phoneAccounts.add(regularAccount);
+        when(mMockAccountRegistrar.getOutgoingPhoneAccountForSchemeOfCurrentUser(
+                nullable(String.class))).thenReturn(regularAccount.getAccountHandle());
+        when(mMockAccountRegistrar.getSystemSimCallManagerComponent()).thenReturn(
+                new ComponentName(TEST_PACKAGE, TEST_CLASS));
+        PhoneAccount callManagerPA = getNewEmergencyConnectionManagerPhoneAccount(
+                "cm_acct", PhoneAccount.CAPABILITY_PLACE_EMERGENCY_CALLS
+                        | PhoneAccount.CAPABILITY_SUPPORTS_VOICE_CALLING_INDICATIONS);
+        phoneAccounts.add(callManagerPA);
+        ConnectionServiceWrapper service = makeConnectionServiceWrapper();
+        when(mMockAccountRegistrar.getSimCallManagerFromCall(mMockCall)).thenReturn(
+                callManagerPA.getAccountHandle());
+        when(mMockAccountRegistrar.getPhoneAccount(eq(callManagerPA.getAccountHandle()),
+                any())).thenReturn(callManagerPA);
+        Duration timeout = Duration.ofMillis(10);
+        when(mTimeoutsAdapter.getEmergencyCallTimeoutMillis(any())).thenReturn(timeout.toMillis());
+        when(mTimeoutsAdapter.getEmergencyCallTimeoutRadioOffMillis(any())).thenReturn(
+                timeout.toMillis());
+
+
+        mTestCreateConnectionProcessor.process();
+
+        // Validate the call is not disconnected after the timeout.
+        verify(service, after(timeout.toMillis() + 100).never()).disconnect(eq(mMockCall));
+    }
+
+    @Test
+    public void testConnTimeout_carrierSatelliteEnabled_inServiceConnManager_callTimesOut() {
+        when(mMockCall.isEmergencyCall()).thenReturn(true);
+        when(mMockCall.isTestEmergencyCall()).thenReturn(false);
+        when(mMockCall.getHandle()).thenReturn(Uri.parse(""));
+        when(mMockCall.getState()).thenReturn(CallState.DIALING);
+        // Primary phone account, meant to fail
+        PhoneAccount regularAccount = makePhoneAccount("tel_acct1",
+                PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION
+                        | PhoneAccount.CAPABILITY_PLACE_EMERGENCY_CALLS);
+        phoneAccounts.add(regularAccount);
+        when(mMockAccountRegistrar.getOutgoingPhoneAccountForSchemeOfCurrentUser(
+                nullable(String.class))).thenReturn(regularAccount.getAccountHandle());
+        when(mMockAccountRegistrar.getSystemSimCallManagerComponent()).thenReturn(
+                new ComponentName(TEST_PACKAGE, TEST_CLASS));
+        PhoneAccount callManagerPA = getNewEmergencyConnectionManagerPhoneAccount(
+                "cm_acct", PhoneAccount.CAPABILITY_PLACE_EMERGENCY_CALLS
+                        | PhoneAccount.CAPABILITY_SUPPORTS_VOICE_CALLING_INDICATIONS
+                        | PhoneAccount.CAPABILITY_VOICE_CALLING_AVAILABLE
+        );
+        phoneAccounts.add(callManagerPA);
+        ConnectionServiceWrapper service = makeConnectionServiceWrapper();
+        when(mMockAccountRegistrar.getSimCallManagerFromCall(mMockCall)).thenReturn(
+                callManagerPA.getAccountHandle());
+        when(mMockAccountRegistrar.getPhoneAccount(eq(callManagerPA.getAccountHandle()),
+                any())).thenReturn(callManagerPA);
+        Duration timeout = Duration.ofMillis(10);
+        when(mTimeoutsAdapter.getEmergencyCallTimeoutMillis(any())).thenReturn(timeout.toMillis());
+        when(mTimeoutsAdapter.getEmergencyCallTimeoutRadioOffMillis(any())).thenReturn(
+                timeout.toMillis());
+
+        mTestCreateConnectionProcessor.process();
+
+        // Validate the call was disconnected after the timeout.
+        verify(service, after(timeout.toMillis() + 100)).disconnect(eq(mMockCall));
     }
 
     /**
