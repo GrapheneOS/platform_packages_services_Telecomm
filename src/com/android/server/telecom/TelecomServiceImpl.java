@@ -64,6 +64,7 @@ import android.provider.BlockedNumbersManager;
 import android.provider.Settings;
 import android.telecom.CallAttributes;
 import android.telecom.CallException;
+import android.telecom.DisconnectCause;
 import android.telecom.Log;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
@@ -2332,14 +2333,10 @@ public class TelecomServiceImpl {
         }
 
         /**
-         * A method intended for use in testing to clean up any calls that get stuck in the
-         * {@link CallState#DISCONNECTED} or {@link CallState#DISCONNECTING} states. Stuck
-         * calls
-         * during CTS cause cascading failures, so if the CTS test detects such a state, it
-         * should
-         * call this method via a shell command to clean up before moving on to the next
-         * test.
-         * Also cleans up any pending futures related to
+         * A method intended for use in testing to clean up any calls are ongoing. Stuck
+         * calls during CTS cause cascading failures, so if the CTS test detects such a state, it
+         * should call this method via a shell command to clean up before moving on to the next
+         * test. Also cleans up any pending futures related to
          * {@link android.telecom.CallDiagnosticService}s.
          */
         @Override
@@ -2352,11 +2349,19 @@ public class TelecomServiceImpl {
                     try {
                         Set<UserHandle> userHandles = new HashSet<>();
                         for (Call call : mCallsManager.getCalls()) {
-                            call.cleanup();
-                            if (call.getState() == CallState.DISCONNECTED
-                                    || call.getState() == CallState.DISCONNECTING) {
-                                mCallsManager.markCallAsRemoved(call);
+                            // Any call that is not in a disconnect* state should be moved to the
+                            // disconnected state
+                            if (!isDisconnectingOrDisconnected(call)) {
+                                mCallsManager.markCallAsDisconnected(
+                                        call,
+                                        new DisconnectCause(DisconnectCause.OTHER,
+                                                "cleaning up stuck calls"));
                             }
+                            // ensure the call is immediately removed from CallsManager instead of
+                            // using a Future to do the work.
+                            call.cleanup();
+                            // finally, officially remove the call from CallsManager tracking
+                            mCallsManager.markCallAsRemoved(call);
                             userHandles.add(call.getAssociatedUser());
                         }
                         for (UserHandle userHandle : userHandles) {
@@ -2369,6 +2374,11 @@ public class TelecomServiceImpl {
             } finally {
                 Log.endSession();
             }
+        }
+
+        private boolean isDisconnectingOrDisconnected(Call call){
+            return call.getState() == CallState.DISCONNECTED
+                    || call.getState() == CallState.DISCONNECTING;
         }
 
         /**
