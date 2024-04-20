@@ -27,7 +27,7 @@
     <string name="notification_missedCall_call_back" msgid="7900333283939789732">"फेरि कल गर्नुहोस्"</string>
     <string name="notification_missedCall_message" msgid="4054698824390076431">"सन्देश"</string>
     <string name="notification_disconnectedCall_title" msgid="1790131923692416928">"विच्छेद गरिएको कल"</string>
-    <string name="notification_disconnectedCall_body" msgid="600491714584417536">"आपत्‌कालीन कल गरिएको हुनाले <xliff:g id="CALLER">%s</xliff:g> लाई गरिएको कल विच्छेद गरियो।"</string>
+    <string name="notification_disconnectedCall_body" msgid="600491714584417536">"आपत्‌कालीन कल गरिएको हुनाले <xliff:g id="CALLER">%s</xliff:g> लाई गरिएको कल डिस्कनेक्ट गरियो।"</string>
     <string name="notification_disconnectedCall_generic_body" msgid="5282765206349184853">"आपत्‌कालीन कल जारी रहेको हुनाले तपाईंको कल विच्छेद गरिएको छ।"</string>
     <string name="notification_audioProcessing_title" msgid="1619035039880584575">"पृष्ठभूमिको कल"</string>
     <string name="notification_audioProcessing_body" msgid="8811420157964118913">"<xliff:g id="AUDIO_PROCESSING_APP_NAME">%s</xliff:g> ले ब्याकग्राउन्डमा कुनै कल प्रोसेस गर्दै छ। यो एपले तपाईंको कलको अडियो प्रयोग गरिरहेको र सोही अडियो प्ले गरिरहेको हुन सक्छ।"</string>
