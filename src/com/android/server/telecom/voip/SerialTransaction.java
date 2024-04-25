@@ -16,6 +16,8 @@
 
 package com.android.server.telecom.voip;
 
+import android.telecom.CallException;
+
 import com.android.server.telecom.LoggedHandlerExecutor;
 import com.android.server.telecom.TelecomSystem;
 
@@ -53,14 +55,8 @@ public class SerialTransaction extends VoipCallTransaction {
                             handleTransactionFailure();
                             CompletableFuture.completedFuture(null).thenApplyAsync(
                                     (x) -> {
-                                        VoipCallTransactionResult mainResult =
-                                                new VoipCallTransactionResult(
-                                                        VoipCallTransactionResult.RESULT_FAILED,
-                                                        String.format(
-                                                                "sub transaction %s failed",
-                                                                transactionName));
-                                        finish(mainResult);
-                                        mCompleteListener.onTransactionCompleted(mainResult,
+                                        finish(result);
+                                        mCompleteListener.onTransactionCompleted(result,
                                                 mTransactionName);
                                         return null;
                                     }, new LoggedHandlerExecutor(mHandler,
@@ -86,7 +82,7 @@ public class SerialTransaction extends VoipCallTransaction {
                                 (x) -> {
                                     VoipCallTransactionResult mainResult =
                                             new VoipCallTransactionResult(
-                                            VoipCallTransactionResult.RESULT_FAILED,
+                                                    CallException.CODE_OPERATION_TIMED_OUT,
                                             String.format("sub transaction %s timed out",
                                                     transactionName));
                                     finish(mainResult);

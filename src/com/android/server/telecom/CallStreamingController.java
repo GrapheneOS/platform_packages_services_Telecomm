@@ -127,7 +127,7 @@ public class CallStreamingController extends CallsManagerListenerBase {
 
             if (mCallsManager.getCallStreamingController().isStreaming()) {
                 future.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED,
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
                         "STREAMING_FAILED_ALREADY_STREAMING"));
             } else {
                 future.complete(new VoipCallTransactionResult(
@@ -196,7 +196,8 @@ public class CallStreamingController extends CallsManagerListenerBase {
             if (roleManager == null || packageManager == null) {
                 Log.w(this, "processTransaction: Can't find system service");
                 future.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED, MESSAGE));
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
+                        MESSAGE));
                 return future;
             }
 
@@ -205,7 +206,8 @@ public class CallStreamingController extends CallsManagerListenerBase {
             if (holders.isEmpty()) {
                 Log.w(this, "processTransaction: Can't find streaming app");
                 future.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED, MESSAGE));
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
+                        MESSAGE));
                 return future;
             }
             Log.i(this, "processTransaction: servicePackage=%s", holders.get(0));
@@ -216,7 +218,8 @@ public class CallStreamingController extends CallsManagerListenerBase {
             if (infos.isEmpty()) {
                 Log.w(this, "processTransaction: Can't find streaming service");
                 future.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED, MESSAGE));
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
+                        MESSAGE));
                 return future;
             }
 
@@ -227,7 +230,8 @@ public class CallStreamingController extends CallsManagerListenerBase {
                 Log.w(this, "Must require BIND_CALL_STREAMING_SERVICE: " +
                         serviceInfo.packageName);
                 future.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED, MESSAGE));
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
+                        MESSAGE));
                 return future;
             }
             Intent intent = new Intent(CallStreamingService.SERVICE_INTERFACE);
@@ -239,7 +243,7 @@ public class CallStreamingController extends CallsManagerListenerBase {
                     | Context.BIND_SCHEDULE_LIKE_TOP_APP, mUserHandle)) {
                 Log.w(this, "Can't bind to streaming service");
                 future.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED,
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
                         "STREAMING_FAILED_SENDER_BINDING_ERROR"));
             }
             return future;
@@ -379,7 +383,8 @@ public class CallStreamingController extends CallsManagerListenerBase {
                         VoipCallTransactionResult.RESULT_SUCCEED, null));
             } catch (RemoteException e) {
                 future.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED, "Exception when request "
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
+                        "Exception when request "
                         + "setting state to streaming app."));
             }
             return future;
@@ -409,7 +414,7 @@ public class CallStreamingController extends CallsManagerListenerBase {
             } catch (RemoteException e) {
                 resetController();
                 mFuture.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED,
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
                         StreamingServiceTransaction.MESSAGE));
             }
         }
@@ -433,7 +438,7 @@ public class CallStreamingController extends CallsManagerListenerBase {
             resetController();
             if (!mFuture.isDone()) {
                 mFuture.complete(new VoipCallTransactionResult(
-                        VoipCallTransactionResult.RESULT_FAILED,
+                        CallException.CODE_ERROR_UNKNOWN /* TODO:: define error b/335703584 */,
                         "STREAMING_FAILED_SENDER_BINDING_ERROR"));
             } else {
                 mWrapper.onCallStreamingFailed(mCall, STREAMING_FAILED_SENDER_BINDING_ERROR);

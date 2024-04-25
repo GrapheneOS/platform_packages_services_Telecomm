@@ -19,6 +19,7 @@ package com.android.server.telecom.voip;
 import android.os.Bundle;
 import android.os.ResultReceiver;
 import android.telecom.CallEndpoint;
+import android.telecom.CallException;
 import android.util.Log;
 
 import com.android.server.telecom.CallsManager;
@@ -49,8 +50,9 @@ public class EndpointChangeTransaction extends VoipCallTransaction {
                     future.complete(new VoipCallTransactionResult(
                             VoipCallTransactionResult.RESULT_SUCCEED, null));
                 } else {
+                    // TODO:: define errors in CallException class. b/335703584
                     future.complete(new VoipCallTransactionResult(
-                            VoipCallTransactionResult.RESULT_FAILED, null));
+                            CallException.CODE_ERROR_UNKNOWN, null));
                 }
             }
         });

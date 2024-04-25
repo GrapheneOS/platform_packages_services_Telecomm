@@ -22,7 +22,10 @@ import java.util.Objects;
 
 public class VoipCallTransactionResult {
     public static final int RESULT_SUCCEED = 0;
-    public static final int RESULT_FAILED = 1;
+
+    // NOTE: if the VoipCallTransactionResult should not use the RESULT_SUCCEED to represent a
+    // successful transaction, use an error code defined in the
+    // {@link android.telecom.CallException} class
 
     private final int mResult;
     private final String mMessage;

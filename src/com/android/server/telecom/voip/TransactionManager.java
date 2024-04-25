@@ -146,8 +146,8 @@ public class TransactionManager {
             pendingTransactions = new ArrayList<>(mTransactions);
         }
         for (VoipCallTransaction t : pendingTransactions) {
-            t.finish(new VoipCallTransactionResult(VoipCallTransactionResult.RESULT_FAILED,
-                    "clear called"));
+            t.finish(new VoipCallTransactionResult(CallException.CODE_ERROR_UNKNOWN
+                    /* TODO:: define error b/335703584 */, "clear called"));
         }
     }
 

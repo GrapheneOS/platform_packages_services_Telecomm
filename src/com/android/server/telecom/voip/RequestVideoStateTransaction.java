@@ -18,6 +18,7 @@ package com.android.server.telecom.voip;
 
 import static com.android.server.telecom.voip.VideoStateTranslation.TransactionalVideoStateToVideoProfileState;
 
+import android.telecom.CallException;
 import android.telecom.VideoProfile;
 import android.util.Log;
 
@@ -48,12 +49,12 @@ public class RequestVideoStateTransaction extends VoipCallTransaction {
         if (isRequestingVideoTransmission(mVideoProfileState) &&
                 !mCall.isVideoCallingSupportedByPhoneAccount()) {
             future.complete(new VoipCallTransactionResult(
-                    VoipCallTransactionResult.RESULT_FAILED,
+                    CallException.CODE_ERROR_UNKNOWN /*TODO:: define error code. b/335703584 */,
                     "Video calling is not supported by the target account"));
         } else if (isRequestingVideoTransmission(mVideoProfileState) &&
                 !mCall.isTransactionalCallSupportsVideoCalling()) {
             future.complete(new VoipCallTransactionResult(
-                    VoipCallTransactionResult.RESULT_FAILED,
+                    CallException.CODE_ERROR_UNKNOWN /*TODO:: define error code. b/335703584 */,
                     "Video calling is not supported according to the callAttributes"));
         } else {
             mCall.setVideoState(mVideoProfileState);

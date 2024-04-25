@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.os.OutcomeReceiver;
 import android.telecom.CallException;
-import android.util.Log;
 
 import androidx.test.filters.SmallTest;
 
@@ -86,12 +85,12 @@ public class VoipCallTransactionTest extends TelecomTestCase {
                 } else if (mType == FAILED) {
                     mLog.append(mName).append(" failed;\n");
                     resultFuture.complete(
-                            new VoipCallTransactionResult(VoipCallTransactionResult.RESULT_FAILED,
+                            new VoipCallTransactionResult(CallException.CODE_ERROR_UNKNOWN,
                                     null));
                 } else {
                     mLog.append(mName).append(" timeout;\n");
                     resultFuture.complete(
-                            new VoipCallTransactionResult(VoipCallTransactionResult.RESULT_FAILED,
+                            new VoipCallTransactionResult(CallException.CODE_ERROR_UNKNOWN,
                                     "timeout"));
                 }
             }, mSleepTime);
