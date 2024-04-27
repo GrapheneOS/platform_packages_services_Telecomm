@@ -37,6 +37,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.OutcomeReceiver;
@@ -108,6 +109,7 @@ public class TransactionTests extends TelecomTestCase {
         super.setUp();
         MockitoAnnotations.initMocks(this);
         Mockito.when(mMockCall1.getId()).thenReturn(CALL_ID_1);
+        Mockito.when(mMockContext.getResources()).thenReturn(Mockito.mock(Resources.class));
     }
 
     @Override

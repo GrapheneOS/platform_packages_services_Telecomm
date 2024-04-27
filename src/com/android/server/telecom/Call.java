@@ -1589,7 +1589,11 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                 mIsTestEmergencyCall = mHandle != null &&
                         isTestEmergencyCall(mHandle.getSchemeSpecificPart());
             }
-            startCallerInfoLookup();
+            if (!mContext.getResources().getBoolean(R.bool.skip_incoming_caller_info_query)) {
+                startCallerInfoLookup();
+            } else  {
+                Log.i(this, "skip incoming caller info lookup");
+            }
             for (Listener l : mListeners) {
                 l.onHandleChanged(this);
             }
@@ -3726,6 +3730,11 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * SMSes to that number will silently fail.
      */
     public boolean isRespondViaSmsCapable() {
+        if (mContext.getResources().getBoolean(R.bool.skip_loading_canned_text_response)) {
+            Log.d(this, "maybeLoadCannedSmsResponses: skip loading due to setting");
+            return false;
+        }
+
         if (mState != CallState.RINGING) {
             return false;
         }

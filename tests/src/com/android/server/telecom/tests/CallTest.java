@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
@@ -126,6 +127,11 @@ public class CallTest extends TelecomTestCase {
         doReturn(new ComponentName(mContext, CallTest.class))
                 .when(mMockConnectionService).getComponentName();
         doReturn(UserHandle.CURRENT).when(mMockCallsManager).getCurrentUserHandle();
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getBoolean(R.bool.skip_loading_canned_text_response))
+                .thenReturn(false);
+        when(mockResources.getBoolean(R.bool.skip_incoming_caller_info_query))
+                .thenReturn(false);
         EmergencyCallHelper helper = mock(EmergencyCallHelper.class);
         doReturn(helper).when(mMockCallsManager).getEmergencyCallHelper();
     }
@@ -623,6 +629,18 @@ public class CallTest extends TelecomTestCase {
 
     @Test
     @SmallTest
+    public void testGetFromCallerInfo_skipLookup() {
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getBoolean(R.bool.skip_incoming_caller_info_query))
+                .thenReturn(true);
+
+        createCall("1");
+
+        verify(mMockCallerInfoLookupHelper, never()).startLookup(any(), any());
+    }
+
+    @Test
+    @SmallTest
     public void testOriginalCallIntent() {
         Call call = createCall("1");
 
@@ -946,6 +964,18 @@ public class CallTest extends TelecomTestCase {
         call.putConnectionServiceExtras(extra);
 
         assertTrue(call.getExtras().containsKey(TelecomManager.EXTRA_DO_NOT_LOG_CALL));
+    }
+
+    @Test
+    @SmallTest
+    public void testSkipLoadingCannedTextResponse() {
+        Call call = createCall("any");
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getBoolean(R.bool.skip_loading_canned_text_response))
+                .thenReturn(true);
+
+
+        assertFalse(call.isRespondViaSmsCapable());
     }
 
     private Call createCall(String id) {

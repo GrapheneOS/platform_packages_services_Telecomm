@@ -18,6 +18,7 @@ package com.android.server.telecom.voip;
 
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.telecom.CallException;
 import android.telecom.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -195,21 +196,31 @@ public class VoipCallTransaction {
 
     protected final void scheduleTransaction() {
         LoggedHandlerExecutor executor = new LoggedHandlerExecutor(mHandler,
-                mTransactionName + "@" + hashCode() + ".pT", mLock);
+                mTransactionName + "@" + hashCode() + ".sT", mLock);
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
         future.thenComposeAsync(this::processTransaction, executor)
                 .thenApplyAsync((Function<VoipCallTransactionResult, Void>) result -> {
-                    mCompleted.set(true);
-                    finish(result);
-                    if (mCompleteListener != null) {
-                        mCompleteListener.onTransactionCompleted(result, mTransactionName);
-                    }
+                    notifyListenersOfResult(result);
                     return null;
-                    }, executor)
-                .exceptionallyAsync((throwable -> {
+                }, executor)
+                .exceptionally((throwable -> {
+                    // Do NOT wait for the timeout in order to finish this failed transaction.
+                    // Instead, propagate the failure to the other transactions immediately!
+                    String errorMessage = throwable != null ? throwable.getMessage() :
+                            "encountered an exception while processing " + mTransactionName;
+                    notifyListenersOfResult(new VoipCallTransactionResult(
+                            CallException.CODE_ERROR_UNKNOWN, errorMessage));
                     Log.e(this, throwable, "Error while executing transaction.");
                     return null;
-                }), executor);
+                }));
+    }
+
+    protected void notifyListenersOfResult(VoipCallTransactionResult result){
+        mCompleted.set(true);
+        finish(result);
+        if (mCompleteListener != null) {
+            mCompleteListener.onTransactionCompleted(result, mTransactionName);
+        }
     }
 
     protected CompletionStage<VoipCallTransactionResult> processTransaction(Void v) {
@@ -248,7 +259,7 @@ public class VoipCallTransaction {
         if (mSubTransactions != null && !mSubTransactions.isEmpty()) {
             mSubTransactions.forEach( t -> t.finish(isTimedOut, result));
         }
-        mHandlerThread.quit();
+        mHandlerThread.quitSafely();
     }
 
     /**
