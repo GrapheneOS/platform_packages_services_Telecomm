@@ -1,0 +1,10 @@
+package: "com.android.server.telecom.flags"
+container: "system"
+
+# OWNER=tgunn TARGET=24Q4
+flag {
+  name: "postpone_register_to_leaudio"
+  namespace: "telecom"
+  description: "Fix for Log.wtf in the BinderProxy"
+  bug: "333417369"
+}

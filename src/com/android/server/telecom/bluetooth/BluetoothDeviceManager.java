@@ -116,15 +116,14 @@ public class BluetoothDeviceManager {
                                         + mBluetoothHearingAid;
                             } else if (profile == BluetoothProfile.LE_AUDIO) {
                                 mBluetoothLeAudioService = (BluetoothLeAudio) proxy;
-                                logString = "Got BluetoothLeAudio: "
-                                        + mBluetoothLeAudioService;
+                                logString = ("Got BluetoothLeAudio: " + mBluetoothLeAudioService )
+                                        + (", mLeAudioCallbackRegistered: "
+                                        + mLeAudioCallbackRegistered);
                                 if (!mLeAudioCallbackRegistered) {
-                                    try {
-                                        mBluetoothLeAudioService.registerCallback(
-                                                    mExecutor, mLeAudioCallbacks);
-                                        mLeAudioCallbackRegistered = true;
-                                    } catch (IllegalStateException e) {
-                                        logString += ", but Bluetooth is down";
+                                    if (mFeatureFlags.postponeRegisterToLeaudio()) {
+                                        mExecutor.execute(this::registerToLeAudio);
+                                    } else {
+                                        registerToLeAudio();
                                     }
                                 }
                             } else {
@@ -136,6 +135,29 @@ public class BluetoothDeviceManager {
                         }
                     } finally {
                         Log.endSession();
+                    }
+                }
+
+                private void registerToLeAudio() {
+                    synchronized (mLock) {
+                        String logString = "Register to leAudio";
+
+                        if (mLeAudioCallbackRegistered) {
+                            logString +=  ", but already registered";
+                            Log.i(BluetoothDeviceManager.this, logString);
+                            mLocalLog.log(logString);
+                            return;
+                        }
+                        try {
+                            mLeAudioCallbackRegistered = true;
+                            mBluetoothLeAudioService.registerCallback(
+                                            mExecutor, mLeAudioCallbacks);
+                        } catch (IllegalStateException e) {
+                            mLeAudioCallbackRegistered = false;
+                            logString += ", but failed: " + e;
+                        }
+                        Log.i(BluetoothDeviceManager.this, logString);
+                        mLocalLog.log(logString);
                     }
                 }
 

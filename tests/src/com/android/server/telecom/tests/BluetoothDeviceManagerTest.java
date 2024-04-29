@@ -60,9 +60,11 @@ import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import static org.mockito.Mockito.reset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 @RunWith(JUnit4.class)
 public class BluetoothDeviceManagerTest extends TelecomTestCase {
@@ -75,6 +77,7 @@ public class BluetoothDeviceManagerTest extends TelecomTestCase {
     @Mock BluetoothLeAudio mBluetoothLeAudio;
     @Mock AudioManager mockAudioManager;
     @Mock AudioDeviceInfo mSpeakerInfo;
+    @Mock Executor mExecutor;
 
     BluetoothDeviceManager mBluetoothDeviceManager;
     BluetoothProfile.ServiceListener serviceListenerUnderTest;
@@ -114,6 +117,7 @@ public class BluetoothDeviceManagerTest extends TelecomTestCase {
         mCommunicationDeviceTracker.setBluetoothRouteManager(mRouteManager);
 
         mockAudioManager = mContext.getSystemService(AudioManager.class);
+        mExecutor = mContext.getMainExecutor();
 
         ArgumentCaptor<BluetoothProfile.ServiceListener> serviceCaptor =
                 ArgumentCaptor.forClass(BluetoothProfile.ServiceListener.class);
@@ -748,6 +752,31 @@ public class BluetoothDeviceManagerTest extends TelecomTestCase {
         when(mRouteManager.getMostRecentlyReportedActiveDevice()).thenReturn(device3);
         assertEquals(1, mBluetoothDeviceManager.getNumConnectedDevices());
         assertTrue(mBluetoothDeviceManager.isInbandRingingEnabled());
+    }
+
+    @SmallTest
+    @Test
+    public void testRegisterLeAudioCallbackNoPostpone() {
+        reset(mBluetoothLeAudio);
+        when(mFeatureFlags.postponeRegisterToLeaudio()).thenReturn(false);
+        serviceListenerUnderTest.onServiceConnected(BluetoothProfile.LE_AUDIO,
+                        (BluetoothProfile) mBluetoothLeAudio);
+        // Second time on purpose
+        serviceListenerUnderTest.onServiceConnected(BluetoothProfile.LE_AUDIO,
+                        (BluetoothProfile) mBluetoothLeAudio);
+        verify(mExecutor, times(0)).execute(any());
+        verify(mBluetoothLeAudio, times(1)).registerCallback(any(Executor.class),
+                        any(BluetoothLeAudio.Callback.class));
+    }
+
+    @SmallTest
+    @Test
+    public void testRegisterLeAudioCallbackWithPostpone() {
+        reset(mBluetoothLeAudio);
+        when(mFeatureFlags.postponeRegisterToLeaudio()).thenReturn(true);
+        serviceListenerUnderTest.onServiceConnected(BluetoothProfile.LE_AUDIO,
+                        (BluetoothProfile) mBluetoothLeAudio);
+        verify(mExecutor, times(1)).execute(any());
     }
 
     private void assertClearHearingAidOrLeCommunicationDevice(
