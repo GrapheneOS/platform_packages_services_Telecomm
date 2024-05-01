@@ -1854,11 +1854,12 @@ public class TelecomServiceImpl {
                     throw new SecurityException("Package " + callingPackage + " is not allowed"
                             + " to start conference call");
                 }
-
+                // Binder is clearing the identity, so we need to keep the store the handle
+                UserHandle currentUserHandle = Binder.getCallingUserHandle();
                 long token = Binder.clearCallingIdentity();
                 try {
                     mCallsManager.startConference(participants, extras, callingPackage,
-                            Binder.getCallingUserHandle());
+                            currentUserHandle);
                 } finally {
                     Binder.restoreCallingIdentity(token);
                 }
