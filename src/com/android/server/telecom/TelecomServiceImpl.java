@@ -215,11 +215,11 @@ public class TelecomServiceImpl {
                 switch (callAttributes.getDirection()) {
                     case DIRECTION_OUTGOING:
                         transaction = new OutgoingCallTransaction(callId, mContext, callAttributes,
-                                mCallsManager, extras);
+                                mCallsManager, extras, mFeatureFlags);
                         break;
                     case DIRECTION_INCOMING:
                         transaction = new IncomingCallTransaction(callId, callAttributes,
-                                mCallsManager, extras);
+                                mCallsManager, extras, mFeatureFlags);
                         break;
                     default:
                         throw new IllegalArgumentException(String.format("Invalid Call Direction. "

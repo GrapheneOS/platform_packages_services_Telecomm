@@ -152,6 +152,69 @@ public class CallTest extends TelecomTestCase {
         assertTrue(call.hasGoneActiveBefore());
     }
 
+    /**
+     * Verify Call#setVideoState will only upgrade to video if the PhoneAccount supports video
+     * state capabilities
+     */
+    @Test
+    @SmallTest
+    public void testSetVideoStateForTransactionalCalls() {
+        Call call = createCall("1", Call.CALL_DIRECTION_INCOMING);
+        TransactionalServiceWrapper tsw = Mockito.mock(TransactionalServiceWrapper.class);
+        call.setIsTransactionalCall(true);
+        call.setTransactionServiceWrapper(tsw);
+        assertTrue(call.isTransactionalCall());
+        assertNotNull(call.getTransactionServiceWrapper());
+        when(mFeatureFlags.transactionalVideoState()).thenReturn(true);
+
+        // VoIP apps using transactional APIs must register a PhoneAccount that supports
+        // video calling capabilities or the video state will be defaulted to audio
+        assertFalse(call.isVideoCallingSupportedByPhoneAccount());
+        call.setVideoState(VideoProfile.STATE_BIDIRECTIONAL);
+        assertEquals(VideoProfile.STATE_AUDIO_ONLY, call.getVideoState());
+
+        call.setVideoCallingSupportedByPhoneAccount(true);
+        assertTrue(call.isVideoCallingSupportedByPhoneAccount());
+
+        // After the PhoneAccount signals it supports video calling, video state changes can occur
+        call.setVideoState(VideoProfile.STATE_BIDIRECTIONAL);
+        assertEquals(VideoProfile.STATE_BIDIRECTIONAL, call.getVideoState());
+        verify(tsw, times(1)).onVideoStateChanged(call, CallAttributes.VIDEO_CALL);
+    }
+
+    /**
+     * Verify all video state changes are echoed out to the TransactionalServiceWrapper
+     */
+    @Test
+    @SmallTest
+    public void testToggleTransactionalVideoState() {
+        Call call = createCall("1", Call.CALL_DIRECTION_INCOMING);
+        TransactionalServiceWrapper tsw = Mockito.mock(TransactionalServiceWrapper.class);
+        call.setIsTransactionalCall(true);
+        call.setTransactionServiceWrapper(tsw);
+        call.setVideoCallingSupportedByPhoneAccount(true);
+        assertTrue(call.isTransactionalCall());
+        assertNotNull(call.getTransactionServiceWrapper());
+        assertTrue(call.isVideoCallingSupportedByPhoneAccount());
+        when(mFeatureFlags.transactionalVideoState()).thenReturn(true);
+
+        call.setVideoState(VideoProfile.STATE_BIDIRECTIONAL);
+        assertEquals(VideoProfile.STATE_BIDIRECTIONAL, call.getVideoState());
+        verify(tsw, times(1)).onVideoStateChanged(call, CallAttributes.VIDEO_CALL);
+
+        call.setVideoState(VideoProfile.STATE_BIDIRECTIONAL);
+        assertEquals(VideoProfile.STATE_BIDIRECTIONAL, call.getVideoState());
+        verify(tsw, times(2)).onVideoStateChanged(call, CallAttributes.VIDEO_CALL);
+
+        call.setVideoState(VideoProfile.STATE_AUDIO_ONLY);
+        assertEquals(VideoProfile.STATE_AUDIO_ONLY, call.getVideoState());
+        verify(tsw, times(1)).onVideoStateChanged(call, CallAttributes.AUDIO_CALL);
+
+        call.setVideoState(VideoProfile.STATE_BIDIRECTIONAL);
+        assertEquals(VideoProfile.STATE_BIDIRECTIONAL, call.getVideoState());
+        verify(tsw, times(3)).onVideoStateChanged(call, CallAttributes.VIDEO_CALL);
+    }
+
     @Test
     public void testMultipleCachedMuteStateChanges() {
         when(mFeatureFlags.cacheCallAudioCallbacks()).thenReturn(true);

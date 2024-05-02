@@ -35,4 +35,6 @@ public interface CallSourceService {
     void onCallEndpointChanged(Call activeCall, CallEndpoint callEndpoint);
 
     void onAvailableCallEndpointsChanged(Call activeCall, Set<CallEndpoint> availableCallEndpoints);
+
+    void onVideoStateChanged(Call activeCall, int videoState);
 }

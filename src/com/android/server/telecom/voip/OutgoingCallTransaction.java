@@ -21,6 +21,8 @@ import static android.telecom.CallAttributes.CALL_CAPABILITIES_KEY;
 import static android.telecom.CallAttributes.DISPLAY_NAME_KEY;
 import static android.telecom.CallException.CODE_CALL_NOT_PERMITTED_AT_PRESENT_TIME;
 
+import static com.android.server.telecom.voip.VideoStateTranslation.TransactionalVideoStateToVideoProfileState;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -29,9 +31,11 @@ import android.telecom.CallAttributes;
 import android.telecom.TelecomManager;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.Call;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.LoggedHandlerExecutor;
+import com.android.server.telecom.flags.FeatureFlags;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -45,9 +49,14 @@ public class OutgoingCallTransaction extends VoipCallTransaction {
     private final CallAttributes mCallAttributes;
     private final CallsManager mCallsManager;
     private final Bundle mExtras;
+    private FeatureFlags mFeatureFlags;
+
+    public void setFeatureFlags(FeatureFlags featureFlags) {
+        mFeatureFlags = featureFlags;
+    }
 
     public OutgoingCallTransaction(String callId, Context context, CallAttributes callAttributes,
-            CallsManager callsManager, Bundle extras) {
+            CallsManager callsManager, Bundle extras, FeatureFlags featureFlags) {
         super(callsManager.getLock());
         mCallId = callId;
         mContext = context;
@@ -55,11 +64,12 @@ public class OutgoingCallTransaction extends VoipCallTransaction {
         mCallsManager = callsManager;
         mExtras = extras;
         mCallingPackage = mContext.getOpPackageName();
+        mFeatureFlags = featureFlags;
     }
 
     public OutgoingCallTransaction(String callId, Context context, CallAttributes callAttributes,
-            CallsManager callsManager) {
-        this(callId, context, callAttributes, callsManager, new Bundle());
+            CallsManager callsManager, FeatureFlags featureFlags) {
+        this(callId, context, callAttributes, callsManager, new Bundle(), featureFlags);
     }
 
     @Override
@@ -121,12 +131,20 @@ public class OutgoingCallTransaction extends VoipCallTransaction {
         }
     }
 
-    private Bundle generateExtras(CallAttributes callAttributes) {
+    @VisibleForTesting
+    public Bundle generateExtras(CallAttributes callAttributes) {
         mExtras.setDefusable(true);
         mExtras.putString(TelecomManager.TRANSACTION_CALL_ID_KEY, mCallId);
         mExtras.putInt(CALL_CAPABILITIES_KEY, callAttributes.getCallCapabilities());
-        mExtras.putInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE,
-                callAttributes.getCallType());
+        if (mFeatureFlags.transactionalVideoState()) {
+            // Transactional calls need to remap the CallAttributes video state to the existing
+            // VideoProfile for consistency.
+            mExtras.putInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE,
+                    TransactionalVideoStateToVideoProfileState(callAttributes.getCallType()));
+        } else {
+            mExtras.putInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE,
+                    callAttributes.getCallType());
+        }
         mExtras.putCharSequence(DISPLAY_NAME_KEY, callAttributes.getDisplayName());
         return mExtras;
     }

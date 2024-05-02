@@ -19,6 +19,7 @@ package com.android.server.telecom;
 import static android.provider.CallLog.Calls.MISSED_REASON_NOT_MISSED;
 import static android.telephony.TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE;
 
+import static com.android.server.telecom.voip.VideoStateTranslation.TransactionalVideoStateToString;
 import static com.android.server.telecom.voip.VideoStateTranslation.VideoProfileStateToTransactionalVideoState;
 
 import android.annotation.NonNull;
@@ -4114,14 +4115,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             videoState = VideoProfile.STATE_AUDIO_ONLY;
         }
 
-        // Transactional calls have the ability to change video calling capabilities on a per-call
-        // basis as opposed to ConnectionService calls which are only based on the PhoneAccount.
-        if (mFlags.transactionalVideoState()
-                && mIsTransactionalCall && !mTransactionalCallSupportsVideoCalling) {
-            Log.i(this, "setVideoState: The transactional does NOT support video calling."
-                    + " defaulted to audio (video not supported)");
-            videoState = VideoProfile.STATE_AUDIO_ONLY;
-        }
+        // TODO:: b/338280297. If a transactional call does not have the
+        //   CallAttributes.SUPPORTS_VIDEO_CALLING capability, the videoState should be set to audio
 
         // Track Video State history during the duration of the call.
         // Only update the history when the call is active or disconnected. This ensures we do
@@ -4138,17 +4133,24 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         int previousVideoState = mVideoState;
         mVideoState = videoState;
         if (mVideoState != previousVideoState) {
-            Log.addEvent(this, LogUtils.Events.VIDEO_STATE_CHANGED,
-                    VideoProfile.videoStateToString(videoState));
+            if (!mIsTransactionalCall) {
+                Log.addEvent(this, LogUtils.Events.VIDEO_STATE_CHANGED,
+                        VideoProfile.videoStateToString(videoState));
+            }
             for (Listener l : mListeners) {
                 l.onVideoStateChanged(this, previousVideoState, mVideoState);
             }
         }
 
-        if (mFlags.transactionalVideoState()
-                && mIsTransactionalCall && mTransactionalService != null) {
+        if (mFlags.transactionalVideoState() && mIsTransactionalCall) {
             int transactionalVS = VideoProfileStateToTransactionalVideoState(mVideoState);
-            mTransactionalService.onVideoStateChanged(this, transactionalVS);
+            if (mTransactionalService != null) {
+                Log.addEvent(this, LogUtils.Events.VIDEO_STATE_CHANGED,
+                        TransactionalVideoStateToString(transactionalVS));
+                mTransactionalService.onVideoStateChanged(this, transactionalVS);
+            } else {
+                cacheServiceCallback(new CachedVideoStateChange(transactionalVS));
+            }
         }
 
         if (VideoProfile.isVideo(videoState)) {

@@ -20,6 +20,11 @@ import android.telecom.CallAttributes;
 import android.telecom.Log;
 import android.telecom.VideoProfile;
 
+import com.android.server.telecom.AnomalyReporterAdapter;
+import com.android.server.telecom.AnomalyReporterAdapterImpl;
+
+import java.util.UUID;
+
 /**
  * This remapping class is needed because {@link VideoProfile} has more fine grain levels of video
  * states as apposed to Transactional video states (defined in  {@link CallAttributes.CallType}.
@@ -41,15 +46,16 @@ public class VideoStateTranslation {
      * This should be used when the client application is signaling they are changing the video
      * state.
      */
-    public static int TransactionalVideoStateToVideoProfileState(int transactionalVideo) {
-        if (transactionalVideo == CallAttributes.AUDIO_CALL) {
-            Log.i(TAG, "%s --> VideoProfile.STATE_AUDIO_ONLY",
-                    TransactionalVideoState_toString(transactionalVideo));
+    public static int TransactionalVideoStateToVideoProfileState(int callType) {
+        if (callType == CallAttributes.AUDIO_CALL) {
+            Log.i(TAG, "CallAttributes.AUDIO_CALL --> VideoProfile.STATE_AUDIO_ONLY");
             return VideoProfile.STATE_AUDIO_ONLY;
-        } else {
-            Log.i(TAG, "%s --> VideoProfile.STATE_BIDIRECTIONAL",
-                    TransactionalVideoState_toString(transactionalVideo));
+        } else if (callType == CallAttributes.VIDEO_CALL) {
+            Log.i(TAG, "CallAttributes.VIDEO_CALL--> VideoProfile.STATE_BIDIRECTIONAL");
             return VideoProfile.STATE_BIDIRECTIONAL;
+        } else {
+            Log.w(TAG, "CallType=[%d] does not have a VideoProfile mapping", callType);
+            return VideoProfile.STATE_AUDIO_ONLY;
         }
     }
 
@@ -58,26 +64,36 @@ public class VideoStateTranslation {
      * This should be used when Telecom is informing the client of a video state change.
      */
     public static int VideoProfileStateToTransactionalVideoState(int videoProfileState) {
-        if (videoProfileState == VideoProfile.STATE_AUDIO_ONLY) {
-            Log.i(TAG, "%s --> CallAttributes.AUDIO_CALL",
-                    VideoProfileState_toString(videoProfileState));
-            return CallAttributes.AUDIO_CALL;
-        } else {
-            Log.i(TAG, "%s --> CallAttributes.VIDEO_CALL",
-                    VideoProfileState_toString(videoProfileState));
-            return CallAttributes.VIDEO_CALL;
+        switch (videoProfileState) {
+            case VideoProfile.STATE_AUDIO_ONLY -> {
+                Log.i(TAG, "%s --> CallAttributes.AUDIO_CALL",
+                        VideoProfileStateToString(videoProfileState));
+                return CallAttributes.AUDIO_CALL;
+            }
+            case VideoProfile.STATE_BIDIRECTIONAL, VideoProfile.STATE_TX_ENABLED,
+                    VideoProfile.STATE_RX_ENABLED -> {
+                Log.i(TAG, "%s --> CallAttributes.VIDEO_CALL",
+                        VideoProfileStateToString(videoProfileState));
+                return CallAttributes.VIDEO_CALL;
+            }
+            default -> {
+                Log.w(TAG, "VideoProfile=[%d] does not have a CallType mapping", videoProfileState);
+                return CallAttributes.AUDIO_CALL;
+            }
         }
     }
 
-    private static String TransactionalVideoState_toString(int transactionalVideoState) {
+    public static String TransactionalVideoStateToString(int transactionalVideoState) {
         if (transactionalVideoState == CallAttributes.AUDIO_CALL) {
             return "CallAttributes.AUDIO_CALL";
-        } else {
+        } else if (transactionalVideoState == CallAttributes.VIDEO_CALL) {
             return "CallAttributes.VIDEO_CALL";
+        } else {
+            return "CallAttributes.UNKNOWN";
         }
     }
 
-    private static String VideoProfileState_toString(int videoProfileState) {
+    private static String VideoProfileStateToString(int videoProfileState) {
         switch (videoProfileState) {
             case VideoProfile.STATE_BIDIRECTIONAL -> {
                 return "VideoProfile.STATE_BIDIRECTIONAL";
@@ -88,7 +104,12 @@ public class VideoStateTranslation {
             case VideoProfile.STATE_TX_ENABLED -> {
                 return "VideoProfile.STATE_TX_ENABLED";
             }
+            case VideoProfile.STATE_AUDIO_ONLY -> {
+                return "VideoProfile.STATE_AUDIO_ONLY";
+            }
+            default -> {
+                return "VideoProfile.UNKNOWN";
+            }
         }
-        return "VideoProfile.STATE_AUDIO_ONLY";
     }
 }

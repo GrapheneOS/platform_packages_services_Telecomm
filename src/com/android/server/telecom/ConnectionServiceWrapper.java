@@ -1987,6 +1987,11 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         }
     }
 
+    @Override
+    public void onVideoStateChanged(Call call, int videoState){
+        // pass through. ConnectionService does not implement this method.
+    }
+
     /** @see IConnectionService#onMuteStateChanged(String, boolean, Session.Info) */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     @Override

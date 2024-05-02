@@ -51,11 +51,6 @@ public class RequestVideoStateTransaction extends VoipCallTransaction {
             future.complete(new VoipCallTransactionResult(
                     CallException.CODE_ERROR_UNKNOWN /*TODO:: define error code. b/335703584 */,
                     "Video calling is not supported by the target account"));
-        } else if (isRequestingVideoTransmission(mVideoProfileState) &&
-                !mCall.isTransactionalCallSupportsVideoCalling()) {
-            future.complete(new VoipCallTransactionResult(
-                    CallException.CODE_ERROR_UNKNOWN /*TODO:: define error code. b/335703584 */,
-                    "Video calling is not supported according to the callAttributes"));
         } else {
             mCall.setVideoState(mVideoProfileState);
             future.complete(new VoipCallTransactionResult(

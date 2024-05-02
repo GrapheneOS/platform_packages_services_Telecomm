@@ -602,6 +602,7 @@ public class TransactionalServiceWrapper implements
         }
     }
 
+    @Override
     public void onVideoStateChanged(Call call, int videoState) {
         if (call != null) {
             try {

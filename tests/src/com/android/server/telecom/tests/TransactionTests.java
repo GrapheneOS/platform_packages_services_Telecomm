@@ -16,6 +16,9 @@
 
 package com.android.server.telecom.tests;
 
+import static com.android.server.telecom.voip.VideoStateTranslation.TransactionalVideoStateToVideoProfileState;
+import static com.android.server.telecom.voip.VideoStateTranslation.VideoProfileStateToTransactionalVideoState;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -45,6 +48,8 @@ import android.os.UserHandle;
 import android.telecom.CallAttributes;
 import android.telecom.DisconnectCause;
 import android.telecom.PhoneAccountHandle;
+import android.telecom.TelecomManager;
+import android.telecom.VideoProfile;
 
 import androidx.test.filters.SmallTest;
 
@@ -66,6 +71,7 @@ import com.android.server.telecom.voip.MaybeHoldCallForNewCallTransaction;
 import com.android.server.telecom.voip.RequestNewActiveCallTransaction;
 import com.android.server.telecom.voip.TransactionManager;
 import com.android.server.telecom.voip.VerifyCallStateChangeTransaction;
+import com.android.server.telecom.voip.VideoStateTranslation;
 import com.android.server.telecom.voip.VoipCallTransactionResult;
 
 import org.junit.After;
@@ -229,7 +235,8 @@ public class TransactionTests extends TelecomTestCase {
                 CallAttributes.DIRECTION_OUTGOING, TEST_NAME, TEST_URI).build();
 
         OutgoingCallTransaction transaction =
-                new OutgoingCallTransaction(CALL_ID_1, mMockContext, callAttributes, mCallsManager);
+                new OutgoingCallTransaction(CALL_ID_1, mMockContext, callAttributes, mCallsManager,
+                        mFeatureFlags);
 
         // WHEN
         when(mMockContext.getOpPackageName()).thenReturn("testPackage");
@@ -256,7 +263,8 @@ public class TransactionTests extends TelecomTestCase {
                 CallAttributes.DIRECTION_INCOMING, TEST_NAME, TEST_URI).build();
 
         IncomingCallTransaction transaction =
-                new IncomingCallTransaction(CALL_ID_1, callAttributes, mCallsManager);
+                new IncomingCallTransaction(CALL_ID_1, callAttributes, mCallsManager,
+                        mFeatureFlags);
 
         // WHEN
         when(mCallsManager.isIncomingCallPermitted(callAttributes.getPhoneAccountHandle()))
@@ -268,6 +276,100 @@ public class TransactionTests extends TelecomTestCase {
                 .processIncomingCallIntent(isA(PhoneAccountHandle.class),
                         isA(Bundle.class),
                         isA(Boolean.class));
+    }
+
+    /**
+     * Verify that transactional OUTGOING calls are re-mapping the CallAttributes video state to
+     * VideoProfile states when starting the call via CallsManager#startOugoingCall.
+     */
+    @Test
+    public void testOutgoingCallTransactionRemapsVideoState() {
+        // GIVEN
+        CallAttributes audioOnlyAttributes = new CallAttributes.Builder(mHandle,
+                CallAttributes.DIRECTION_OUTGOING, TEST_NAME, TEST_URI)
+                .setCallType(CallAttributes.AUDIO_CALL)
+                .build();
+
+        CallAttributes videoAttributes = new CallAttributes.Builder(mHandle,
+                CallAttributes.DIRECTION_OUTGOING, TEST_NAME, TEST_URI)
+                .setCallType(CallAttributes.VIDEO_CALL)
+                .build();
+
+        OutgoingCallTransaction t = new OutgoingCallTransaction(null,
+                mContext, null, mCallsManager, new Bundle(), mFeatureFlags);
+
+        // WHEN
+        when(mFeatureFlags.transactionalVideoState()).thenReturn(true);
+        t.setFeatureFlags(mFeatureFlags);
+
+        // THEN
+        assertEquals(VideoProfile.STATE_AUDIO_ONLY, t
+                .generateExtras(audioOnlyAttributes)
+                .getInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE));
+
+        assertEquals(VideoProfile.STATE_BIDIRECTIONAL, t
+                .generateExtras(videoAttributes)
+                .getInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE));
+    }
+
+    /**
+     * Verify that transactional INCOMING calls are re-mapping the CallAttributes video state to
+     * VideoProfile states when starting the call in CallsManager#processIncomingCallIntent.
+     */
+    @Test
+    public void testIncomingCallTransactionRemapsVideoState() {
+        // GIVEN
+        CallAttributes audioOnlyAttributes = new CallAttributes.Builder(mHandle,
+                CallAttributes.DIRECTION_INCOMING, TEST_NAME, TEST_URI)
+                .setCallType(CallAttributes.AUDIO_CALL)
+                .build();
+
+        CallAttributes videoAttributes = new CallAttributes.Builder(mHandle,
+                CallAttributes.DIRECTION_INCOMING, TEST_NAME, TEST_URI)
+                .setCallType(CallAttributes.VIDEO_CALL)
+                .build();
+
+        IncomingCallTransaction t = new IncomingCallTransaction(null, null,
+                mCallsManager, new Bundle(), mFeatureFlags);
+
+        // WHEN
+        when(mFeatureFlags.transactionalVideoState()).thenReturn(true);
+        t.setFeatureFlags(mFeatureFlags);
+
+        // THEN
+        assertEquals(VideoProfile.STATE_AUDIO_ONLY, t
+                .generateExtras(audioOnlyAttributes)
+                .getInt(TelecomManager.EXTRA_INCOMING_VIDEO_STATE));
+
+        assertEquals(VideoProfile.STATE_BIDIRECTIONAL, t
+                .generateExtras(videoAttributes)
+                .getInt(TelecomManager.EXTRA_INCOMING_VIDEO_STATE));
+    }
+
+    @Test
+    public void testTransactionalVideoStateToVideoProfileState() {
+        assertEquals(VideoProfile.STATE_AUDIO_ONLY,
+                TransactionalVideoStateToVideoProfileState(CallAttributes.AUDIO_CALL));
+        assertEquals(VideoProfile.STATE_BIDIRECTIONAL,
+                TransactionalVideoStateToVideoProfileState(CallAttributes.VIDEO_CALL));
+        // ensure non-defined values default to audio
+        assertEquals(VideoProfile.STATE_AUDIO_ONLY,
+                TransactionalVideoStateToVideoProfileState(-1));
+    }
+
+    @Test
+    public void testVideoProfileStateToTransactionalVideoState() {
+        assertEquals(CallAttributes.AUDIO_CALL,
+                VideoProfileStateToTransactionalVideoState(VideoProfile.STATE_AUDIO_ONLY));
+        assertEquals(CallAttributes.VIDEO_CALL,
+                VideoProfileStateToTransactionalVideoState(VideoProfile.STATE_RX_ENABLED));
+        assertEquals(CallAttributes.VIDEO_CALL,
+                VideoProfileStateToTransactionalVideoState(VideoProfile.STATE_TX_ENABLED));
+        assertEquals(CallAttributes.VIDEO_CALL,
+                VideoProfileStateToTransactionalVideoState(VideoProfile.STATE_BIDIRECTIONAL));
+        // ensure non-defined values default to audio
+        assertEquals(CallAttributes.AUDIO_CALL,
+                VideoProfileStateToTransactionalVideoState(-1));
     }
 
     /**
