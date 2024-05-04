@@ -133,5 +133,5 @@
     <string name="callendpoint_name_unknown" msgid="2199074708477193852">"Không xác định"</string>
     <string name="call_streaming_notification_body" msgid="502216105683378263">"Đang truyền trực tuyến âm thanh tới thiết bị khác"</string>
     <string name="call_streaming_notification_action_hang_up" msgid="7017663335289063827">"Kết thúc"</string>
-    <string name="call_streaming_notification_action_switch_here" msgid="3524180754186221228">"Chuyển đổi tại đây"</string>
+    <string name="call_streaming_notification_action_switch_here" msgid="3524180754186221228">"Chuyển qua thiết bị này"</string>
 </resources>
