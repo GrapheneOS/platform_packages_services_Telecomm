@@ -80,3 +80,11 @@ flag {
   description: "Clear the requested communication device after the audio operations are completed."
   bug: "315865533"
 }
+
+# OWNER=pmadapurmath TARGET=24Q3
+flag {
+  name: "resolve_switching_bt_devices_computation"
+  namespace: "telecom"
+  description: "Update switching bt devices based on arbitrary device chosen if no device is specified."
+  bug: "333751408"
+}

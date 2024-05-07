@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -249,7 +250,18 @@ public class BluetoothRouteManagerTest extends TelecomTestCase {
 
     @SmallTest
     @Test
-    public void testConnectBtWithoutAddress() {
+    public void testConnectBtWithoutAddress_SwitchingBtDeviceFlag() {
+        when(mFeatureFlags.resolveSwitchingBtDevicesComputation()).thenReturn(true);
+        verifyConnectBtWithoutAddress();
+    }
+
+    @SmallTest
+    @Test
+    public void testConnectBtWithoutAddress_SwitchingBtDeviceFlagDisabled() {
+        verifyConnectBtWithoutAddress();
+    }
+
+    private void verifyConnectBtWithoutAddress() {
         when(mFeatureFlags.useActualAddressToEnterConnectingState()).thenReturn(true);
         BluetoothRouteManager sm = setupStateMachine(
                 BluetoothRouteManager.AUDIO_CONNECTED_STATE_NAME_PREFIX, DEVICE1);
@@ -266,7 +278,15 @@ public class BluetoothRouteManagerTest extends TelecomTestCase {
         waitForHandlerAction(sm.getHandler(), TEST_TIMEOUT);
         waitForHandlerAction(sm.getHandler(), TEST_TIMEOUT);
         waitForHandlerAction(sm.getHandler(), TEST_TIMEOUT);
-        verifyConnectionAttempt(DEVICE1, 1);
+        // We should not expect explicit connection attempt (BluetoothDeviceManager#connectAudio)
+        // as the device is already "connected" as per how the state machine was initialized.
+        if (mFeatureFlags.resolveSwitchingBtDevicesComputation()) {
+            verify(mDeviceManager, never()).disconnectAudio();
+        } else {
+            // Legacy behavior
+            verifyConnectionAttempt(DEVICE1, 1);
+            verify(mDeviceManager, times(1)).disconnectAudio();
+        }
         assertEquals(BluetoothRouteManager.AUDIO_CONNECTED_STATE_NAME_PREFIX
                         + ":" + DEVICE1.getAddress(),
                 sm.getCurrentState().getName());
