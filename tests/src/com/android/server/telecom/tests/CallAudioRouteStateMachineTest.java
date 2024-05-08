@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
@@ -1230,8 +1231,9 @@ public class CallAudioRouteStateMachineTest extends TelecomTestCase {
 
     @SmallTest
     @Test
-    public void testQuiescentBluetoothRouteResetMute() {
+    public void testQuiescentBluetoothRouteResetMute() throws Exception {
         when(mFeatureFlags.resetMuteWhenEnteringQuiescentBtRoute()).thenReturn(true);
+        when(mFeatureFlags.transitRouteBeforeAudioDisconnectBt()).thenReturn(true);
         CallAudioRouteStateMachine stateMachine = new CallAudioRouteStateMachine(
                 mContext,
                 mockCallsManager,
@@ -1264,6 +1266,7 @@ public class CallAudioRouteStateMachineTest extends TelecomTestCase {
                 CallAudioState.ROUTE_BLUETOOTH, CallAudioState.ROUTE_SPEAKER
                 | CallAudioState.ROUTE_EARPIECE | CallAudioState.ROUTE_BLUETOOTH);
         assertEquals(expectedState, stateMachine.getCurrentCallAudioState());
+        when(mockAudioManager.isMicrophoneMute()).thenReturn(true);
 
         stateMachine.sendMessageWithSessionInfo(CallAudioRouteStateMachine.SWITCH_FOCUS,
                 CallAudioRouteStateMachine.NO_FOCUS);
@@ -1272,9 +1275,8 @@ public class CallAudioRouteStateMachineTest extends TelecomTestCase {
         expectedState = new CallAudioState(false,
                 CallAudioState.ROUTE_BLUETOOTH, CallAudioState.ROUTE_SPEAKER
                 | CallAudioState.ROUTE_EARPIECE | CallAudioState.ROUTE_BLUETOOTH);
-        // TODO: Re-enable this part of the test; this is now failing because we have to
-        // revert ag/23783145.
-        // assertEquals(expectedState, stateMachine.getCurrentCallAudioState());
+        assertEquals(expectedState, stateMachine.getCurrentCallAudioState());
+        verify(mockAudioService).setMicrophoneMute(eq(false), anyString(), anyInt(), eq(null));
     }
 
     @SmallTest

@@ -847,6 +847,14 @@ public class CallAudioRouteStateMachine extends StateMachine implements CallAudi
                     if (msg.arg1 == NO_FOCUS) {
                         // Only disconnect audio here instead of routing away from BT entirely.
                         if (mFeatureFlags.transitRouteBeforeAudioDisconnectBt()) {
+                            // Note: We have to turn off mute here rather than when entering the
+                            // QuiescentBluetooth route because setMuteOn will only work when there the
+                            // current state is active.
+                            // We don't need to do this in the unflagged path since reinitialize
+                            // will turn off mute.
+                            if (mFeatureFlags.resetMuteWhenEnteringQuiescentBtRoute()) {
+                                setMuteOn(false);
+                            }
                             transitionTo(mQuiescentBluetoothRoute);
                             mBluetoothRouteManager.disconnectAudio();
                         } else {
@@ -977,9 +985,6 @@ public class CallAudioRouteStateMachine extends StateMachine implements CallAudi
         public void enter() {
             super.enter();
             mHasUserExplicitlyLeftBluetooth = false;
-            if (mFeatureFlags.resetMuteWhenEnteringQuiescentBtRoute()) {
-                setMuteOn(false);
-            }
             updateInternalCallAudioState();
         }
 

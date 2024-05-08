@@ -2540,6 +2540,17 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         }
     }
 
+    boolean completedProcessingAllAttempts() {
+        if (mCreateConnectionProcessor != null) {
+            return (!mCreateConnectionProcessor.isCallTimedOut() &&
+                    mCreateConnectionProcessor.isProcessingComplete());
+        } else {
+            // If mCreateConnectionProcessor is null then there are no attempts to process:
+            return true;
+        }
+
+    }
+
     /**
      * Starts the create connection sequence. Upon completion, there should exist an active
      * connection through a connection service (or the call will have failed).

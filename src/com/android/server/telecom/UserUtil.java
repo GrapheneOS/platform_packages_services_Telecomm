@@ -50,6 +50,12 @@ public final class UserUtil {
                 : userInfo != null && userInfo.isManagedProfile();
     }
 
+    public static boolean isPrivateProfile(UserHandle userHandle, Context context) {
+        UserManager um = context.createContextAsUser(userHandle, 0).getSystemService(
+                UserManager.class);
+        return um != null && um.isPrivateProfile();
+    }
+
     public static boolean isProfile(Context context, UserHandle userHandle,
             FeatureFlags featureFlags) {
         UserManager userManager = context.createContextAsUser(userHandle, 0)
