@@ -385,15 +385,7 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                             mCallsManager.markCallAsDisconnected(
                                     call, new DisconnectCause(DisconnectCause.REMOTE));
                         }
-                        if (!mFlags.updatedRcsCallCountTracking()){
-                            mCallsManager.markCallAsRemoved(call);
-                        } else if (call.completedProcessingAllAttempts()
-                                || !call.isEmergencyCall()) {
-                            mCallsManager.markCallAsRemoved(call);
-                        } else {
-                            Log.i(this, "removeCall: emergency call has not "
-                                    + "completed processing all attempts so skipping removal");
-                        }
+                        mCallsManager.markCallAsRemoved(call);
                     }
                 }
             } catch (Throwable t) {
@@ -1357,7 +1349,6 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
     private final CallsManager mCallsManager;
     private final AppOpsManager mAppOpsManager;
     private final Context mContext;
-    private final FeatureFlags mFlags;
 
     private ConnectionServiceFocusManager.ConnectionServiceFocusListener mConnSvrFocusListener;
 
@@ -1392,7 +1383,6 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         mCallsManager = callsManager;
         mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mContext = context;
-        mFlags = featureFlags;
     }
 
     /** See {@link IConnectionService#addConnectionServiceAdapter}. */
