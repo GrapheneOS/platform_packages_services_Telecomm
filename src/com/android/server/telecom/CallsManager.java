@@ -5025,6 +5025,7 @@ public class CallsManager extends Call.ListenerBase
                 // change what an "active call" is so that the call in SELECT_PHONE_ACCOUNT state
                 // will be properly cancelled.
                 call.getTargetPhoneAccount() != null
+                        && phoneAccountHandle != null
                         && !phoneAccountHandle.getComponentName().equals(
                                 call.getTargetPhoneAccount().getComponentName())
                         && call.getParentCall() == null
