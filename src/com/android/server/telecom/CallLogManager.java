@@ -368,7 +368,7 @@ public final class CallLogManager extends CallsManagerListenerBase {
         if (phoneAccount != null &&
                 phoneAccount.hasCapabilities(PhoneAccount.CAPABILITY_MULTI_USER)) {
             if (initiatingUser != null &&
-                    UserUtil.isManagedProfile(mContext, initiatingUser, mFeatureFlags)) {
+                    UserUtil.isProfile(mContext, initiatingUser, mFeatureFlags)) {
                 paramBuilder.setUserToBeInsertedTo(initiatingUser);
                 paramBuilder.setAddForAllUsers(false);
             } else {
