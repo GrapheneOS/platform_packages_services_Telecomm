@@ -1167,7 +1167,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
 
         verify(mFakePhoneAccountRegistrar).getPhoneAccount(
                 TEL_PA_HANDLE_16, TEL_PA_HANDLE_16.getUserHandle());
-        verify(mInCallController, never()).bindToServices(any(), anyBoolean());
+        verify(mInCallController, never()).bindToServices(any());
         addCallTestHelper(TelecomManager.ACTION_INCOMING_CALL,
                 CallIntentProcessor.KEY_IS_INCOMING_CALL, extras,
                 TEL_PA_HANDLE_16, false);
@@ -1189,7 +1189,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
 
         mTSIBinder.addNewIncomingCall(TEL_PA_HANDLE_16, extras, CALLING_PACKAGE);
 
-        verify(mInCallController, never()).bindToServices(eq(null), anyBoolean());
+        verify(mInCallController, never()).bindToServices(eq(null));
     }
 
     @SmallTest
@@ -1207,7 +1207,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
 
         mTSIBinder.addNewIncomingCall(TEL_PA_HANDLE_16, extras, CALLING_PACKAGE);
 
-        verify(mInCallController).bindToServices(eq(null), anyBoolean());
+        verify(mInCallController).bindToServices(eq(null));
     }
 
     @SmallTest
@@ -1225,7 +1225,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
 
         mTSIBinder.addNewIncomingCall(TEL_PA_HANDLE_16, extras, CALLING_PACKAGE);
 
-        verify(mInCallController, never()).bindToServices(eq(null), anyBoolean());
+        verify(mInCallController, never()).bindToServices(eq(null));
     }
 
     @SmallTest
@@ -1244,7 +1244,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
 
         mTSIBinder.addNewIncomingCall(TEL_PA_HANDLE_16, extras, CALLING_PACKAGE);
 
-        verify(mInCallController, never()).bindToServices(eq(null), anyBoolean());
+        verify(mInCallController, never()).bindToServices(eq(null));
     }
 
 

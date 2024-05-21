@@ -80,12 +80,16 @@
      callers are combined into a single toggle. -->
     <bool name="combine_options_to_block_unavailable_and_unknown_callers">true</bool>
 
-    <!-- System bluetooth stack package name -->
-    <string name="system_bluetooth_stack">com.android.bluetooth</string>
-
     <!-- When true, skip fetching quick reply response -->
     <bool name="skip_loading_canned_text_response">false</bool>
 
     <!-- When true, skip fetching incoming caller info -->
     <bool name="skip_incoming_caller_info_query">false</bool>
+
+    <string-array name="system_bluetooth_stack_package_name" translatable="false">
+        <!-- AOSP -->
+        <item>com.android.bluetooth</item>
+        <!-- Used for internal targets -->
+        <item>com.google.android.bluetooth</item>
+    </string-array>
 </resources>

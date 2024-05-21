@@ -16,6 +16,8 @@
 
 package com.android.server.telecom.tests;
 
+import static com.android.server.telecom.tests.TelecomSystemTest.TEST_TIMEOUT;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -34,6 +36,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.media.ToneGenerator;
+import android.os.Handler;
+import android.os.Looper;
 import android.telecom.DisconnectCause;
 import android.util.SparseArray;
 
@@ -67,6 +71,7 @@ import org.mockito.Mock;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @RunWith(JUnit4.class)
@@ -423,9 +428,12 @@ public class CallAudioManagerTest extends TelecomTestCase {
         Call call = mock(Call.class);
         ArgumentCaptor<CallAudioModeStateMachine.MessageArgs> captor = makeNewCaptor();
         when(call.getState()).thenReturn(CallState.RINGING);
+        handleWaitForBtIcsBinding(call);
 
         // Make sure appropriate messages are sent when we add a RINGING call
         mCallAudioManager.onCallAdded(call);
+        mCallAudioManager.getCallRingingFuture().join();
+        waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
 
         assertEquals(call, mCallAudioManager.getForegroundCall());
         verify(mCallAudioRouteStateMachine).sendMessageWithSessionInfo(
@@ -556,10 +564,14 @@ public class CallAudioManagerTest extends TelecomTestCase {
 
         Call call = createAudioProcessingCall();
 
+
         when(call.getState()).thenReturn(CallState.SIMULATED_RINGING);
+        handleWaitForBtIcsBinding(call);
 
         mCallAudioManager.onCallStateChanged(call, CallState.AUDIO_PROCESSING,
                 CallState.SIMULATED_RINGING);
+        mCallAudioManager.getCallRingingFuture().join();
+        waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
         verify(mPlayerFactory, never()).createPlayer(any(Call.class), anyInt());
         CallAudioModeStateMachine.MessageArgs expectedArgs = new Builder()
                 .setHasActiveOrDialingCalls(false)
@@ -810,9 +822,12 @@ public class CallAudioManagerTest extends TelecomTestCase {
     private Call createSimulatedRingingCall() {
         Call call = mock(Call.class);
         when(call.getState()).thenReturn(CallState.SIMULATED_RINGING);
+        handleWaitForBtIcsBinding(call);
         ArgumentCaptor<CallAudioModeStateMachine.MessageArgs> captor = makeNewCaptor();
 
         mCallAudioManager.onCallAdded(call);
+        mCallAudioManager.getCallRingingFuture().join();
+        waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
 
         assertEquals(call, mCallAudioManager.getForegroundCall());
 
@@ -838,8 +853,11 @@ public class CallAudioManagerTest extends TelecomTestCase {
     private Call createIncomingCall() {
         Call call = mock(Call.class);
         when(call.getState()).thenReturn(CallState.RINGING);
+        handleWaitForBtIcsBinding(call);
 
         mCallAudioManager.onCallAdded(call);
+        mCallAudioManager.getCallRingingFuture().join();
+        waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
         assertEquals(call, mCallAudioManager.getForegroundCall());
         ArgumentCaptor<CallAudioModeStateMachine.MessageArgs> captor =
                 ArgumentCaptor.forClass(CallAudioModeStateMachine.MessageArgs.class);
@@ -923,5 +941,11 @@ public class CallAudioManagerTest extends TelecomTestCase {
         assertEquals(expected.hasRingingCalls, actual.hasRingingCalls);
         assertEquals(expected.isTonePlaying, actual.isTonePlaying);
         assertEquals(expected.foregroundCallIsVoip, actual.foregroundCallIsVoip);
+    }
+
+    private void handleWaitForBtIcsBinding(Call call) {
+        when(mFlags.separatelyBindToBtIncallService()).thenReturn(true);
+        CompletableFuture<Boolean> btBindingFuture = CompletableFuture.completedFuture(true);
+        when(call.getBtIcsFuture()).thenReturn(btBindingFuture);
     }
 }

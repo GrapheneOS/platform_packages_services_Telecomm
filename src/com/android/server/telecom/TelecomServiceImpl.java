@@ -1672,7 +1672,13 @@ public class TelecomServiceImpl {
                                         && accountExtra != null && accountExtra.getBoolean(
                                         PhoneAccount.EXTRA_SKIP_CALL_FILTERING,
                                         false)) {
-                                    mCallsManager.getInCallController().bindToServices(null, false);
+                                    if (mFeatureFlags.separatelyBindToBtIncallService()) {
+                                        mCallsManager.getInCallController().bindToBTService(
+                                                null, null);
+                                    }
+                                    // Should be able to run this as is even if above flag is
+                                    // enabled (BT binding should be skipped automatically).
+                                    mCallsManager.getInCallController().bindToServices(null);
                                 }
                             }
                         } finally {

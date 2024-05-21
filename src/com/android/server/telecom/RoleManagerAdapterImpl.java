@@ -78,9 +78,9 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
     }
 
     @Override
-    public String getBTInCallService() {
+    public String[] getBTInCallService() {
         if (mOverrideBTInCallService != null) {
-            return mOverrideBTInCallService;
+            return new String [] {mOverrideBTInCallService};
         }
         return getBluetoothInCallServicePackageName();
     }
@@ -166,8 +166,8 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
         return roleHolders.get(0);
     }
 
-    private String getBluetoothInCallServicePackageName() {
-        return mContext.getResources().getString(R.string.system_bluetooth_stack);
+    private String[] getBluetoothInCallServicePackageName() {
+        return mContext.getResources().getStringArray(R.array.system_bluetooth_stack_package_name);
     }
 
     /**

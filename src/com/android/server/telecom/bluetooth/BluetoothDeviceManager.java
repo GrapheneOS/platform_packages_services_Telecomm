@@ -18,6 +18,8 @@ package com.android.server.telecom.bluetooth;
 
 import static com.android.server.telecom.AudioRoute.TYPE_BLUETOOTH_HA;
 import static com.android.server.telecom.AudioRoute.TYPE_BLUETOOTH_SCO;
+import static com.android.server.telecom.CallAudioRouteAdapter.BT_DEVICE_REMOVED;
+import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_BASELINE_ROUTE;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -34,20 +36,25 @@ import android.os.Bundle;
 import android.telecom.Log;
 import android.util.ArraySet;
 import android.util.LocalLog;
+import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.telecom.AudioRoute;
 import com.android.server.telecom.CallAudioCommunicationDeviceTracker;
+import com.android.server.telecom.CallAudioRouteAdapter;
+import com.android.server.telecom.CallAudioRouteController;
 import com.android.server.telecom.flags.FeatureFlags;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -61,6 +68,16 @@ public class BluetoothDeviceManager {
     public static final int DEVICE_TYPE_HEADSET = 0;
     public static final int DEVICE_TYPE_HEARING_AID = 1;
     public static final int DEVICE_TYPE_LE_AUDIO = 2;
+
+    private static final Map<Integer, Integer> PROFILE_TO_AUDIO_ROUTE_MAP = new HashMap<>();
+    static {
+        PROFILE_TO_AUDIO_ROUTE_MAP.put(BluetoothProfile.HEADSET,
+                AudioRoute.TYPE_BLUETOOTH_SCO);
+        PROFILE_TO_AUDIO_ROUTE_MAP.put(BluetoothProfile.LE_AUDIO,
+                AudioRoute.TYPE_BLUETOOTH_LE);
+        PROFILE_TO_AUDIO_ROUTE_MAP.put(BluetoothProfile.HEARING_AID,
+                TYPE_BLUETOOTH_HA);
+    }
 
     private BluetoothLeAudio.Callback mLeAudioCallbacks =
         new BluetoothLeAudio.Callback() {
@@ -198,11 +215,15 @@ public class BluetoothDeviceManager {
                             Log.i(BluetoothDeviceManager.this, logString);
                             mLocalLog.log(logString);
 
-                            List<BluetoothDevice> devicesToRemove = new LinkedList<>(
-                                    lostServiceDevices.values());
-                            lostServiceDevices.clear();
-                            for (BluetoothDevice device : devicesToRemove) {
-                                mBluetoothRouteManager.onDeviceLost(device.getAddress());
+                            if (mFeatureFlags.useRefactoredAudioRouteSwitching()) {
+                                handleAudioRefactoringServiceDisconnected(profile);
+                            } else {
+                                List<BluetoothDevice> devicesToRemove = new LinkedList<>(
+                                        lostServiceDevices.values());
+                                lostServiceDevices.clear();
+                                for (BluetoothDevice device : devicesToRemove) {
+                                    mBluetoothRouteManager.onDeviceLost(device.getAddress());
+                                }
                             }
                         }
                     } finally {
@@ -210,6 +231,34 @@ public class BluetoothDeviceManager {
                     }
                 }
            };
+
+    private void handleAudioRefactoringServiceDisconnected(int profile) {
+        CallAudioRouteController controller = (CallAudioRouteController)
+                mCallAudioRouteAdapter;
+        Map<AudioRoute, BluetoothDevice> btRoutes = controller
+                .getBluetoothRoutes();
+        List<Pair<AudioRoute, BluetoothDevice>> btRoutesToRemove =
+                new ArrayList<>();
+        for (AudioRoute route: btRoutes.keySet()) {
+            if (route.getType() != PROFILE_TO_AUDIO_ROUTE_MAP.get(profile)) {
+                continue;
+            }
+            BluetoothDevice device = btRoutes.get(route);
+            // Prevent concurrent modification exception by just iterating through keys instead of
+            // simultaneously removing them.
+            btRoutesToRemove.add(new Pair<>(route, device));
+        }
+
+        for (Pair<AudioRoute, BluetoothDevice> routeToRemove:
+                btRoutesToRemove) {
+            AudioRoute route = routeToRemove.first;
+            BluetoothDevice device = routeToRemove.second;
+            mCallAudioRouteAdapter.sendMessageWithSessionInfo(
+                    BT_DEVICE_REMOVED, route.getType(), device);
+        }
+        mCallAudioRouteAdapter.sendMessageWithSessionInfo(
+                SWITCH_BASELINE_ROUTE, 0, (String) null);
+    }
 
     private final LinkedHashMap<String, BluetoothDevice> mHfpDevicesByAddress =
             new LinkedHashMap<>();
@@ -249,6 +298,7 @@ public class BluetoothDeviceManager {
     private AudioManager mAudioManager;
     private Executor mExecutor;
     private CallAudioCommunicationDeviceTracker mCommunicationDeviceTracker;
+    private CallAudioRouteAdapter mCallAudioRouteAdapter;
     private FeatureFlags mFeatureFlags;
 
     public BluetoothDeviceManager(Context context, BluetoothAdapter bluetoothAdapter,
@@ -887,6 +937,10 @@ public class BluetoothDeviceManager {
             }
             return mBluetoothHeadset.isInbandRingingEnabled();
         }
+    }
+
+    public void setCallAudioRouteAdapter(CallAudioRouteAdapter adapter) {
+        mCallAudioRouteAdapter = adapter;
     }
 
     public void dump(IndentingPrintWriter pw) {

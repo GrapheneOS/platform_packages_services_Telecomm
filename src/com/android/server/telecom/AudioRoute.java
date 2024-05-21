@@ -28,6 +28,7 @@ import android.bluetooth.BluetoothStatusCodes;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.telecom.Log;
+import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.bluetooth.BluetoothRouteManager;
@@ -226,7 +227,7 @@ public class AudioRoute {
         AUDIO_ROUTE_TYPE_TO_DEVICE_INFO_TYPE.put(TYPE_BLUETOOTH_LE, bluetoothLeDeviceInfoTypes);
     }
 
-    int getType() {
+    public int getType() {
         return mAudioRouteType;
     }
 
@@ -237,7 +238,7 @@ public class AudioRoute {
     // Invoked when entered pending route whose dest route is this route
     void onDestRouteAsPendingRoute(boolean active, PendingAudioRoute pendingAudioRoute,
             BluetoothDevice device, AudioManager audioManager,
-            BluetoothRouteManager bluetoothRouteManager) {
+            BluetoothRouteManager bluetoothRouteManager, boolean isScoAudioConnected) {
         Log.i(this, "onDestRouteAsPendingRoute: active (%b), type (%d)", active, mAudioRouteType);
         if (pendingAudioRoute.isActive() && !active) {
             clearCommunicationDevice(pendingAudioRoute, bluetoothRouteManager, audioManager);
@@ -251,20 +252,19 @@ public class AudioRoute {
                     // Check if the communication device was set for the device, even if
                     // BluetoothHeadset#connectAudio reports that the SCO connection wasn't
                     // successfully established.
-                    boolean scoConnected = audioManager.getCommunicationDevice().equals(mInfo);
-                    if (connectedBtAudio || scoConnected) {
+                    if (connectedBtAudio || isScoAudioConnected) {
                         pendingAudioRoute.setCommunicationDeviceType(mAudioRouteType);
-                    }
-                    if (connectedBtAudio) {
-                        pendingAudioRoute.addMessage(BT_AUDIO_CONNECTED);
-                    } else if (!scoConnected) {
-                        pendingAudioRoute.onMessageReceived(
-                                PENDING_ROUTE_FAILED, mBluetoothAddress);
+                        if (!isScoAudioConnected) {
+                            pendingAudioRoute.addMessage(BT_AUDIO_CONNECTED, mBluetoothAddress);
+                        }
+                    } else {
+                        pendingAudioRoute.onMessageReceived(new Pair<>(PENDING_ROUTE_FAILED,
+                                mBluetoothAddress), mBluetoothAddress);
                     }
                     return;
                 }
             } else if (mAudioRouteType == TYPE_SPEAKER) {
-                pendingAudioRoute.addMessage(SPEAKER_ON);
+                pendingAudioRoute.addMessage(SPEAKER_ON, null);
             }
 
             boolean result = false;
@@ -291,7 +291,7 @@ public class AudioRoute {
             // before being able to successfully set the communication device. Refrain from sending
             // pending route failed message for BT route until the second attempt fails.
             if (!result && !BT_AUDIO_ROUTE_TYPES.contains(mAudioRouteType)) {
-                pendingAudioRoute.onMessageReceived(PENDING_ROUTE_FAILED, null);
+                pendingAudioRoute.onMessageReceived(new Pair<>(PENDING_ROUTE_FAILED, null), null);
             }
         }
     }
@@ -303,13 +303,13 @@ public class AudioRoute {
         Log.i(this, "onOrigRouteAsPendingRoute: active (%b), type (%d)", active, mAudioRouteType);
         if (active) {
             if (mAudioRouteType == TYPE_SPEAKER) {
-                pendingAudioRoute.addMessage(SPEAKER_OFF);
+                pendingAudioRoute.addMessage(SPEAKER_OFF, null);
             }
             int result = clearCommunicationDevice(pendingAudioRoute, bluetoothRouteManager,
                     audioManager);
             // Only send BT_AUDIO_DISCONNECTED for SCO if disconnect was successful.
             if (mAudioRouteType == TYPE_BLUETOOTH_SCO && result == BluetoothStatusCodes.SUCCESS) {
-                pendingAudioRoute.addMessage(BT_AUDIO_DISCONNECTED);
+                pendingAudioRoute.addMessage(BT_AUDIO_DISCONNECTED, mBluetoothAddress);
             }
         }
     }
@@ -370,7 +370,7 @@ public class AudioRoute {
         return success;
     }
 
-    private int clearCommunicationDevice(PendingAudioRoute pendingAudioRoute,
+    int clearCommunicationDevice(PendingAudioRoute pendingAudioRoute,
             BluetoothRouteManager bluetoothRouteManager, AudioManager audioManager) {
         // Try to see if there's a previously set device for communication that should be cleared.
         // This only serves to help in the SCO case to ensure that we disconnect the headset.

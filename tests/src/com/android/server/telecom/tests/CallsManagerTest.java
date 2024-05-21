@@ -3610,8 +3610,6 @@ public class CallsManagerTest extends TelecomTestCase {
                 .setShouldAllowCall(true)
                 .setShouldReject(false)
                 .build();
-        when(mInCallController.bindToBTService(eq(call))).thenReturn(
-                CompletableFuture.completedFuture(true));
         when(mInCallController.isBoundAndConnectedToBTService(any(UserHandle.class)))
                 .thenReturn(false);
 
@@ -3619,7 +3617,7 @@ public class CallsManagerTest extends TelecomTestCase {
 
         InOrder inOrder = inOrder(mInCallController, call, mInCallController);
 
-        inOrder.verify(mInCallController).bindToBTService(eq(call));
+        inOrder.verify(mInCallController).bindToBTService(eq(call), eq(null));
         inOrder.verify(call).setState(eq(CallState.RINGING), anyString());
     }
 

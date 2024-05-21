@@ -4816,12 +4816,20 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     }
 
     /**
+     * @return The binding {@link CompletableFuture} for the BT ICS.
+     */
+    public CompletableFuture<Boolean> getBtIcsFuture() {
+        return mBtIcsFuture;
+    }
+
+    /**
      * Wait for bluetooth {@link android.telecom.InCallService} binding completion or timeout. Used
      * for audio routing operations for a ringing call.
      */
     public void waitForBtIcs() {
         if (mBtIcsFuture != null) {
             try {
+                Log.i(this, "waitForBtIcs: waiting for BT service to bind");
                 mBtIcsFuture.get();
             } catch (InterruptedException | ExecutionException e) {
                 // ignore

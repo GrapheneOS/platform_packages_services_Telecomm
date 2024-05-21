@@ -176,7 +176,7 @@ public class DefaultDialerCache {
                         UserHandle.USER_ALL);
     }
 
-    public String getBTInCallServicePackage() {
+    public String[] getBTInCallServicePackages() {
         return mRoleManagerAdapter.getBTInCallService();
     }
 

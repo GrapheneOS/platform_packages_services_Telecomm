@@ -659,6 +659,7 @@ public class CallsManager extends Call.ListenerBase
         }
         callAudioRouteAdapter.initialize();
         bluetoothStateReceiver.setCallAudioRouteAdapter(callAudioRouteAdapter);
+        bluetoothDeviceManager.setCallAudioRouteAdapter(callAudioRouteAdapter);
 
         CallAudioRoutePeripheralAdapter callAudioRoutePeripheralAdapter =
                 new CallAudioRoutePeripheralAdapter(
@@ -1034,7 +1035,8 @@ public class CallsManager extends Call.ListenerBase
 
         if (result.shouldAllowCall) {
             if (mFeatureFlags.separatelyBindToBtIncallService()) {
-                incomingCall.setBtIcsFuture(mInCallController.bindToBTService(incomingCall));
+                mInCallController.bindToBTService(incomingCall, null);
+                incomingCall.setBtIcsFuture(mInCallController.getBtBindingFuture(incomingCall));
                 setCallState(incomingCall, CallState.RINGING, "successful incoming call");
             }
             incomingCall.setPostCallPackageName(

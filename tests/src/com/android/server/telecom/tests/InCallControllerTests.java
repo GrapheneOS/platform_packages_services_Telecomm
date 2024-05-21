@@ -225,7 +225,7 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mDefaultDialerCache.getSystemDialerApplication()).thenReturn(SYS_PKG);
         when(mDefaultDialerCache.getSystemDialerComponent()).thenReturn(
                 new ComponentName(SYS_PKG, SYS_CLASS));
-        when(mDefaultDialerCache.getBTInCallServicePackage()).thenReturn(BT_PKG);
+        when(mDefaultDialerCache.getBTInCallServicePackages()).thenReturn(new String[] {BT_PKG});
         mEmergencyCallHelper = new EmergencyCallHelper(mMockContext, mDefaultDialerCache,
                 mTimeoutsAdapter);
         when(mMockCallsManager.getRoleManagerAdapter()).thenReturn(mMockRoleManagerAdapter);
@@ -409,7 +409,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 .thenReturn(300_000L);
 
         setupMockPackageManager(false /* default */, true /* system */, false /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext).bindServiceAsUser(
@@ -444,7 +444,7 @@ public class InCallControllerTests extends TelecomTestCase {
 
         Intent queryIntent = new Intent(InCallService.SERVICE_INTERFACE);
         setupMockPackageManager(false /* default */, true /* system */, false /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext).bindServiceAsUser(
@@ -483,7 +483,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 anyInt(), eq(mUserHandle))).thenReturn(true);
 
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Query for the different InCallServices
         ArgumentCaptor<Intent> queryIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -546,7 +546,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Query for the different InCallServices
         ArgumentCaptor<Intent> queryIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -608,7 +608,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext, times(1)).bindServiceAsUser(
@@ -639,7 +639,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext, times(1)).bindServiceAsUser(
@@ -672,7 +672,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext, times(1)).bindServiceAsUser(
@@ -701,7 +701,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext, times(1)).bindServiceAsUser(
@@ -751,7 +751,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManagerLocationPermission(SYS_PKG, false /* granted */);
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Query for the different InCallServices
         ArgumentCaptor<Intent> queryIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -833,7 +833,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 .thenReturn(true);
 
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Query for the different InCallServices
         ArgumentCaptor<Intent> queryIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -914,7 +914,7 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mDefaultDialerCache.getDefaultDialerApplication(CURRENT_USER_ID)).thenReturn(DEF_PKG);
 
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         ArgumentCaptor<ServiceConnection> serviceConnectionCaptor =
@@ -961,7 +961,7 @@ public class InCallControllerTests extends TelecomTestCase {
         mInCallController.handleCarModeChange(UiModeManager.DEFAULT_PRIORITY, CAR_PKG, true);
 
         // Now bind; we should only bind to one app.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Bind InCallServices
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -1044,7 +1044,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 .thenReturn(PackageManager.COMPONENT_ENABLED_STATE_DISABLED);
 
         mInCallController.addCall(mMockCall);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // There will be 4 calls for the various types of ICS.
         verify(mMockPackageManager, times(4)).queryIntentServicesAsUser(
@@ -1213,7 +1213,7 @@ public class InCallControllerTests extends TelecomTestCase {
     public void testBindToService_IncludeExternal() throws Exception {
         setupMocks(true /* isExternalCall */);
         setupMockPackageManager(true /* default */, true /* system */, true /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Query for the different InCallServices
         ArgumentCaptor<Intent> queryIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -1264,7 +1264,7 @@ public class InCallControllerTests extends TelecomTestCase {
 
         when(mMockCallsManager.getCalls()).thenReturn(Collections.singletonList(mMockCall));
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         ArgumentCaptor<ServiceConnection> serviceConnectionCaptor =
@@ -1313,7 +1313,7 @@ public class InCallControllerTests extends TelecomTestCase {
         mInCallController.handleCarModeChange(UiModeManager.DEFAULT_PRIORITY, CAR_PKG, true);
 
         // Now bind; we should only bind to one app.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Bind InCallServices
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -1332,7 +1332,7 @@ public class InCallControllerTests extends TelecomTestCase {
     public void testNoBindToInvalidService_CarModeUI() throws Exception {
         setupMocks(true /* isExternalCall */);
         setupMockPackageManager(true /* default */, true /* system */, true /* external calls */);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         when(mMockPackageManager.checkPermission(
                 matches(Manifest.permission.CONTROL_INCALL_EXPERIENCE),
@@ -1384,7 +1384,7 @@ public class InCallControllerTests extends TelecomTestCase {
                             anyInt(), any(AttributionSource.class), nullable(String.class)));
 
             // Now bind; we should bind to the system dialer and app op non ui app.
-            mInCallController.bindToServices(mMockCall, false);
+            mInCallController.bindToServices(mMockCall);
 
             // Bind InCallServices
             ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -1428,7 +1428,7 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mDefaultDialerCache.getDefaultDialerApplication(CURRENT_USER_ID)).thenReturn(null);
 
         // we should bind to only the non ui app.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Bind InCallServices
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -1461,7 +1461,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 matches(DEF_PKG))).thenReturn(PackageManager.PERMISSION_DENIED);
         when(mMockCall.getName()).thenReturn("evil");
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Bind InCallServices
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -1498,7 +1498,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMocks(true /* isExternalCall */);
         setupMockPackageManager(true /* default */, true /* system */, true /* external calls */);
         // Bind to default dialer.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Uninstall an unrelated app.
         mSystemStateListener.onPackageUninstalled("com.joe.stuff");
@@ -1522,7 +1522,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMocks(true /* isExternalCall */);
         setupMockPackageManager(true /* default */, true /* system */, true /* external calls */);
         // Bind to default dialer.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Enable car mode and enter car mode at default priority.
         when(mMockSystemStateHelper.isCarModeOrProjectionActive()).thenReturn(true);
@@ -1590,7 +1590,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMockPackageManager(true /* default */, true /* nonui */, false /* appop_nonui */ ,
                 true /* system */, false /* external calls */,
                 false /* self mgd in default*/, false /* self mgd in car*/);
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
         ArgumentCaptor<ServiceConnection> serviceConnectionCaptor =
@@ -1659,7 +1659,7 @@ public class InCallControllerTests extends TelecomTestCase {
 
         // Bind; we should not bind to anything right now; the dialer does not support self
         // managed calls.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Bind InCallServices; make sure no binding took place.  InCallController handles not
         // binding initially, but the rebind (see next test case) will always happen.
@@ -1698,7 +1698,7 @@ public class InCallControllerTests extends TelecomTestCase {
 
         // Bind; we should not bind to anything right now; the dialer does not support self
         // managed calls.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Bind InCallServices; make sure no binding took place.
         verify(mMockContext, never()).bindServiceAsUser(
@@ -1800,7 +1800,7 @@ public class InCallControllerTests extends TelecomTestCase {
         assertFalse(mUserHandle.equals(UserHandle.USER_CURRENT));
         when(mMockCurrentUserManager.isManagedProfile()).thenReturn(false);
 
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
 
         // Bind InCallService on UserHandle.CURRENT and not the user from the call (mUserHandle)
         ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
@@ -1821,7 +1821,7 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.getAssociatedUser()).thenReturn(testUser);
 
         // Bind to ICS. The mapping should've been inserted with the testUser as the key.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
         assertTrue(mInCallController.getInCallServiceConnections().containsKey(testUser));
 
         // Set the target phone account. Simulates the flow when the user has chosen which sim to
@@ -1849,7 +1849,7 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockCall.isIncoming()).thenReturn(true);
 
         // Bind to ICS. The mapping should've been inserted with the testUser as the key.
-        mInCallController.bindToServices(mMockCall, false);
+        mInCallController.bindToServices(mMockCall);
         assertTrue(mInCallController.getInCallServiceConnections().containsKey(testUser));
 
         // Remove the call. This invokes getUserFromCall to remove the ICS mapping.
@@ -1951,7 +1951,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 true /*includeSelfManagedCallsInNonUi*/);
 
         //pass in call by child/profile user
-        mInCallController.bindToServices(mMockChildUserCall, false);
+        mInCallController.bindToServices(mMockChildUserCall);
         // Verify that queryIntentServicesAsUser is also called with parent handle
         // Query for the different InCallServices
         ArgumentCaptor<Integer> userIdCaptor = ArgumentCaptor.forClass(Integer.class);
@@ -1974,7 +1974,7 @@ public class InCallControllerTests extends TelecomTestCase {
         setupMocks(false /* isExternalCall */);
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         Intent expectedIntent = new Intent(InCallService.SERVICE_INTERFACE);
-        expectedIntent.setPackage(mDefaultDialerCache.getBTInCallServicePackage());
+        expectedIntent.setPackage(mDefaultDialerCache.getBTInCallServicePackages()[0]);
         LinkedList<ResolveInfo> resolveInfo = new LinkedList<ResolveInfo>();
         resolveInfo.add(getBluetoothResolveinfo());
         when(mFeatureFlags.separatelyBindToBtIncallService()).thenReturn(true);
@@ -1990,7 +1990,7 @@ public class InCallControllerTests extends TelecomTestCase {
         }).when(mMockPackageManager).queryIntentServicesAsUser(any(Intent.class), anyInt(),
                 anyInt());
 
-        mInCallController.bindToBTService(mMockCall);
+        mInCallController.bindToBTService(mMockCall, null);
 
         ArgumentCaptor<Intent> captor = ArgumentCaptor.forClass(Intent.class);
         verify(mMockContext).bindServiceAsUser(captor.capture(), any(ServiceConnection.class),

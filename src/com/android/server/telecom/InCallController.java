@@ -370,7 +370,8 @@ public class InCallController extends CallsManagerListenerBase implements
             // not be running (handled in getUserFromCall).
             UserHandle userToBind = isManagedProfile ? userFromCall : UserHandle.CURRENT;
             if ((mInCallServiceInfo.mType == IN_CALL_SERVICE_TYPE_NON_UI
-                    || mInCallServiceInfo.mType == IN_CALL_SERVICE_TYPE_CAR_MODE_UI) && (
+                    || mInCallServiceInfo.mType == IN_CALL_SERVICE_TYPE_CAR_MODE_UI
+                    || mInCallServiceInfo.mType == IN_CALL_SERVICE_TYPE_BLUETOOTH) && (
                     mUserHandleToUseForBinding != null)) {
                 //guarding change for non-UI/carmode-UI services which may not be present for
                 // work profile.
@@ -1080,6 +1081,7 @@ public class InCallController extends CallsManagerListenerBase implements
                 if (Intent.ACTION_PACKAGE_CHANGED.equals(intent.getAction())) {
                     synchronized (mLock) {
                         int uid = intent.getIntExtra(Intent.EXTRA_UID, 0);
+                        String changedPackage = intent.getData().getSchemeSpecificPart();
                         UserHandle userHandle = UserHandle.getUserHandleForUid(uid);
                         boolean isManagedProfile = um.isManagedProfile(userHandle.getIdentifier());
 
@@ -1109,12 +1111,36 @@ public class InCallController extends CallsManagerListenerBase implements
                                         childManagedProfileUser);
                         List<InCallServiceBindingConnection> componentsToBindForUser = null;
                         List<InCallServiceBindingConnection> componentsToBindForChild = null;
+                        // Separate binding for BT logic.
+                        boolean isBluetoothPkg = isBluetoothPackage(changedPackage);
+                        Call callToConnectWith = mCallIdMapper.getCalls().isEmpty()
+                                ? null
+                                : mCallIdMapper.getCalls().iterator().next();
+
+                        // Bind to BT service if there's an available call. When the flag isn't
+                        // enabled, the service will be included as part of
+                        // getNonUiInCallServiceBindingConnectionList.
+                        if (mFeatureFlags.separatelyBindToBtIncallService()
+                                && isBluetoothPkg && callToConnectWith != null) {
+                            // mNonUIInCallServiceConnections will always contain a key for
+                            // userHandle and/or the child user if there is an ongoing call with
+                            // that user, regardless if there aren't any non-UI ICS bound.
+                            if (isUserKeyPresent) {
+                                bindToBTService(callToConnectWith, userHandle);
+                            }
+                            if (isChildUserKeyPresent) {
+                                // This will try to use the ICS found in the parent if one isn't
+                                // available for the child.
+                                bindToBTService(callToConnectWith, childManagedProfileUser);
+                            }
+                        }
 
                         if(isUserKeyPresent) {
                             componentsToBindForUser =
                                     getNonUiInCallServiceBindingConnectionList(intent,
                                             userHandle, null);
                         }
+
                         if (isChildUserKeyPresent) {
                             componentsToBindForChild =
                                     getNonUiInCallServiceBindingConnectionList(intent,
@@ -1127,11 +1153,11 @@ public class InCallController extends CallsManagerListenerBase implements
                                 isUserKeyPresent, isChildUserKeyPresent, isManagedProfile,
                                 userHandle.getIdentifier());
 
-                        if (isUserKeyPresent && componentsToBindForUser != null) {
+                        if (isUserKeyPresent && !componentsToBindForUser.isEmpty()) {
                             mNonUIInCallServiceConnections.get(userHandle).
                                     addConnections(componentsToBindForUser);
                         }
-                        if (isChildUserKeyPresent && componentsToBindForChild != null) {
+                        if (isChildUserKeyPresent && !componentsToBindForChild.isEmpty()) {
                             mNonUIInCallServiceConnections.get(childManagedProfileUser).
                                     addConnections(componentsToBindForChild);
                         }
@@ -1186,6 +1212,10 @@ public class InCallController extends CallsManagerListenerBase implements
     private static final int IN_CALL_SERVICE_TYPE_COMPANION = 5;
     private static final int IN_CALL_SERVICE_TYPE_BLUETOOTH = 6;
 
+    // Timeout value to be used to ensure future completion for mDisconnectedToneBtFutures. This is
+    // set to 4 seconds to account for the exceptional case (TONE_CONGESTION).
+    private static final int DISCONNECTED_TONE_TIMEOUT = 4000;
+
     private static final int[] LIVE_CALL_STATES = { CallState.ACTIVE, CallState.PULLING,
             CallState.DISCONNECTING };
 
@@ -1233,7 +1263,10 @@ public class InCallController extends CallsManagerListenerBase implements
     // in-call service.
     // The future will complete with true if bluetooth in-call service succeeds, false if it timed
     // out.
-    private CompletableFuture<Boolean> mBtBindingFuture = CompletableFuture.completedFuture(true);
+    private Map<UserHandle, CompletableFuture<Boolean>> mBtBindingFuture = new ArrayMap<>();
+    // Future used to delay terminating the BT InCallService before the call disconnect tone
+    // finishes playing.
+    private Map<String, CompletableFuture<Void>> mDisconnectedToneBtFutures = new ArrayMap<>();
 
     private final CarModeTracker mCarModeTracker;
 
@@ -1255,6 +1288,8 @@ public class InCallController extends CallsManagerListenerBase implements
     private boolean mIsTrackingManagedAliveCall = false;
 
     private boolean mIsStartCallDelayScheduled = false;
+
+    private boolean mDisconnectedToneStartedPlaying = false;
 
     /**
      * A list of call IDs which are currently using the camera.
@@ -1375,27 +1410,29 @@ public class InCallController extends CallsManagerListenerBase implements
         addCall(call);
 
         if (mFeatureFlags.separatelyBindToBtIncallService()) {
-            boolean bindBTService = false;
-            boolean bindOtherServices = false;
+            boolean bindingToBtRequired = false;
+            boolean bindingToOtherServicesRequired = false;
             if (!isBoundAndConnectedToBTService(userFromCall)) {
                 Log.i(this, "onCallAdded: %s; not bound or connected to BT ICS.", call);
-                bindBTService = true;
-                bindToBTService(call);
+                bindingToBtRequired = true;
+                bindToBTService(call, null);
             }
             if (!isBoundAndConnectedToServices(userFromCall)) {
                 Log.i(this, "onCallAdded: %s; not bound or connected to other ICS.", call);
                 // We are not bound, or we're not connected.
-                bindOtherServices = true;
-                bindToOtherServices(call);
+                bindingToOtherServicesRequired = true;
+                bindToServices(call);
             }
-            if (!bindBTService || !bindOtherServices) {
+            // If either BT service are already bound or other services are already bound, attempt
+            // to add the new call to the connected incall services.
+            if (!bindingToBtRequired || !bindingToOtherServicesRequired) {
                 addCallToConnectedServices(call, userFromCall);
             }
         } else {
             if (!isBoundAndConnectedToServices(userFromCall)) {
                 Log.i(this, "onCallAdded: %s; not bound or connected.", call);
                 // We are not bound, or we're not connected.
-                bindToServices(call, false);
+                bindToServices(call);
             } else {
                 addCallToConnectedServices(call, userFromCall);
             }
@@ -1507,17 +1544,31 @@ public class InCallController extends CallsManagerListenerBase implements
     @Override
     public void onDisconnectedTonePlaying(Call call, boolean isTonePlaying) {
         Log.i(this, "onDisconnectedTonePlaying: %s -> %b", call, isTonePlaying);
-
         if (mFeatureFlags.separatelyBindToBtIncallService()) {
             synchronized (mLock) {
-                mPendingEndToneCall.remove(call);
-                if (!mPendingEndToneCall.isEmpty()) {
-                    return;
-                }
-                UserHandle userHandle = getUserFromCall(call);
-                if (mBTInCallServiceConnections.containsKey(userHandle)) {
-                    mBTInCallServiceConnections.get(userHandle).disconnect();
-                    mBTInCallServiceConnections.remove(userHandle);
+                if (isTonePlaying) {
+                    mDisconnectedToneStartedPlaying = true;
+                } else if (mDisconnectedToneStartedPlaying) {
+                    mDisconnectedToneStartedPlaying = false;
+                    if (mDisconnectedToneBtFutures.containsKey(call.getId())) {
+                        Log.i(this, "onDisconnectedTonePlaying: completing BT "
+                                + "disconnected tone future");
+                        mDisconnectedToneBtFutures.get(call.getId()).complete(null);
+                    }
+                    mPendingEndToneCall.remove(call);
+                    if (!mPendingEndToneCall.isEmpty()) {
+                        return;
+                    }
+                    UserHandle userHandle = getUserFromCall(call);
+                    if (mBTInCallServiceConnections.containsKey(userHandle)) {
+                        Log.i(this, "onDisconnectedTonePlaying: Unbinding BT service");
+                        mBTInCallServiceConnections.get(userHandle).disconnect();
+                        mBTInCallServiceConnections.remove(userHandle);
+                    }
+                    // Ensure that BT ICS instance is cleaned up
+                    if (mBTInCallServices.remove(userHandle) != null) {
+                        updateCombinedInCallServiceMap(userHandle);
+                    }
                 }
             }
         }
@@ -1969,6 +2020,8 @@ public class InCallController extends CallsManagerListenerBase implements
         }
         getCombinedInCallServiceMap().remove(userHandle);
         if (mFeatureFlags.separatelyBindToBtIncallService()) {
+            // Note that the BT ICS will be repopulated as part of the combined map if the
+            // BT ICS is still bound (disconnected tone hasn't finished playing).
             updateCombinedInCallServiceMap(userHandle);
         }
     }
@@ -1979,34 +2032,49 @@ public class InCallController extends CallsManagerListenerBase implements
      *
      * @param call The newly added call that triggered the binding to the in-call services.
      */
-    public CompletableFuture<Boolean> bindToBTService(Call call) {
+    public void bindToBTService(Call call, UserHandle userHandle) {
+        Log.i(this, "bindToBtService");
+        UserHandle userToBind = userHandle == null
+                ? getUserFromCall(call)
+                : userHandle;
+        UserManager um = mContext.getSystemService(UserManager.class);
+        UserHandle parentUser = mFeatureFlags.profileUserSupport()
+                ? um.getProfileParent(userToBind) : null;
+
+        if (!mFeatureFlags.profileUserSupport()
+                && um.isManagedProfile(userToBind.getIdentifier())) {
+            parentUser = um.getProfileParent(userToBind);
+        }
+
         // Track the call if we don't already know about it.
         addCall(call);
-        UserHandle userFromCall = getUserFromCall(call);
-
-        List<InCallServiceInfo> infos = getInCallServiceComponents(userFromCall,
+        List<InCallServiceInfo> infos = getInCallServiceComponents(userToBind,
                 IN_CALL_SERVICE_TYPE_BLUETOOTH);
+        boolean serviceUnavailableForUser = false;
         if (infos.size() == 0 || infos.get(0) == null) {
-            Log.w(this, "No available BT service");
-            mBtBindingFuture = CompletableFuture.completedFuture(false);
-            return mBtBindingFuture;
+            Log.i(this, "No available BT ICS for user (%s). Trying with parent instead.",
+                    userToBind);
+            serviceUnavailableForUser = true;
+            // Check if the service is available under the parent user instead.
+            if (parentUser != null) {
+                infos = getInCallServiceComponents(parentUser, IN_CALL_SERVICE_TYPE_BLUETOOTH);
+            }
+            if (infos.size() == 0 || infos.get(0) == null) {
+                Log.w(this, "No available BT ICS to bind to for user %s or its parent %s.",
+                        userToBind, parentUser);
+                mBtBindingFuture.put(userToBind, CompletableFuture.completedFuture(false));
+                return;
+            }
         }
-        mBtBindingFuture = new CompletableFuture<Boolean>().completeOnTimeout(false,
-                mTimeoutsAdapter.getCallBindBluetoothInCallServicesDelay(
-                        mContext.getContentResolver()), TimeUnit.MILLISECONDS);
-        new InCallServiceBindingConnection(infos.get(0)).connect(call);
-        return mBtBindingFuture;
-    }
 
-    /**
-     * Binds to all the UI-providing InCallService as well as system-implemented non-UI
-     * InCallServices except BT InCallServices. Method-invoker must check
-     * {@link #isBoundAndConnectedToServices(UserHandle)} before invoking.
-     *
-     * @param call The newly added call that triggered the binding to the in-call services.
-     */
-    public void bindToOtherServices(Call call) {
-        bindToServices(call, true);
+        mBtBindingFuture.put(userToBind, new CompletableFuture<Boolean>().completeOnTimeout(false,
+                mTimeoutsAdapter.getCallBindBluetoothInCallServicesDelay(
+                        mContext.getContentResolver()), TimeUnit.MILLISECONDS));
+        InCallServiceBindingConnection btIcsBindingConnection =
+                new InCallServiceBindingConnection(infos.get(0),
+                        serviceUnavailableForUser ? parentUser : userToBind);
+        mBTInCallServiceConnections.put(userToBind, btIcsBindingConnection);
+        btIcsBindingConnection.connect(call);
     }
 
     /**
@@ -2016,11 +2084,9 @@ public class InCallController extends CallsManagerListenerBase implements
      *
      * @param call           The newly added call that triggered the binding to the in-call
      *                      services.
-     * @param skipBTServices Boolean variable to specify if the binding to BT InCallService should
-     *                      be skipped
      */
     @VisibleForTesting
-    public void bindToServices(Call call, boolean skipBTServices) {
+    public void bindToServices(Call call) {
         UserHandle userFromCall = getUserFromCall(call);
         UserManager um = mContext.getSystemService(UserManager.class);
         UserHandle parentUser = mFeatureFlags.profileUserSupport()
@@ -2085,7 +2151,7 @@ public class InCallController extends CallsManagerListenerBase implements
             // Only connect to the non-ui InCallServices if we actually connected to the main UI
             // one, or if the call is self-managed (in which case we'd still want to keep Wear, BT,
             // etc. informed.
-            connectToNonUiInCallServices(call, skipBTServices);
+            connectToNonUiInCallServices(call);
             mBindingFuture = new CompletableFuture<Boolean>().completeOnTimeout(false,
                     mTimeoutsAdapter.getCallRemoveUnbindInCallServicesDelay(
                             mContext.getContentResolver()),
@@ -2100,7 +2166,7 @@ public class InCallController extends CallsManagerListenerBase implements
                 packageChangedFilter, null, null);
     }
 
-    private void updateNonUiInCallServices(Call call, boolean skipBTService) {
+    private void updateNonUiInCallServices(Call call) {
         UserHandle userFromCall = getUserFromCall(call);
 
         UserManager um = mContext.getSystemService(UserManager.class);
@@ -2155,10 +2221,10 @@ public class InCallController extends CallsManagerListenerBase implements
                 nonUIInCalls));
     }
 
-    private void connectToNonUiInCallServices(Call call, boolean skipBTService) {
+    private void connectToNonUiInCallServices(Call call) {
         UserHandle userFromCall = getUserFromCall(call);
         if (!mNonUIInCallServiceConnections.containsKey(userFromCall)) {
-            updateNonUiInCallServices(call, skipBTService);
+            updateNonUiInCallServices(call);
         }
         mNonUIInCallServiceConnections.get(userFromCall).connect(call);
     }
@@ -2427,10 +2493,8 @@ public class InCallController extends CallsManagerListenerBase implements
             return IN_CALL_SERVICE_TYPE_DEFAULT_DIALER_UI;
         }
 
-        String bluetoothPackage = mDefaultDialerCache.getBTInCallServicePackage();
-        if (mFeatureFlags.separatelyBindToBtIncallService()
-                && serviceInfo.packageName != null
-                && serviceInfo.packageName.equals(bluetoothPackage)
+        boolean processingBluetoothPackage = isBluetoothPackage(serviceInfo.packageName);
+        if (mFeatureFlags.separatelyBindToBtIncallService() && processingBluetoothPackage
                 && (hasControlInCallPermission || hasAppOpsPermittedManageOngoingCalls)) {
             return IN_CALL_SERVICE_TYPE_BLUETOOTH;
         }
@@ -2477,11 +2541,13 @@ public class InCallController extends CallsManagerListenerBase implements
         IInCallService inCallService = IInCallService.Stub.asInterface(service);
         if (mFeatureFlags.separatelyBindToBtIncallService()
                 && info.getType() == IN_CALL_SERVICE_TYPE_BLUETOOTH) {
-            if (mBtBindingFuture.isDone()) {
+            if (!mBtBindingFuture.containsKey(userHandle)
+                    || mBtBindingFuture.get(userHandle).isDone()) {
+                Log.i(this, "onConnected: BT binding future timed out.");
                 // Binding completed after the timeout. Clean up this binding
                 return false;
             } else {
-                mBtBindingFuture.complete(true);
+                mBtBindingFuture.get(userHandle).complete(true);
             }
             mBTInCallServices.put(userHandle, new Pair<>(info, inCallService));
         } else {
@@ -2652,12 +2718,20 @@ public class InCallController extends CallsManagerListenerBase implements
                 IInCallService inCallService = entry.getValue();
                 componentsUpdated.add(componentName);
 
-                try {
-                    inCallService.updateCall(
-                            sanitizeParcelableCallForService(info, parcelableCall));
-                } catch (RemoteException exception) {
-                    Log.w(this, "Call status update did not send to: "
-                                + componentName +" successfully with error " + exception);
+                if (info.getType() == IN_CALL_SERVICE_TYPE_BLUETOOTH
+                        && call.getState() == CallState.DISCONNECTED
+                        && !mDisconnectedToneBtFutures.containsKey(call.getId())) {
+                    CompletableFuture<Void> disconnectedToneFuture = new CompletableFuture<Void>()
+                            .completeOnTimeout(null, DISCONNECTED_TONE_TIMEOUT,
+                                    TimeUnit.MILLISECONDS);
+                    mDisconnectedToneBtFutures.put(call.getId(), disconnectedToneFuture);
+                    mDisconnectedToneBtFutures.get(call.getId()).thenRunAsync(() -> {
+                        Log.i(this, "updateCall: Sending call disconnected update to BT ICS.");
+                        updateCallToIcs(inCallService, info, parcelableCall, componentName);
+                        mDisconnectedToneBtFutures.remove(call.getId());
+                    }, new LoggedHandlerExecutor(mHandler, "ICC.uC", mLock));
+                } else {
+                    updateCallToIcs(inCallService, info, parcelableCall, componentName);
                 }
             }
             Log.i(this, "Components updated: %s", componentsUpdated);
@@ -2667,12 +2741,27 @@ public class InCallController extends CallsManagerListenerBase implements
         }
     }
 
+    private void updateCallToIcs(IInCallService inCallService, InCallServiceInfo info,
+            ParcelableCall parcelableCall, ComponentName componentName) {
+        try {
+            inCallService.updateCall(
+                    sanitizeParcelableCallForService(info, parcelableCall));
+        } catch (RemoteException exception) {
+            Log.w(this, "Call status update did not send to: "
+                    + componentName + " successfully with error " + exception);
+        }
+    }
+
     /**
      * Adds the call to the list of calls tracked by the {@link InCallController}.
      * @param call The call to add.
      */
     @VisibleForTesting
     public void addCall(Call call) {
+        if (call == null) {
+            return;
+        }
+
         if (mCallIdMapper.getCalls().size() == 0) {
             mAppOpsManager.startWatchingActive(new String[] { OPSTR_RECORD_AUDIO },
                     java.lang.Runnable::run, this);
@@ -2683,12 +2772,12 @@ public class InCallController extends CallsManagerListenerBase implements
         if (mCallIdMapper.getCallId(call) == null) {
             mCallIdMapper.addCall(call);
             call.addListener(mCallListener);
+            if (mFeatureFlags.separatelyBindToBtIncallService()) {
+                mPendingEndToneCall.add(call);
+            }
         }
 
         maybeTrackMicrophoneUse(isMuted());
-        if (mFeatureFlags.separatelyBindToBtIncallService()) {
-            mPendingEndToneCall.add(call);
-        }
     }
 
     /**
@@ -2715,6 +2804,23 @@ public class InCallController extends CallsManagerListenerBase implements
      */
     public CompletableFuture<Boolean> getBindingFuture() {
         return mBindingFuture;
+    }
+
+    /**
+     * @return A future that is pending whenever we are in the middle of binding to the BT
+     *         incall service.
+     */
+    public CompletableFuture<Boolean> getBtBindingFuture(Call call) {
+        UserHandle userHandle = getUserFromCall(call);
+        return mBtBindingFuture.get(userHandle);
+    }
+
+    /**
+     * @return A future that is pending whenever we are in the process of sending the call
+     *         disconnected state to the BT ICS so that the disconnect tone can finish playing.
+     */
+    public Map<String, CompletableFuture<Void>> getDisconnectedToneBtFutures() {
+        return mDisconnectedToneBtFutures;
     }
 
     /**
@@ -3174,7 +3280,10 @@ public class InCallController extends CallsManagerListenerBase implements
                 }
             }
         }
-        return false;
+        // If early binding for BT ICS is enabled, ensure that it is included into consideration as
+        // a bound non-UI ICS.
+        return mFeatureFlags.separatelyBindToBtIncallService() && !mBTInCallServices.isEmpty()
+                && isBluetoothPackage(packageName);
     }
 
     private void updateCombinedInCallServiceMap(UserHandle user) {
@@ -3207,5 +3316,14 @@ public class InCallController extends CallsManagerListenerBase implements
                 return mInCallServices;
             }
         }
+    }
+
+    private boolean isBluetoothPackage(String packageName) {
+        for (String pkgName : mDefaultDialerCache.getBTInCallServicePackages()) {
+            if (pkgName.equals(packageName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

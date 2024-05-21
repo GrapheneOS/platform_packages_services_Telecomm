@@ -18,6 +18,7 @@ package com.android.server.telecom;
 
 import static com.android.server.telecom.AudioRoute.BT_AUDIO_ROUTE_TYPES;
 import static com.android.server.telecom.AudioRoute.TYPE_INVALID;
+import static com.android.server.telecom.AudioRoute.TYPE_SPEAKER;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -40,7 +41,9 @@ import android.os.RemoteException;
 import android.telecom.CallAudioState;
 import android.telecom.Log;
 import android.telecom.Logging.Session;
+import android.telecom.VideoProfile;
 import android.util.ArrayMap;
+import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
@@ -94,7 +97,9 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     private StatusBarNotifier mStatusBarNotifier;
     private FeatureFlags mFeatureFlags;
     private int mFocusType;
+    private boolean mIsScoAudioConnected;
     private final Object mLock = new Object();
+    private final TelecomSystem.SyncRoot mTelecomLock;
     private final BroadcastReceiver mSpeakerPhoneChangeReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -105,7 +110,9 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                         AudioDeviceInfo info = mAudioManager.getCommunicationDevice();
                         if ((info != null) &&
                                 (info.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)) {
-                            sendMessageWithSessionInfo(SPEAKER_ON);
+                            if (mCurrentRoute.getType() != AudioRoute.TYPE_SPEAKER) {
+                                sendMessageWithSessionInfo(SPEAKER_ON);
+                            }
                         } else {
                             sendMessageWithSessionInfo(SPEAKER_OFF);
                         }
@@ -171,6 +178,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         mStatusBarNotifier = statusBarNotifier;
         mFeatureFlags = featureFlags;
         mFocusType = NO_FOCUS;
+        mIsScoAudioConnected = false;
+        mTelecomLock = callsManager.getLock();
         HandlerThread handlerThread = new HandlerThread(this.getClass().getSimpleName());
         handlerThread.start();
 
@@ -282,7 +291,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                             handleMuteChanged(false);
                             break;
                         case MUTE_EXTERNALLY_CHANGED:
-                            handleMuteChanged(mAudioManager.isMasterMute());
+                            handleMuteChanged(mAudioManager.isMicrophoneMute());
                             break;
                         case SWITCH_FOCUS:
                             focus = msg.arg1;
@@ -455,11 +464,13 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
             Log.i(this, "Override current pending route destination from %s(active=%b) to "
                             + "%s(active=%b)",
                     mPendingAudioRoute.getDestRoute(), mIsActive, destRoute, active);
+            // Ensure we don't keep waiting for SPEAKER_ON if dest route gets overridden.
+            if (active && mPendingAudioRoute.getDestRoute().getType() == TYPE_SPEAKER) {
+                mPendingAudioRoute.clearPendingMessage(new Pair<>(SPEAKER_ON, null));
+            }
             // override pending route while keep waiting for still pending messages for the
             // previous pending route
             mPendingAudioRoute.setOrigRoute(mIsActive, mPendingAudioRoute.getDestRoute());
-            mPendingAudioRoute.setDestRoute(active, destRoute, mBluetoothRoutes.get(destRoute));
-            mIsActive = active;
         } else {
             if (mCurrentRoute.equals(destRoute) && (mIsActive == active)) {
                 return;
@@ -473,10 +484,11 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                 // Avoid waiting for pending messages for an unavailable route
                 mPendingAudioRoute.setOrigRoute(mIsActive, DUMMY_ROUTE);
             }
-            mPendingAudioRoute.setDestRoute(active, destRoute, mBluetoothRoutes.get(destRoute));
-            mIsActive = active;
             mIsPending = true;
         }
+        mPendingAudioRoute.setDestRoute(active, destRoute, mBluetoothRoutes.get(destRoute),
+                mIsScoAudioConnected);
+        mIsActive = active;
         mPendingAudioRoute.evaluatePendingState();
         postTimeoutMessage();
     }
@@ -599,7 +611,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
             Log.i(this, "handleBtAudioActive: is pending path");
             if (Objects.equals(mPendingAudioRoute.getDestRoute().getBluetoothAddress(),
                     bluetoothDevice.getAddress())) {
-                mPendingAudioRoute.onMessageReceived(BT_AUDIO_CONNECTED, null);
+                mPendingAudioRoute.onMessageReceived(new Pair<>(BT_AUDIO_CONNECTED,
+                        bluetoothDevice.getAddress()), null);
             }
         } else {
             // ignore, not triggered by telecom
@@ -620,7 +633,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
             Log.i(this, "handleBtAudioInactive: is pending path");
             if (Objects.equals(mPendingAudioRoute.getOrigRoute().getBluetoothAddress(),
                     bluetoothDevice.getAddress())) {
-                mPendingAudioRoute.onMessageReceived(BT_AUDIO_DISCONNECTED, null);
+                mPendingAudioRoute.onMessageReceived(new Pair<>(BT_AUDIO_DISCONNECTED,
+                        bluetoothDevice.getAddress()), null);
             }
         } else {
             // ignore, not triggered by telecom
@@ -719,7 +733,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
 
     private void handleMuteChanged(boolean mute) {
         mIsMute = mute;
-        if (mIsMute != mAudioManager.isMasterMute() && mIsActive) {
+        if (mIsMute != mAudioManager.isMicrophoneMute() && mIsActive) {
             IAudioService audioService = mAudioServiceFactory.getAudioService();
             Log.i(this, "changing microphone mute state to: %b [serviceIsNull=%b]", mute,
                     audioService == null);
@@ -752,10 +766,9 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                 }
             }
             case ACTIVE_FOCUS -> {
-                // Route to active baseline route, otherwise ignore if route is already active.
-                if (!mIsActive) {
-                    routeTo(true, getBaseRoute(true, null));
-                }
+                // Route to active baseline route (we may need to change audio route in the case
+                // when a video call is put on hold).
+                routeTo(true, getBaseRoute(true, null));
             }
             case RINGING_FOCUS -> {
                 if (!mIsActive) {
@@ -836,7 +849,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     private void handleSpeakerOn() {
         if (isPending()) {
             Log.i(this, "handleSpeakerOn: sending SPEAKER_ON to pending audio route");
-            mPendingAudioRoute.onMessageReceived(SPEAKER_ON, null);
+            mPendingAudioRoute.onMessageReceived(new Pair<>(SPEAKER_ON, null), null);
             // Update status bar notification if we are in a call.
             mStatusBarNotifier.notifySpeakerphone(mCallsManager.hasAnyCalls());
         } else {
@@ -854,7 +867,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     private void handleSpeakerOff() {
         if (isPending()) {
             Log.i(this, "handleSpeakerOff - sending SPEAKER_OFF to pending audio route");
-            mPendingAudioRoute.onMessageReceived(SPEAKER_OFF, null);
+            mPendingAudioRoute.onMessageReceived(new Pair<>(SPEAKER_OFF, null), null);
             // Update status bar notification
             mStatusBarNotifier.notifySpeakerphone(false);
         } else if (mCurrentRoute.getType() == AudioRoute.TYPE_SPEAKER) {
@@ -878,6 +891,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
             Log.addEvent(mCallsManager.getForegroundCall(), LogUtils.Events.AUDIO_ROUTE,
                     "Entering audio route: " + mCurrentRoute + " (active=" + mIsActive + ")");
             mIsPending = false;
+            mPendingAudioRoute.clearPendingMessages();
             onCurrentRouteChanged();
         }
     }
@@ -909,7 +923,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                     BluetoothDevice deviceToAdd = mBluetoothRoutes.get(route);
                     // Only include the lead device for LE audio (otherwise, the routes will show
                     // two separate devices in the UI).
-                    if (route.getType() == AudioRoute.TYPE_BLUETOOTH_LE) {
+                    if (route.getType() == AudioRoute.TYPE_BLUETOOTH_LE
+                            && getLeAudioService() != null) {
                         int groupId = getLeAudioService().getGroupId(deviceToAdd);
                         if (groupId != BluetoothLeAudio.GROUP_ID_INVALID) {
                             deviceToAdd = getLeAudioService().getConnectedGroupLeadDevice(groupId);
@@ -988,6 +1003,12 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
 
     private AudioRoute getPreferredAudioRouteFromDefault(boolean includeBluetooth,
             String btAddressToExclude) {
+        boolean skipEarpiece;
+        Call foregroundCall = mCallAudioManager.getForegroundCall();
+        synchronized (mTelecomLock) {
+            skipEarpiece = foregroundCall != null
+                    && VideoProfile.isVideo(foregroundCall.getVideoState());
+        }
         // Route to earpiece, wired, or speaker route if there are not bluetooth routes or if there
         // are only wearables available.
         AudioRoute activeWatchOrNonWatchDeviceRoute =
@@ -996,7 +1017,17 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                 || activeWatchOrNonWatchDeviceRoute == null) {
             Log.i(this, "getPreferredAudioRouteFromDefault: Audio routing defaulting to "
                     + "available non-BT route.");
-            return mEarpieceWiredRoute != null ? mEarpieceWiredRoute : mSpeakerDockRoute;
+            AudioRoute defaultRoute = mEarpieceWiredRoute != null
+                    ? mEarpieceWiredRoute
+                    : mSpeakerDockRoute;
+            // Ensure that we default to speaker route if we're in a video call, but disregard it if
+            // a wired headset is plugged in.
+            if (skipEarpiece && defaultRoute.getType() == AudioRoute.TYPE_EARPIECE) {
+                Log.i(this, "getPreferredAudioRouteFromDefault: Audio routing defaulting to "
+                        + "speaker route for video call.");
+                defaultRoute = mSpeakerDockRoute;
+            }
+            return defaultRoute;
         } else {
             // Most recent active route will always be the last in the array (ensure that we don't
             // auto route to a wearable device unless it's already active).
@@ -1042,8 +1073,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         return mCurrentRoute;
     }
 
-    private AudioRoute getBluetoothRoute(@AudioRoute.AudioRouteType int audioRouteType,
-                                         String address) {
+    public AudioRoute getBluetoothRoute(@AudioRoute.AudioRouteType int audioRouteType,
+            String address) {
         for (AudioRoute route : mBluetoothRoutes.keySet()) {
             if (route.getType() == audioRouteType && route.getBluetoothAddress().equals(address)) {
                 return route;
@@ -1129,7 +1160,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
             BluetoothDevice device = mBluetoothRoutes.get(route);
             // Skip excluded BT address and LE audio if it's not the lead device.
             if (route.getBluetoothAddress().equals(btAddressToExclude)
-                    || isLeAudioNonLeadDevice(route.getType(), device)) {
+                    || isLeAudioNonLeadDeviceOrServiceUnavailable(route.getType(), device)) {
                 continue;
             }
             // Check if the most recently active device is a watch device.
@@ -1158,7 +1189,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         for (int i = bluetoothRoutes.size() - 1; i >= 0; i--) {
             AudioRoute route = bluetoothRoutes.get(i);
             // Skip LE route if it's not the lead device.
-            if (isLeAudioNonLeadDevice(route.getType(), mBluetoothRoutes.get(route))) {
+            if (isLeAudioNonLeadDeviceOrServiceUnavailable(
+                    route.getType(), mBluetoothRoutes.get(route))) {
                 continue;
             }
             if (!route.getBluetoothAddress().equals(btAddressToExclude)) {
@@ -1168,15 +1200,19 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         return null;
     }
 
-    private boolean isLeAudioNonLeadDevice(@AudioRoute.AudioRouteType int type,
+    private boolean isLeAudioNonLeadDeviceOrServiceUnavailable(@AudioRoute.AudioRouteType int type,
             BluetoothDevice device) {
         if (type != AudioRoute.TYPE_BLUETOOTH_LE) {
             return false;
+        } else if (getLeAudioService() == null) {
+            return true;
         }
+
         int groupId = getLeAudioService().getGroupId(device);
         if (groupId != BluetoothLeAudio.GROUP_ID_INVALID) {
-            return !device.getAddress().equals(
-                    getLeAudioService().getConnectedGroupLeadDevice(groupId).getAddress());
+            BluetoothDevice leadDevice = getLeAudioService().getConnectedGroupLeadDevice(groupId);
+            Log.i(this, "Lead device for device (%s) is %s.", device, leadDevice);
+            return leadDevice == null || !device.getAddress().equals(leadDevice.getAddress());
         }
         return false;
     }
@@ -1193,6 +1229,18 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     @VisibleForTesting
     public void setAudioRouteFactory(AudioRoute.Factory audioRouteFactory) {
         mAudioRouteFactory = audioRouteFactory;
+    }
+
+    public Map<AudioRoute, BluetoothDevice> getBluetoothRoutes() {
+        return mBluetoothRoutes;
+    }
+
+    public void overrideIsPending(boolean isPending) {
+        mIsPending = isPending;
+    }
+
+    public void setIsScoAudioConnected(boolean value) {
+        mIsScoAudioConnected = value;
     }
 
     @VisibleForTesting

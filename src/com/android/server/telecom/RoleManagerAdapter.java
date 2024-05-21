@@ -71,7 +71,7 @@ public interface RoleManagerAdapter {
      * bt in-call service role.
      * @return the package name of the package filling the role, {@code null} otherwise.
      */
-    String getBTInCallService();
+    String[] getBTInCallService();
 
     /**
      * Override the {@link android.app.role.RoleManager} bt in-call service package with another
