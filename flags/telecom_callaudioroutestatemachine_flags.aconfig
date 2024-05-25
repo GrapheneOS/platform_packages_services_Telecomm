@@ -88,3 +88,14 @@ flag {
   description: "Update switching bt devices based on arbitrary device chosen if no device is specified."
   bug: "333751408"
 }
+
+# OWNER=pmadapurmath TARGET=24Q3
+flag {
+  name: "early_update_internal_call_audio_state"
+  namespace: "telecom"
+  description: "Update internal call audio state before sending updated state to ICS"
+  bug: "335538831"
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
+}
