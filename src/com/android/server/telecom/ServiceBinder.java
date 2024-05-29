@@ -241,7 +241,7 @@ public abstract class ServiceBinder {
      * Abbreviated form of the package name from {@link #mComponentName}; used for session logging.
      */
     protected final String mPackageAbbreviation;
-    private final FeatureFlags mFlags;
+    protected final FeatureFlags mFlags;
 
 
     /** The set of callbacks waiting for notification of the binding's success or failure. */

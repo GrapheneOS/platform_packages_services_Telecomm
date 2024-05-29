@@ -4012,20 +4012,21 @@ public class CallsManager extends Call.ListenerBase
             Log.addEvent(call, LogUtils.Events.SET_DISCONNECTED_ORIG, disconnectCause);
 
             // Setup the future with a timeout so that the CDS is time boxed.
-            CompletableFuture<Boolean> future = call.initializeDisconnectFuture(
+            CompletableFuture<Boolean> future = call.initializeDiagnosticCompleteFuture(
                     mTimeoutsAdapter.getCallDiagnosticServiceTimeoutMillis(
                             mContext.getContentResolver()));
 
             // Post the disconnection updates to the future for completion once the CDS returns
             // with it's overridden disconnect message.
-            future.thenRunAsync(() -> {
+            CompletableFuture<Void> disconnectFuture = future.thenRunAsync(() -> {
                 call.setDisconnectCause(disconnectCause);
                 setCallState(call, CallState.DISCONNECTED, "disconnected set explicitly");
-            }, new LoggedHandlerExecutor(mHandler, "CM.mCAD", mLock))
-                    .exceptionally((throwable) -> {
-                        Log.e(TAG, throwable, "Error while executing disconnect future.");
-                        return null;
-                    });
+            }, new LoggedHandlerExecutor(mHandler, "CM.mCAD", mLock));
+            disconnectFuture.exceptionally((throwable) -> {
+                Log.e(TAG, throwable, "Error while executing disconnect future.");
+                return null;
+            });
+            call.setDisconnectFuture(disconnectFuture);
         } else {
             // No CallDiagnosticService, or it doesn't handle this call, so just do this
             // synchronously as always.
@@ -4045,16 +4046,7 @@ public class CallsManager extends Call.ListenerBase
     public void markCallAsRemoved(Call call) {
         if (call.isDisconnectHandledViaFuture()) {
             Log.i(this, "markCallAsRemoved; callid=%s, postingToFuture.", call.getId());
-            // A future is being used due to a CallDiagnosticService handling the call.  We will
-            // chain the removal operation to the end of any outstanding disconnect work.
-            call.getDisconnectFuture().thenRunAsync(() -> {
-                performRemoval(call);
-            }, new LoggedHandlerExecutor(mHandler, "CM.mCAR", mLock))
-                    .exceptionally((throwable) -> {
-                        Log.e(TAG, throwable, "Error while executing disconnect future");
-                        return null;
-                    });
-
+            configureRemovalFuture(call);
         } else {
             Log.i(this, "markCallAsRemoved; callid=%s, immediate.", call.getId());
             performRemoval(call);
@@ -4062,8 +4054,52 @@ public class CallsManager extends Call.ListenerBase
     }
 
     /**
+     * Configure the removal as a dependent stage after the disconnect future completes, which could
+     * be cancelled as part of {@link Call#setState(int, String)} when need to retry dial on another
+     * ConnectionService.
+     * <p>
+     * We can not remove the call yet, we need to wait for the DisconnectCause to be processed and
+     * potentially re-written via the {@link android.telecom.CallDiagnosticService} first.
+     *
+     * @param call The call to configure the removal future for.
+     */
+    private void configureRemovalFuture(Call call) {
+        if (!mFeatureFlags.cancelRemovalOnEmergencyRedial()) {
+            call.getDiagnosticCompleteFuture().thenRunAsync(() -> performRemoval(call),
+                            new LoggedHandlerExecutor(mHandler, "CM.cRF-O", mLock))
+                    .exceptionally((throwable) -> {
+                        Log.e(TAG, throwable, "Error while executing disconnect future");
+                        return null;
+                    });
+        } else {
+            // A future is being used due to a CallDiagnosticService handling the call.  We will
+            // chain the removal operation to the end of any outstanding disconnect work.
+            CompletableFuture<Void> removalFuture;
+            if (call.getDisconnectFuture() == null) {
+                // Unexpected - can not get the disconnect future, attach to the diagnostic complete
+                // future in this case.
+                removalFuture = call.getDiagnosticCompleteFuture().thenRun(() ->
+                        Log.w(this, "configureRemovalFuture: remove called without disconnecting"
+                                + " first."));
+            } else {
+                removalFuture = call.getDisconnectFuture();
+            }
+            removalFuture = removalFuture.thenRunAsync(() -> performRemoval(call),
+                    new LoggedHandlerExecutor(mHandler, "CM.cRF-N", mLock));
+            removalFuture.exceptionally((throwable) -> {
+                Log.e(TAG, throwable, "Error while executing disconnect future");
+                return null;
+            });
+            // Cache the future to remove the call initiated by the ConnectionService in case we
+            // need to cancel it in favor of removing the call internally as part of creating a
+            // new connection (CreateConnectionProcessor#continueProcessingIfPossible)
+            call.setRemovalFuture(removalFuture);
+        }
+    }
+
+    /**
      * Work which is completed when a call is to be removed. Can either be be run synchronously or
-     * posted to a {@link Call#getDisconnectFuture()}.
+     * posted to a {@link Call#getDiagnosticCompleteFuture()}.
      * @param call The call.
      */
     private void performRemoval(Call call) {

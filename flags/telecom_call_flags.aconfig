@@ -15,3 +15,14 @@ flag {
   description: "cache call audio callbacks if the service is not available and execute when set"
   bug: "321369729"
 }
+
+# OWNER = breadley TARGET=24Q3
+flag {
+  name: "cancel_removal_on_emergency_redial"
+  namespace: "telecom"
+  description: "When redialing an emergency call on another connection service, ensure any pending removal operation is cancelled"
+  bug: "341157874"
+  metadata {
+      purpose: PURPOSE_BUGFIX
+    }
+}
