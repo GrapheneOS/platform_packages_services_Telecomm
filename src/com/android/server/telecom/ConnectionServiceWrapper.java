@@ -44,6 +44,7 @@ import android.telecom.ConnectionService;
 import android.telecom.DisconnectCause;
 import android.telecom.GatewayInfo;
 import android.telecom.Log;
+import android.telecom.Logging.Runnable;
 import android.telecom.Logging.Session;
 import android.telecom.ParcelableConference;
 import android.telecom.ParcelableConnection;
@@ -73,10 +74,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.Objects;
 
@@ -90,11 +94,28 @@ import java.util.Objects;
 public class ConnectionServiceWrapper extends ServiceBinder implements
         ConnectionServiceFocusManager.ConnectionServiceFocus, CallSourceService {
 
+    /**
+     * Anomaly Report UUIDs and corresponding error descriptions specific to CallsManager.
+     */
+    public static final UUID CREATE_CONNECTION_TIMEOUT_ERROR_UUID =
+            UUID.fromString("54b7203d-a79f-4cbd-b639-85cd93a39cbb");
+    public static final String CREATE_CONNECTION_TIMEOUT_ERROR_MSG =
+            "Timeout expired before Telecom connection was created.";
+    public static final UUID CREATE_CONFERENCE_TIMEOUT_ERROR_UUID =
+            UUID.fromString("caafe5ea-2472-4c61-b2d8-acb9d47e13dd");
+    public static final String CREATE_CONFERENCE_TIMEOUT_ERROR_MSG =
+            "Timeout expired before Telecom conference was created.";
+
     private static final String TELECOM_ABBREVIATION = "cast";
+    private static final long SERVICE_BINDING_TIMEOUT = 15000L;
     private CompletableFuture<Pair<Integer, Location>> mQueryLocationFuture = null;
     private @Nullable CancellationSignal mOngoingQueryLocationRequest = null;
     private final ExecutorService mQueryLocationExecutor = Executors.newSingleThreadExecutor();
-
+    private ScheduledExecutorService mScheduledExecutor =
+            Executors.newSingleThreadScheduledExecutor();
+    // Pre-allocate space for 2 calls; realistically thats all we should ever need (tm)
+    private final Map<Call, ScheduledFuture<?>> mScheduledFutureMap = new ConcurrentHashMap<>(2);
+    private AnomalyReporterAdapter mAnomalyReporter = new AnomalyReporterAdapterImpl();
     private final class Adapter extends IConnectionServiceAdapter.Stub {
 
         @Override
@@ -107,6 +128,12 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
             try {
                 synchronized (mLock) {
                     logIncoming("handleCreateConnectionComplete %s", callId);
+                    Call call = mCallIdMapper.getCall(callId);
+                    if (mScheduledFutureMap.containsKey(call)) {
+                        ScheduledFuture<?> existingTimeout = mScheduledFutureMap.get(call);
+                        existingTimeout.cancel(false /* cancelIfRunning */);
+                        mScheduledFutureMap.remove(call);
+                    }
                     // Check status hints image for cross user access
                     if (connection.getStatusHints() != null) {
                         Icon icon = connection.getStatusHints().getIcon();
@@ -144,6 +171,12 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
             try {
                 synchronized (mLock) {
                     logIncoming("handleCreateConferenceComplete %s", callId);
+                    Call call = mCallIdMapper.getCall(callId);
+                    if (mScheduledFutureMap.containsKey(call)) {
+                        ScheduledFuture<?> existingTimeout = mScheduledFutureMap.get(call);
+                        existingTimeout.cancel(false /* cancelIfRunning */);
+                        mScheduledFutureMap.remove(call);
+                    }
                     ConnectionServiceWrapper.this
                             .handleCreateConferenceComplete(callId, request, conference);
 
@@ -1604,6 +1637,29 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                         .setParticipants(call.getParticipants())
                         .setIsAdhocConferenceCall(call.isAdhocConferenceCall())
                         .build();
+                Runnable r = new Runnable("CSW.cC", mLock) {
+                            @Override
+                            public void loggedRun() {
+                                if (!call.isCreateConnectionComplete()) {
+                                    Log.e(this, new Exception(),
+                                            "Conference %s creation timeout",
+                                            getComponentName());
+                                    Log.addEvent(call, LogUtils.Events.CREATE_CONFERENCE_TIMEOUT,
+                                            Log.piiHandle(call.getHandle()) + " via:" +
+                                                    getComponentName().getPackageName());
+                                    mAnomalyReporter.reportAnomaly(
+                                            CREATE_CONFERENCE_TIMEOUT_ERROR_UUID,
+                                            CREATE_CONFERENCE_TIMEOUT_ERROR_MSG);
+                                    response.handleCreateConferenceFailure(
+                                            new DisconnectCause(DisconnectCause.ERROR));
+                                }
+                            }
+                        };
+                // Post cleanup to the executor service and cache the future, so we can cancel it if
+                // needed.
+                ScheduledFuture<?> future = mScheduledExecutor.schedule(r.getRunnableToCancel(),
+                        SERVICE_BINDING_TIMEOUT, TimeUnit.MILLISECONDS);
+                mScheduledFutureMap.put(call, future);
                 try {
                     mServiceInterface.createConference(
                             call.getConnectionManagerPhoneAccount(),
@@ -1704,6 +1760,29 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                         .setRttPipeFromInCall(call.getInCallToCsRttPipeForCs())
                         .setRttPipeToInCall(call.getCsToInCallRttPipeForCs())
                         .build();
+                Runnable r = new Runnable("CSW.cC", mLock) {
+                            @Override
+                            public void loggedRun() {
+                                if (!call.isCreateConnectionComplete()) {
+                                    Log.e(this, new Exception(),
+                                            "Connection %s creation timeout",
+                                            getComponentName());
+                                    Log.addEvent(call, LogUtils.Events.CREATE_CONNECTION_TIMEOUT,
+                                            Log.piiHandle(call.getHandle()) + " via:" +
+                                                    getComponentName().getPackageName());
+                                    mAnomalyReporter.reportAnomaly(
+                                            CREATE_CONNECTION_TIMEOUT_ERROR_UUID,
+                                            CREATE_CONNECTION_TIMEOUT_ERROR_MSG);
+                                    response.handleCreateConnectionFailure(
+                                            new DisconnectCause(DisconnectCause.ERROR));
+                                }
+                            }
+                        };
+                // Post cleanup to the executor service and cache the future, so we can cancel it if
+                // needed.
+                ScheduledFuture<?> future = mScheduledExecutor.schedule(r.getRunnableToCancel(),
+                        SERVICE_BINDING_TIMEOUT, TimeUnit.MILLISECONDS);
+                mScheduledFutureMap.put(call, future);
                 try {
                     mServiceInterface.createConnection(
                             call.getConnectionManagerPhoneAccount(),
@@ -2170,7 +2249,8 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         }
     }
 
-    void addCall(Call call) {
+    @VisibleForTesting
+    public void addCall(Call call) {
         if (mCallIdMapper.getCallId(call) == null) {
             mCallIdMapper.addCall(call);
         }
@@ -2637,5 +2717,15 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         sb.append(mComponentName);
         sb.append("]");
         return sb.toString();
+    }
+
+    @VisibleForTesting
+    public void setScheduledExecutorService(ScheduledExecutorService service) {
+        mScheduledExecutor = service;
+    }
+
+    @VisibleForTesting
+    public void setAnomalyReporterAdapter(AnomalyReporterAdapter mAnomalyReporterAdapter){
+        mAnomalyReporter = mAnomalyReporterAdapter;
     }
 }
