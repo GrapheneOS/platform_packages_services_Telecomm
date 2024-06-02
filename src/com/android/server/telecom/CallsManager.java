@@ -499,8 +499,12 @@ public class CallsManager extends Call.ListenerBase
                 @Override
                 public void releaseConnectionService(
                         ConnectionServiceFocusManager.ConnectionServiceFocus connectionService) {
+                    if (connectionService == null) {
+                        Log.i(this, "releaseConnectionService: connectionService is null");
+                        return;
+                    }
                     mCalls.stream()
-                            .filter(c -> c.getConnectionServiceWrapper().equals(connectionService))
+                            .filter(c -> connectionService.equals(c.getConnectionServiceWrapper()))
                             .forEach(c -> c.disconnect("release " +
                                     connectionService.getComponentName().getPackageName()));
                 }
