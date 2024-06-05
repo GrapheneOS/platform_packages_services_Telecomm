@@ -325,7 +325,8 @@ public class TransactionalServiceWrapper implements
         // This request is originating from the VoIP application.
         private void handleCallControlNewCallFocusTransactions(Call call, String action,
                 boolean isAnswer, int potentiallyNewVideoState, ResultReceiver callback) {
-            mTransactionManager.addTransaction(createSetActiveTransactions(call),
+            mTransactionManager.addTransaction(
+                    createSetActiveTransactions(call, true /* isCallControlRequest */),
                     new OutcomeReceiver<>() {
                         @Override
                         public void onResult(VoipCallTransactionResult result) {
@@ -445,7 +446,8 @@ public class TransactionalServiceWrapper implements
         Call foregroundCallBeforeSwap = mCallsManager.getForegroundCall();
         boolean wasActive = foregroundCallBeforeSwap != null && foregroundCallBeforeSwap.isActive();
 
-        SerialTransaction serialTransactions = createSetActiveTransactions(call);
+        SerialTransaction serialTransactions = createSetActiveTransactions(call,
+                false /* isCallControlRequest */);
         // 3. get ack from client (that the requested call can go active)
         if (isAnswerRequest) {
             serialTransactions.appendTransaction(
@@ -654,12 +656,13 @@ public class TransactionalServiceWrapper implements
         mCallsManager.removeCall(call);
     }
 
-    private SerialTransaction createSetActiveTransactions(Call call) {
+    private SerialTransaction createSetActiveTransactions(Call call, boolean isCallControlRequest) {
         // create list for multiple transactions
         List<VoipCallTransaction> transactions = new ArrayList<>();
 
         // potentially hold the current active call in order to set a new call (active/answered)
-        transactions.add(new MaybeHoldCallForNewCallTransaction(mCallsManager, call));
+        transactions.add(
+                new MaybeHoldCallForNewCallTransaction(mCallsManager, call, isCallControlRequest));
         // And request a new focus call update
         transactions.add(new RequestNewActiveCallTransaction(mCallsManager, call));
 

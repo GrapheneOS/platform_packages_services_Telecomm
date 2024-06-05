@@ -217,14 +217,14 @@ public class TransactionTests extends TelecomTestCase {
     public void testTransactionalHoldActiveCallForNewCall() throws Exception {
         // GIVEN
         MaybeHoldCallForNewCallTransaction transaction =
-                new MaybeHoldCallForNewCallTransaction(mCallsManager, mMockCall1);
+                new MaybeHoldCallForNewCallTransaction(mCallsManager, mMockCall1, false);
 
         // WHEN
         transaction.processTransaction(null);
 
         // THEN
         verify(mCallsManager, times(1))
-                .transactionHoldPotentialActiveCallForNewCall(eq(mMockCall1),
+                .transactionHoldPotentialActiveCallForNewCall(eq(mMockCall1), eq(false),
                         isA(OutcomeReceiver.class));
     }
 

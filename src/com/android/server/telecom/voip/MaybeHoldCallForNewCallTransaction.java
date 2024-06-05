@@ -26,16 +26,23 @@ import com.android.server.telecom.CallsManager;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+/**
+ * This VoipCallTransaction is responsible for holding any active call in favor of a new call
+ * request. If the active call cannot be held or disconnected, the transaction will fail.
+ */
 public class MaybeHoldCallForNewCallTransaction extends VoipCallTransaction {
 
     private static final String TAG = MaybeHoldCallForNewCallTransaction.class.getSimpleName();
     private final CallsManager mCallsManager;
     private final Call mCall;
+    private final boolean mIsCallControlRequest;
 
-    public MaybeHoldCallForNewCallTransaction(CallsManager callsManager, Call call) {
+    public MaybeHoldCallForNewCallTransaction(CallsManager callsManager, Call call,
+            boolean isCallControlRequest) {
         super(callsManager.getLock());
         mCallsManager = callsManager;
         mCall = call;
+        mIsCallControlRequest = isCallControlRequest;
     }
 
     @Override
@@ -43,7 +50,8 @@ public class MaybeHoldCallForNewCallTransaction extends VoipCallTransaction {
         Log.d(TAG, "processTransaction");
         CompletableFuture<VoipCallTransactionResult> future = new CompletableFuture<>();
 
-        mCallsManager.transactionHoldPotentialActiveCallForNewCall(mCall, new OutcomeReceiver<>() {
+        mCallsManager.transactionHoldPotentialActiveCallForNewCall(mCall, mIsCallControlRequest,
+                new OutcomeReceiver<>() {
             @Override
             public void onResult(Boolean result) {
                 Log.d(TAG, "processTransaction: onResult");

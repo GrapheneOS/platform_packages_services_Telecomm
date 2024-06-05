@@ -3836,8 +3836,7 @@ public class CallsManager extends Call.ListenerBase
             if (canHold(activeCall)) {
                 activeCall.hold("swap to " + call.getId());
                 return true;
-            } else if (supportsHold(activeCall)
-                    && areFromSameSource(activeCall, call)) {
+            } else if (sameSourceHoldCase(activeCall, call)) {
 
                 // Handle the case where the active call and the new call are from the same CS or
                 // connection manager, and the currently active call supports hold but cannot
@@ -3886,43 +3885,85 @@ public class CallsManager extends Call.ListenerBase
         return false;
     }
 
-    // attempt to hold the requested call and complete the callback on the result
+    /**
+     * attempt to hold or swap the current active call in favor of a new call request. The
+     * OutcomeReceiver will return onResult if the current active call is held or disconnected.
+     * Otherwise, the OutcomeReceiver will fail.
+     */
     public void transactionHoldPotentialActiveCallForNewCall(Call newCall,
-            OutcomeReceiver<Boolean, CallException> callback) {
+            boolean isCallControlRequest, OutcomeReceiver<Boolean, CallException> callback) {
+        String mTag = "transactionHoldPotentialActiveCallForNewCall: ";
         Call activeCall = (Call) mConnectionSvrFocusMgr.getCurrentFocusCall();
-        Log.i(this, "transactionHoldPotentialActiveCallForNewCall: "
-                + "newCall=[%s], activeCall=[%s]", newCall, activeCall);
+        Log.i(this, mTag + "newCall=[%s], activeCall=[%s]", newCall, activeCall);
 
-        // early exit if there is no need to hold an active call
         if (activeCall == null || activeCall == newCall) {
-            Log.i(this, "transactionHoldPotentialActiveCallForNewCall:"
-                    + " no need to hold activeCall");
+            Log.i(this, mTag + "no need to hold activeCall");
             callback.onResult(true);
             return;
         }
 
-        // before attempting CallsManager#holdActiveCallForNewCall(Call), check if it'll fail early
-        if (!canHold(activeCall) &&
-                !(supportsHold(activeCall) && areFromSameSource(activeCall, newCall))) {
-            Log.i(this, "transactionHoldPotentialActiveCallForNewCall: "
-                    + "conditions show the call cannot be held.");
-            callback.onError(new CallException("call does not support hold",
-                    CallException.CODE_CANNOT_HOLD_CURRENT_ACTIVE_CALL));
-            return;
-        }
+        if (mFeatureFlags.transactionalHoldDisconnectsUnholdable()) {
+            // prevent bad actors from disconnecting the activeCall. Instead, clients will need to
+            // notify the user that they need to disconnect the ongoing call before making the
+            // new call ACTIVE.
+            if (isCallControlRequest && !canHoldOrSwapActiveCall(activeCall, newCall)) {
+                Log.i(this, mTag + "CallControlRequest exit");
+                callback.onError(new CallException("activeCall is NOT holdable or swappable, please"
+                        + " request the user disconnect the call.",
+                        CallException.CODE_CANNOT_HOLD_CURRENT_ACTIVE_CALL));
+                return;
+            }
 
-        // attempt to hold the active call
-        if (!holdActiveCallForNewCall(newCall)) {
-            Log.i(this, "transactionHoldPotentialActiveCallForNewCall: "
-                    + "attempted to hold call but failed.");
-            callback.onError(new CallException("cannot hold active call failed",
-                    CallException.CODE_CANNOT_HOLD_CURRENT_ACTIVE_CALL));
-            return;
-        }
+            if (holdActiveCallForNewCall(newCall)) {
+                // Transactional clients do not call setHold but the request was sent to set the
+                // call as inactive and it has already been acked by this point.
+                markCallAsOnHold(activeCall);
+                callback.onResult(true);
+            } else {
+                // It's possible that holdActiveCallForNewCall disconnected the activeCall.
+                // Therefore, the activeCalls state should be checked before failing.
+                if (activeCall.isLocallyDisconnecting()) {
+                    callback.onResult(true);
+                } else {
+                    Log.i(this, mTag + "active call could not be held or disconnected");
+                    callback.onError(
+                            new CallException("activeCall could not be held or disconnected",
+                                    CallException.CODE_CANNOT_HOLD_CURRENT_ACTIVE_CALL));
+                }
+            }
+        } else {
+            // before attempting CallsManager#holdActiveCallForNewCall(Call), check if it'll fail
+            // early
+            if (!canHold(activeCall) &&
+                    !(supportsHold(activeCall) && areFromSameSource(activeCall, newCall))) {
+                Log.i(this, "transactionHoldPotentialActiveCallForNewCall: "
+                        + "conditions show the call cannot be held.");
+                callback.onError(new CallException("call does not support hold",
+                        CallException.CODE_CANNOT_HOLD_CURRENT_ACTIVE_CALL));
+                return;
+            }
 
-        // officially mark the activeCall as held
-        markCallAsOnHold(activeCall);
-        callback.onResult(true);
+            // attempt to hold the active call
+            if (!holdActiveCallForNewCall(newCall)) {
+                Log.i(this, "transactionHoldPotentialActiveCallForNewCall: "
+                        + "attempted to hold call but failed.");
+                callback.onError(new CallException("cannot hold active call failed",
+                        CallException.CODE_CANNOT_HOLD_CURRENT_ACTIVE_CALL));
+                return;
+            }
+
+            // officially mark the activeCall as held
+            markCallAsOnHold(activeCall);
+            callback.onResult(true);
+        }
+    }
+
+    private boolean canHoldOrSwapActiveCall(Call activeCall, Call newCall) {
+        return canHold(activeCall) || sameSourceHoldCase(activeCall, newCall);
+    }
+
+    private boolean sameSourceHoldCase(Call activeCall, Call call) {
+        return supportsHold(activeCall) && areFromSameSource(activeCall, call);
     }
 
     @VisibleForTesting

@@ -17,7 +17,6 @@
 package com.android.server.telecom.voip;
 
 import android.os.OutcomeReceiver;
-import android.telecom.CallAttributes;
 import android.telecom.CallException;
 import android.util.Log;
 
@@ -25,6 +24,7 @@ import com.android.server.telecom.Call;
 import com.android.server.telecom.CallState;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.ConnectionServiceFocusManager;
+import com.android.server.telecom.flags.Flags;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -69,7 +69,8 @@ public class RequestNewActiveCallTransaction extends VoipCallTransaction {
             return future;
         }
 
-        if (mCallsManager.getActiveCall() != null) {
+        if (!Flags.transactionalHoldDisconnectsUnholdable() &&
+                mCallsManager.getActiveCall() != null) {
             future.complete(new VoipCallTransactionResult(
                     CallException.CODE_CALL_CANNOT_BE_SET_TO_ACTIVE,
                     "Already an active call. Request hold on current active call."));
