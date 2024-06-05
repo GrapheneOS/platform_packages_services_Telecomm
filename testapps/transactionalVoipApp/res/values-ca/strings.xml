@@ -31,7 +31,7 @@
     <string name="request_earpiece_endpoint" msgid="6649571985089296573">"Auricular"</string>
     <string name="request_speaker_endpoint" msgid="1033259535289845405">"Altaveu"</string>
     <string name="request_bluetooth_endpoint" msgid="5933254250623451836">"Bluetooth"</string>
-    <string name="start_stream" msgid="3567634786280097431">"inicia la reproducció en línia"</string>
+    <string name="start_stream" msgid="3567634786280097431">"inicia l\'estríming"</string>
     <string name="crash_app" msgid="2548690390730057704">"llança una excepció"</string>
     <string name="update_notification" msgid="8677916482672588779">"actualitza la notificació a l\'estil de trucada en curs"</string>
 </resources>
