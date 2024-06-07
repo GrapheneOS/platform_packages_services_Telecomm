@@ -136,6 +136,9 @@ public final class CreateConnectionTimeout extends Runnable {
                 timeoutCallIfNeeded();
                 return;
             }
+            Log.i(
+                this,
+               "loggedRun, no PhoneAccount with voice calling capabilities, not timing out call");
         }
     }
 
