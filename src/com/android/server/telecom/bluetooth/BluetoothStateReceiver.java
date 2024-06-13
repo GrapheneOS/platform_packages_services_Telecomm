@@ -236,10 +236,15 @@ public class BluetoothStateReceiver extends BroadcastReceiver {
                 BluetoothDeviceManager.getDeviceTypeString(deviceType));
 
         if (Flags.useRefactoredAudioRouteSwitching()) {
+            CallAudioRouteController audioRouteController = (CallAudioRouteController)
+                    mCallAudioRouteAdapter;
             if (device == null) {
+                audioRouteController.updateActiveBluetoothDevice(new Pair(audioRouteType, null));
                 mCallAudioRouteAdapter.sendMessageWithSessionInfo(BT_ACTIVE_DEVICE_GONE,
                         audioRouteType);
             } else {
+                audioRouteController.updateActiveBluetoothDevice(
+                        new Pair(audioRouteType, device.getAddress()));
                 mCallAudioRouteAdapter.sendMessageWithSessionInfo(BT_ACTIVE_DEVICE_PRESENT,
                         audioRouteType, device.getAddress());
                 if (deviceType == BluetoothDeviceManager.DEVICE_TYPE_HEARING_AID

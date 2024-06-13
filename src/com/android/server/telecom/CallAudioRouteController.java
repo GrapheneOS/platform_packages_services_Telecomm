@@ -53,6 +53,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.telecom.bluetooth.BluetoothRouteManager;
 import com.android.server.telecom.flags.FeatureFlags;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -76,6 +77,9 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         ROUTE_MAP.put(AudioRoute.TYPE_STREAMING, CallAudioState.ROUTE_STREAMING);
     }
 
+    /** Valid values for the first argument for SWITCH_BASELINE_ROUTE */
+    public static final int INCLUDE_BLUETOOTH_IN_BASELINE = 1;
+
     private final CallsManager mCallsManager;
     private final Context mContext;
     private AudioManager mAudioManager;
@@ -91,6 +95,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     private AudioRoute mStreamingRoute;
     private Set<AudioRoute> mStreamingRoutes;
     private Map<AudioRoute, BluetoothDevice> mBluetoothRoutes;
+    private Pair<Integer, String> mActiveBluetoothDevice;
+    private Map<Integer, String> mActiveDeviceCache;
     private Map<Integer, AudioRoute> mTypeRoutes;
     private PendingAudioRoute mPendingAudioRoute;
     private AudioRoute.Factory mAudioRouteFactory;
@@ -260,9 +266,13 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                             handleSwitchSpeaker();
                             break;
                         case SWITCH_BASELINE_ROUTE:
-                        case USER_SWITCH_BASELINE_ROUTE:
                             address = (String) ((SomeArgs) msg.obj).arg2;
-                            handleSwitchBaselineRoute(address);
+                            handleSwitchBaselineRoute(msg.arg1 == INCLUDE_BLUETOOTH_IN_BASELINE,
+                                    address);
+                            break;
+                        case USER_SWITCH_BASELINE_ROUTE:
+                            handleSwitchBaselineRoute(msg.arg1 == INCLUDE_BLUETOOTH_IN_BASELINE,
+                                    null);
                             break;
                         case SPEAKER_ON:
                             handleSpeakerOn();
@@ -312,6 +322,11 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     public void initialize() {
         mAvailableRoutes = new HashSet<>();
         mBluetoothRoutes = new LinkedHashMap<>();
+        mActiveDeviceCache = new HashMap<>();
+        mActiveDeviceCache.put(AudioRoute.TYPE_BLUETOOTH_SCO, null);
+        mActiveDeviceCache.put(AudioRoute.TYPE_BLUETOOTH_HA, null);
+        mActiveDeviceCache.put(AudioRoute.TYPE_BLUETOOTH_LE, null);
+        mActiveBluetoothDevice = null;
         mTypeRoutes = new ArrayMap<>();
         mStreamingRoutes = new HashSet<>();
         mPendingAudioRoute = new PendingAudioRoute(this, mAudioManager, mBluetoothRouteManager);
@@ -805,11 +820,16 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         Log.i(this, "handle switch to bluetooth with address %s", address);
         AudioRoute bluetoothRoute = null;
         BluetoothDevice bluetoothDevice = null;
-        for (AudioRoute route : getAvailableRoutes()) {
-            if (Objects.equals(address, route.getBluetoothAddress())) {
-                bluetoothRoute = route;
-                bluetoothDevice = mBluetoothRoutes.get(route);
-                break;
+        if (address == null) {
+            bluetoothRoute = getArbitraryBluetoothDevice();
+            bluetoothDevice = mBluetoothRoutes.get(bluetoothRoute);
+        } else {
+            for (AudioRoute route : getAvailableRoutes()) {
+                if (Objects.equals(address, route.getBluetoothAddress())) {
+                    bluetoothRoute = route;
+                    bluetoothDevice = mBluetoothRoutes.get(route);
+                    break;
+                }
             }
         }
 
@@ -823,6 +843,20 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         } else {
             Log.i(this, "ignore switch bluetooth request to unavailable address");
         }
+    }
+
+    /**
+     * Retrieve the active BT device, if available, otherwise return the most recently tracked
+     * active device, or null if none are available.
+     * @return {@link AudioRoute} of the BT device.
+     */
+    private AudioRoute getArbitraryBluetoothDevice() {
+        if (mActiveBluetoothDevice != null) {
+            return getBluetoothRoute(mActiveBluetoothDevice.first, mActiveBluetoothDevice.second);
+        } else if (!mBluetoothRoutes.isEmpty()) {
+            return mBluetoothRoutes.keySet().stream().toList().get(mBluetoothRoutes.size() - 1);
+        }
+        return null;
     }
 
     private void handleSwitchHeadset() {
@@ -842,8 +876,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         }
     }
 
-    private void handleSwitchBaselineRoute(String btAddressToExclude) {
-        routeTo(mIsActive, getBaseRoute(true, btAddressToExclude));
+    private void handleSwitchBaselineRoute(boolean includeBluetooth, String btAddressToExclude) {
+        routeTo(mIsActive, getBaseRoute(includeBluetooth, btAddressToExclude));
     }
 
     private void handleSpeakerOn() {
@@ -1085,7 +1119,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
 
     public AudioRoute getBaseRoute(boolean includeBluetooth, String btAddressToExclude) {
         AudioRoute destRoute = getPreferredAudioRouteFromStrategy();
-        if (destRoute == null) {
+        if (destRoute == null || (destRoute.getBluetoothAddress() != null && !includeBluetooth)) {
             destRoute = getPreferredAudioRouteFromDefault(includeBluetooth, btAddressToExclude);
         }
         if (destRoute != null && !getAvailableRoutes().contains(destRoute)) {
@@ -1241,6 +1275,39 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
 
     public void setIsScoAudioConnected(boolean value) {
         mIsScoAudioConnected = value;
+    }
+
+    /**
+     * Update the active bluetooth device being tracked (as well as for individual profiles).
+     * We need to keep track of active devices for individual profiles because of potential
+     * inconsistencies found in BluetoothStateReceiver#handleActiveDeviceChanged. When multiple
+     * profiles are paired, we could have a scenario where an active device A is replaced
+     * with an active device B (from a different profile), which is then removed as an active
+     * device shortly after, causing device A to be reactive. It's possible that the active device
+     * changed intent is never received again for device A so an active device cache is necessary
+     * to track these devices at a profile level.
+     * @param device {@link Pair} containing the BT audio route type (i.e. SCO/HA/LE) and the
+     *                           address of the device.
+     */
+    public void updateActiveBluetoothDevice(Pair<Integer, String> device) {
+        mActiveDeviceCache.put(device.first, device.second);
+        // Update most recently active device if address isn't null (meaning some device is active).
+        if (device.second != null) {
+            mActiveBluetoothDevice = device;
+        } else {
+            // If a device was removed, check to ensure that no other device is still considered
+            // active.
+            boolean hasActiveDevice = false;
+            for (String address : mActiveDeviceCache.values()) {
+                if (address != null) {
+                    hasActiveDevice = true;
+                    break;
+                }
+            }
+            if (!hasActiveDevice) {
+                mActiveBluetoothDevice = null;
+            }
+        }
     }
 
     @VisibleForTesting

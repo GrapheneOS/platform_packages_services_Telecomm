@@ -18,6 +18,7 @@ package com.android.server.telecom;
 
 import static com.android.server.telecom.CallAudioRouteAdapter.PENDING_ROUTE_FAILED;
 import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_BASELINE_ROUTE;
+import static com.android.server.telecom.CallAudioRouteController.INCLUDE_BLUETOOTH_IN_BASELINE;
 
 import android.bluetooth.BluetoothDevice;
 import android.media.AudioManager;
@@ -96,7 +97,7 @@ public class PendingAudioRoute {
         if (message.first == PENDING_ROUTE_FAILED) {
             // Fallback to base route
             mCallAudioRouteController.sendMessageWithSessionInfo(
-                    SWITCH_BASELINE_ROUTE, 0, btAddressToExclude);
+                    SWITCH_BASELINE_ROUTE, INCLUDE_BLUETOOTH_IN_BASELINE, btAddressToExclude);
             return;
         }
 

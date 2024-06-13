@@ -20,6 +20,7 @@ import static com.android.server.telecom.AudioRoute.TYPE_BLUETOOTH_HA;
 import static com.android.server.telecom.AudioRoute.TYPE_BLUETOOTH_SCO;
 import static com.android.server.telecom.CallAudioRouteAdapter.BT_DEVICE_REMOVED;
 import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_BASELINE_ROUTE;
+import static com.android.server.telecom.CallAudioRouteController.INCLUDE_BLUETOOTH_IN_BASELINE;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -257,7 +258,7 @@ public class BluetoothDeviceManager {
                     BT_DEVICE_REMOVED, route.getType(), device);
         }
         mCallAudioRouteAdapter.sendMessageWithSessionInfo(
-                SWITCH_BASELINE_ROUTE, 0, (String) null);
+                SWITCH_BASELINE_ROUTE, INCLUDE_BLUETOOTH_IN_BASELINE, (String) null);
     }
 
     private final LinkedHashMap<String, BluetoothDevice> mHfpDevicesByAddress =
