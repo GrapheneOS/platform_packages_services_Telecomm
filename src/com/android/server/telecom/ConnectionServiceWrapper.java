@@ -167,10 +167,17 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                 ParcelableConference conference, Session.Info sessionInfo) {
             Log.startSession(sessionInfo, LogUtils.Sessions.CSW_HANDLE_CREATE_CONNECTION_COMPLETE,
                     mPackageAbbreviation);
+            UserHandle callingUserHandle = Binder.getCallingUserHandle();
             long token = Binder.clearCallingIdentity();
             try {
                 synchronized (mLock) {
                     logIncoming("handleCreateConferenceComplete %s", callId);
+                    // Check status hints image for cross user access
+                    if (conference.getStatusHints() != null) {
+                        Icon icon = conference.getStatusHints().getIcon();
+                        conference.getStatusHints().setIcon(StatusHints.
+                                validateAccountIconUserBoundary(icon, callingUserHandle));
+                    }
                     Call call = mCallIdMapper.getCall(callId);
                     if (mScheduledFutureMap.containsKey(call)) {
                         ScheduledFuture<?> existingTimeout = mScheduledFutureMap.get(call);
