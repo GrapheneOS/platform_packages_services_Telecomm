@@ -141,6 +141,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
                 mComponentContextFixture.getTestDouble().getApplicationContext(), mLock, FILE_NAME,
                 mDefaultDialerCache, mAppLabelProxy, mTelephonyFeatureFlags, mFeatureFlags);
         when(mFeatureFlags.onlyUpdateTelephonyOnValidSubIds()).thenReturn(false);
+        when(mFeatureFlags.unregisterUnresolvableAccounts()).thenReturn(true);
         when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(false);
     }
 
@@ -465,6 +466,60 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         assertEquals(null, mRegistrar.getSimCallManagerOfCurrentUser());
         assertEquals(null, mRegistrar.getOutgoingPhoneAccountForSchemeOfCurrentUser(
                 PhoneAccount.SCHEME_TEL));
+    }
+
+    /**
+     * Verify when a {@link android.telecom.ConnectionService} is disabled or cannot be resolved,
+     * all phone accounts are unregistered when calling
+     * {@link  PhoneAccountRegistrar#cleanupAndGetVerifiedAccounts(PhoneAccount)}.
+     */
+    @Test
+    public void testCannotResolveServiceUnregistersAccounts() throws Exception {
+        ComponentName componentName = makeQuickConnectionServiceComponentName();
+        PhoneAccount account = makeQuickAccountBuilder("0", 0, USER_HANDLE_10)
+                .setCapabilities(PhoneAccount.CAPABILITY_CONNECTION_MANAGER
+                        | PhoneAccount.CAPABILITY_CALL_PROVIDER).build();
+        // add the ConnectionService and register a single phone account for it
+        mComponentContextFixture.addConnectionService(componentName,
+                Mockito.mock(IConnectionService.class));
+        registerAndEnableAccount(account);
+        // verify the start state
+        assertEquals(1,
+                mRegistrar.getRegisteredAccountsForPackageName(componentName.getPackageName(),
+                        USER_HANDLE_10).size());
+        // remove the ConnectionService so that the account cannot be resolved anymore
+        mComponentContextFixture.removeConnectionService(componentName,
+                Mockito.mock(IConnectionService.class));
+        // verify the account is unregistered when fetching the phone accounts for the package
+        assertEquals(1,
+                mRegistrar.getRegisteredAccountsForPackageName(componentName.getPackageName(),
+                        USER_HANDLE_10).size());
+        assertEquals(0,
+                mRegistrar.cleanupAndGetVerifiedAccounts(account).size());
+        assertEquals(0,
+                mRegistrar.getRegisteredAccountsForPackageName(componentName.getPackageName(),
+                        USER_HANDLE_10).size());
+    }
+
+    /**
+     * Verify that if a client adds both the {@link
+     * PhoneAccount#CAPABILITY_SUPPORTS_TRANSACTIONAL_OPERATIONS} capability AND is backed by a
+     * {@link android.telecom.ConnectionService}, a {@link IllegalArgumentException} is thrown.
+     */
+    @Test
+    public void testConnectionServiceAndTransactionalAccount() throws Exception {
+        PhoneAccount account = makeQuickAccountBuilder("0", 0, USER_HANDLE_10)
+                .setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED
+                        | PhoneAccount.CAPABILITY_SUPPORTS_TRANSACTIONAL_OPERATIONS).build();
+        mComponentContextFixture.addConnectionService(
+                makeQuickConnectionServiceComponentName(),
+                Mockito.mock(IConnectionService.class));
+        try {
+            registerAndEnableAccount(account);
+            fail("failed to throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // test passed, ignore Exception.
+        }
     }
 
     @MediumTest

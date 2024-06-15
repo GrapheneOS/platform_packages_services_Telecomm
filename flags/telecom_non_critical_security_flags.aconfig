@@ -1,0 +1,10 @@
+package: "com.android.server.telecom.flags"
+container: "system"
+
+# OWNER=tjstuart TARGET=24Q4
+flag {
+  name: "unregister_unresolvable_accounts"
+  namespace: "telecom"
+  description: "When set, Telecom will unregister accounts if the service is not resolvable"
+  bug: "281061708"
+}

@@ -981,11 +981,33 @@ public class PhoneAccountRegistrar {
         }
         enforceCharacterLimit(account);
         enforceIconSizeLimit(account);
+        if (mTelecomFeatureFlags.unregisterUnresolvableAccounts()) {
+            enforcePhoneAccountTargetService(account);
+        }
         enforceMaxPhoneAccountLimit(account);
         if (mTelephonyFeatureFlags.simultaneousCallingIndications()) {
             enforceSimultaneousCallingRestrictionLimit(account);
         }
         addOrReplacePhoneAccount(account);
+    }
+
+    /**
+     * This method ensures that {@link PhoneAccount}s that have the {@link
+     * PhoneAccount#CAPABILITY_SUPPORTS_TRANSACTIONAL_OPERATIONS} capability are not
+     * backed by a {@link ConnectionService}
+     *
+     * @param account enforce the check on
+     */
+    private void enforcePhoneAccountTargetService(PhoneAccount account) {
+        if (phoneAccountRequiresBindPermission(account.getAccountHandle()) &&
+                hasTransactionalCallCapabilities(account)) {
+            throw new IllegalArgumentException(
+                    "Error, the PhoneAccount you are registering has"
+                            + " CAPABILITY_SUPPORTS_TRANSACTIONAL_OPERATIONS and the"
+                            + " PhoneAccountHandle's ComponentName#ClassName points to a"
+                            + " ConnectionService class.  Either remove the capability or use a"
+                            + " different ClassName in the PhoneAccountHandle.");
+        }
     }
 
     /**
@@ -996,13 +1018,17 @@ public class PhoneAccountRegistrar {
      * @throws IllegalArgumentException if MAX_PHONE_ACCOUNT_REGISTRATIONS are reached
      */
     private void enforceMaxPhoneAccountLimit(@NonNull PhoneAccount account) {
-        final PhoneAccountHandle accountHandle = account.getAccountHandle();
-        final UserHandle user = accountHandle.getUserHandle();
-        final ComponentName componentName = accountHandle.getComponentName();
-
-        if (getPhoneAccountHandles(0, null, componentName.getPackageName(),
-                true /* includeDisabled */, user, false /* crossUserAccess */).size()
-                >= MAX_PHONE_ACCOUNT_REGISTRATIONS) {
+        int numOfAcctsRegisteredForPackage = mTelecomFeatureFlags.unregisterUnresolvableAccounts()
+                ? cleanupAndGetVerifiedAccounts(account).size()
+                : getPhoneAccountHandles(
+                        0/* capabilities */,
+                        null /* uriScheme */,
+                        account.getAccountHandle().getComponentName().getPackageName(),
+                        true /* includeDisabled */,
+                        account.getAccountHandle().getUserHandle(),
+                        false /* crossUserAccess */).size();
+        // enforce the max phone account limit for the application registering accounts
+        if (numOfAcctsRegisteredForPackage >= MAX_PHONE_ACCOUNT_REGISTRATIONS) {
             EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
                     "enforceMaxPhoneAccountLimit");
             throw new IllegalArgumentException(
@@ -1010,6 +1036,64 @@ public class PhoneAccountRegistrar {
                             + " because the limit, " + MAX_PHONE_ACCOUNT_REGISTRATIONS
                             + ", has been reached");
         }
+    }
+
+    @VisibleForTesting
+    public List<PhoneAccount> getRegisteredAccountsForPackageName(String packageName,
+            UserHandle userHandle) {
+        if (packageName == null) {
+            return new ArrayList<>();
+        }
+        List<PhoneAccount> accounts = new ArrayList<>(mState.accounts.size());
+        for (PhoneAccount m : mState.accounts) {
+            PhoneAccountHandle handle = m.getAccountHandle();
+            if (!packageName.equals(handle.getComponentName().getPackageName())) {
+                // Not the right package name; skip this one.
+                continue;
+            }
+            // Do not count accounts registered under different users on the device. Otherwise, an
+            // application can only have MAX_PHONE_ACCOUNT_REGISTRATIONS across all users. If the
+            // DUT has multiple users, they should each get to register 10 accounts. Also, 3rd
+            // party applications cannot create new UserHandles without highly privileged
+            // permissions.
+            if (!isVisibleForUser(m, userHandle, false)) {
+                // Account is not visible for the current user; skip this one.
+                continue;
+            }
+            accounts.add(m);
+        }
+        return accounts;
+    }
+
+    /**
+     * Unregister {@link ConnectionService} accounts that no longer have a resolvable Service. This
+     * means the Service has been disabled or died.  Skip the verification for transactional
+     * accounts.
+     *
+     * @param newAccount being registered
+     * @return all the verified accounts. These accounts are now guaranteed to be backed by a
+     * {@link ConnectionService} or do not need one (transactional accounts).
+     */
+    @VisibleForTesting
+    public List<PhoneAccount> cleanupAndGetVerifiedAccounts(PhoneAccount newAccount) {
+        ArrayList<PhoneAccount> verifiedAccounts = new ArrayList<>();
+        List<PhoneAccount> unverifiedAccounts = getRegisteredAccountsForPackageName(
+                newAccount.getAccountHandle().getComponentName().getPackageName(),
+                newAccount.getAccountHandle().getUserHandle());
+        for (PhoneAccount account : unverifiedAccounts) {
+            PhoneAccountHandle handle = account.getAccountHandle();
+            if (/* skip for transactional accounts since they don't require a ConnectionService */
+                    !hasTransactionalCallCapabilities(account) &&
+                    /* check if the {@link ConnectionService} has been disabled or can longer be
+                       found */ resolveComponent(handle).isEmpty()) {
+                Log.i(this, " cAGVA: Cannot resolve the ConnectionService for"
+                        + " handle=[%s]; unregistering account", handle);
+                unregisterPhoneAccount(handle);
+            } else {
+                verifiedAccounts.add(account);
+            }
+        }
+        return verifiedAccounts;
     }
 
     /**

@@ -42,5 +42,6 @@ aconfig_declarations {
         "telecom_remote_connection_service.aconfig",
         "telecom_profile_user_flags.aconfig",
         "telecom_bluetoothdevicemanager_flags.aconfig",
+        "telecom_non_critical_security_flags.aconfig",
     ],
 }
