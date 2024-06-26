@@ -79,6 +79,7 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.permission.PermissionCheckerManager;
 import android.telecom.CallAudioState;
+import android.telecom.CallEndpoint;
 import android.telecom.InCallService;
 import android.telecom.ParcelableCall;
 import android.telecom.PhoneAccountHandle;
@@ -95,6 +96,7 @@ import com.android.internal.telecom.IInCallService;
 import com.android.server.telecom.Analytics;
 import com.android.server.telecom.AnomalyReporterAdapter;
 import com.android.server.telecom.Call;
+import com.android.server.telecom.CallEndpointController;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.CarModeTracker;
 import com.android.server.telecom.ClockProxy;
@@ -157,6 +159,7 @@ public class InCallControllerTests extends TelecomTestCase {
     @Mock UserManager mMockUserManager;
     @Mock Context mMockCreateContextAsUser;
     @Mock UserManager mMockCurrentUserManager;
+    @Mock CallEndpointController mMockCallEndpointController;
 
     @Rule
     public TestRule compatChangeRule = new PlatformCompatChangeRule();
@@ -307,6 +310,10 @@ public class InCallControllerTests extends TelecomTestCase {
                 .thenReturn(PackageManager.PERMISSION_DENIED);
 
         when(mMockCallsManager.getAudioState()).thenReturn(new CallAudioState(false, 0, 0));
+        when(mFeatureFlags.onCallEndpointChangedIcsOnConnected()).thenReturn(true);
+        when(mMockCallsManager.getCallEndpointController()).thenReturn(mMockCallEndpointController);
+        when(mMockCallEndpointController.getCurrentCallEndpoint())
+                .thenReturn(new CallEndpoint("Earpiece", 1));
 
         when(mMockContext.getSystemService(eq(Context.USER_SERVICE))).thenReturn(mMockUserManager);
         when(mMockContext.getSystemService(eq(UserManager.class)))
