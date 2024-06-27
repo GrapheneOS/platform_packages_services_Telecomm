@@ -213,6 +213,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                     String address;
                     BluetoothDevice bluetoothDevice;
                     int focus;
+                    int handleEndTone;
                     @AudioRoute.AudioRouteType int type;
                     switch (msg.what) {
                         case CONNECT_WIRED_HEADSET:
@@ -305,11 +306,18 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                             break;
                         case SWITCH_FOCUS:
                             focus = msg.arg1;
-                            handleSwitchFocus(focus);
+                            handleEndTone = (int) ((SomeArgs) msg.obj).arg2;
+                            handleSwitchFocus(focus, handleEndTone);
                             break;
                         case EXIT_PENDING_ROUTE:
                             handleExitPendingRoute();
                             break;
+                        case UPDATE_SYSTEM_AUDIO_ROUTE:
+                            updateCallAudioState(new CallAudioState(mIsMute,
+                                    mCallAudioState.getRoute(),
+                                    mCallAudioState.getSupportedRouteMask(),
+                                    mCallAudioState.getActiveBluetoothDevice(),
+                                    mCallAudioState.getSupportedBluetoothDevices()));
                         default:
                             break;
                     }
@@ -391,6 +399,14 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
 
     @Override
     public void sendMessageWithSessionInfo(int message, int arg, String data) {
+        SomeArgs args = SomeArgs.obtain();
+        args.arg1 = Log.createSubsession();
+        args.arg2 = data;
+        sendMessage(message, arg, 0, args);
+    }
+
+    @Override
+    public void sendMessageWithSessionInfo(int message, int arg, int data) {
         SomeArgs args = SomeArgs.obtain();
         args.arg1 = Log.createSubsession();
         args.arg2 = data;
@@ -766,7 +782,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         onMuteStateChanged(mIsMute);
     }
 
-    private void handleSwitchFocus(int focus) {
+    private void handleSwitchFocus(int focus, int handleEndTone) {
         Log.i(this, "handleSwitchFocus: focus (%s)", focus);
         mFocusType = focus;
         switch (focus) {
@@ -782,8 +798,12 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
             }
             case ACTIVE_FOCUS -> {
                 // Route to active baseline route (we may need to change audio route in the case
-                // when a video call is put on hold).
-                routeTo(true, getBaseRoute(true, null));
+                // when a video call is put on hold). Ignore route changes if we're handling playing
+                // the end tone. Otherwise, it's possible that we'll override the route a client has
+                // previously requested.
+                if (handleEndTone == 0) {
+                    routeTo(true, getBaseRoute(true, null));
+                }
             }
             case RINGING_FOCUS -> {
                 if (!mIsActive) {

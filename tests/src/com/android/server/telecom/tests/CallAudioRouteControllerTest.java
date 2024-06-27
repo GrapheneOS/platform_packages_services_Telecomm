@@ -172,6 +172,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
         when(mCallAudioManager.getForegroundCall()).thenReturn(mCall);
         when(mCall.getVideoState()).thenReturn(VideoProfile.STATE_AUDIO_ONLY);
         when(mFeatureFlags.ignoreAutoRouteToWatchDevice()).thenReturn(false);
+        when(mFeatureFlags.useRefactoredAudioRouteSwitching()).thenReturn(true);
     }
 
     @After
@@ -215,7 +216,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
     @Test
     public void testNormalCallRouteToEarpiece() {
         mController.initialize();
-        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS);
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
         // Verify that pending audio destination route is set to speaker. This will trigger pending
         // message to wait for SPEAKER_ON message once communication device is set before routing.
         waitForHandlerAction(mController.getAdapterHandler(), TEST_TIMEOUT);
@@ -231,9 +232,52 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
 
     @SmallTest
     @Test
+    public void testActiveFocusAudioRouting() {
+        mController.initialize();
+        // Connect wired headset
+        mController.sendMessageWithSessionInfo(CONNECT_WIRED_HEADSET);
+        CallAudioState expectedState = new CallAudioState(false, CallAudioState.ROUTE_WIRED_HEADSET,
+                CallAudioState.ROUTE_WIRED_HEADSET | CallAudioState.ROUTE_SPEAKER, null,
+                new HashSet<>());
+        verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
+                any(CallAudioState.class), eq(expectedState));
+
+        // Explicitly switch to speaker
+        mController.sendMessageWithSessionInfo(USER_SWITCH_SPEAKER);
+        mController.sendMessageWithSessionInfo(SPEAKER_ON);
+        expectedState = new CallAudioState(false, CallAudioState.ROUTE_SPEAKER,
+                CallAudioState.ROUTE_WIRED_HEADSET | CallAudioState.ROUTE_SPEAKER, null,
+                new HashSet<>());
+        verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
+                any(CallAudioState.class), eq(expectedState));
+        // Expect that active focus received from a new active call will force route to baseline
+        // (in this case, this should be the wired headset).
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
+        expectedState = new CallAudioState(false, CallAudioState.ROUTE_WIRED_HEADSET,
+                CallAudioState.ROUTE_WIRED_HEADSET | CallAudioState.ROUTE_SPEAKER, null,
+                new HashSet<>());
+        verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
+                any(CallAudioState.class), eq(expectedState));
+
+        // Switch back to speaker and send active focus for end tone to confirm that audio routing
+        // doesn't fall back onto the baseline.
+        mController.sendMessageWithSessionInfo(USER_SWITCH_SPEAKER);
+        mController.sendMessageWithSessionInfo(SPEAKER_ON);
+        expectedState = new CallAudioState(false, CallAudioState.ROUTE_SPEAKER,
+                CallAudioState.ROUTE_WIRED_HEADSET | CallAudioState.ROUTE_SPEAKER, null,
+                new HashSet<>());
+        verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
+                any(CallAudioState.class), eq(expectedState));
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 1);
+        verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
+                any(CallAudioState.class), eq(expectedState));
+    }
+
+    @SmallTest
+    @Test
     public void testVideoCallHoldRouteToEarpiece() {
         mController.initialize();
-        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS);
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
         // Verify that pending audio destination route is not defaulted to speaker when a video call
         // is not the foreground call.
         waitForHandlerAction(mController.getAdapterHandler(), TEST_TIMEOUT);
@@ -246,7 +290,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
     public void testVideoCallRouteToSpeaker() {
         when(mCall.getVideoState()).thenReturn(VideoProfile.STATE_BIDIRECTIONAL);
         mController.initialize();
-        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS);
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
         // Verify that pending audio destination route is set to speaker. This will trigger pending
         // message to wait for SPEAKER_ON message once communication device is set before routing.
         waitForHandlerAction(mController.getAdapterHandler(), TEST_TIMEOUT);
@@ -314,15 +358,15 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
                 any(CallAudioState.class), eq(expectedState));
         assertFalse(mController.isActive());
 
-        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, RINGING_FOCUS);
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, RINGING_FOCUS, 0);
         verify(mBluetoothDeviceManager, timeout(TEST_TIMEOUT))
                 .connectAudio(BLUETOOTH_DEVICE_1, AudioRoute.TYPE_BLUETOOTH_SCO);
         assertTrue(mController.isActive());
 
-        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS);
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
         assertTrue(mController.isActive());
 
-        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, NO_FOCUS);
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, NO_FOCUS, 0);
         verify(mBluetoothDeviceManager, timeout(TEST_TIMEOUT).atLeastOnce()).disconnectSco();
         assertFalse(mController.isActive());
     }
@@ -463,7 +507,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
 
     @SmallTest
     @Test
-    public void tesetSwitchSpeakerAndHeadset() {
+    public void testSwitchSpeakerAndHeadset() {
         mController.initialize();
         mController.sendMessageWithSessionInfo(CONNECT_WIRED_HEADSET);
         CallAudioState expectedState = new CallAudioState(false, CallAudioState.ROUTE_WIRED_HEADSET,
@@ -560,7 +604,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
 
         // Switch to NO_FOCUS to indicate call termination and verify mute is reset.
         when(mAudioManager.isMicrophoneMute()).thenReturn(true);
-        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, NO_FOCUS);
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, NO_FOCUS, 0);
         expectedState = new CallAudioState(false, CallAudioState.ROUTE_EARPIECE,
                 CallAudioState.ROUTE_EARPIECE | CallAudioState.ROUTE_SPEAKER, null,
                 new HashSet<>());

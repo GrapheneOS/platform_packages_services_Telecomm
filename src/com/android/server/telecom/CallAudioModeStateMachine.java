@@ -824,7 +824,7 @@ public class CallAudioModeStateMachine extends StateMachine {
             }
             mAudioManager.setMode(mMostRecentMode);
             mLocalLog.log("Mode " + mMostRecentMode);
-            mCallAudioManager.setCallAudioRouteFocusState(CallAudioRouteStateMachine.ACTIVE_FOCUS);
+            mCallAudioManager.setCallAudioRouteFocusStateForEndTone();
         }
 
         @Override

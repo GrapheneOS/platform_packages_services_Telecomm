@@ -746,10 +746,8 @@ public class BluetoothDeviceManager {
             }
         }
 
-        if (!mAudioManager.getCommunicationDevice().equals(deviceInfo)) {
-            return mAudioManager.setCommunicationDevice(deviceInfo);
-        }
-        return true;
+        return deviceInfo != null && (mAudioManager.getCommunicationDevice().equals(deviceInfo)
+                || mAudioManager.setCommunicationDevice(deviceInfo));
     }
 
     // Connect audio to the bluetooth device at address, checking to see whether it's

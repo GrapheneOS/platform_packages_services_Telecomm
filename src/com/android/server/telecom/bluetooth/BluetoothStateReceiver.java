@@ -149,7 +149,7 @@ public class BluetoothStateReceiver extends BroadcastReceiver {
                 }
                 break;
             case BluetoothHeadset.STATE_AUDIO_DISCONNECTED:
-                if (Flags.useRefactoredAudioRouteSwitching()) {
+                if (mFeatureFlags.useRefactoredAudioRouteSwitching()) {
                     CallAudioRouteController audioRouteController =
                             (CallAudioRouteController) mCallAudioRouteAdapter;
                     audioRouteController.setIsScoAudioConnected(false);
@@ -195,7 +195,7 @@ public class BluetoothStateReceiver extends BroadcastReceiver {
                 device.getAddress(), bluetoothHeadsetState);
 
         if (bluetoothHeadsetState == BluetoothProfile.STATE_CONNECTED) {
-            if (Flags.useRefactoredAudioRouteSwitching()) {
+            if (mFeatureFlags.useRefactoredAudioRouteSwitching()) {
                 mCallAudioRouteAdapter.sendMessageWithSessionInfo(BT_DEVICE_ADDED,
                         audioRouteType, device);
             } else {
@@ -203,7 +203,7 @@ public class BluetoothStateReceiver extends BroadcastReceiver {
             }
         } else if (bluetoothHeadsetState == BluetoothProfile.STATE_DISCONNECTED
                 || bluetoothHeadsetState == BluetoothProfile.STATE_DISCONNECTING) {
-            if (Flags.useRefactoredAudioRouteSwitching()) {
+            if (mFeatureFlags.useRefactoredAudioRouteSwitching()) {
                 mCallAudioRouteAdapter.sendMessageWithSessionInfo(BT_DEVICE_REMOVED,
                         audioRouteType, device);
             } else {
@@ -235,7 +235,7 @@ public class BluetoothStateReceiver extends BroadcastReceiver {
         Log.i(LOG_TAG, "Device %s is now the preferred BT device for %s", device,
                 BluetoothDeviceManager.getDeviceTypeString(deviceType));
 
-        if (Flags.useRefactoredAudioRouteSwitching()) {
+        if (mFeatureFlags.useRefactoredAudioRouteSwitching()) {
             CallAudioRouteController audioRouteController = (CallAudioRouteController)
                     mCallAudioRouteAdapter;
             if (device == null) {

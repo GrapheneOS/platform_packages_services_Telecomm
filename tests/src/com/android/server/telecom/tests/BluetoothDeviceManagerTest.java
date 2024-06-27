@@ -48,6 +48,7 @@ import android.os.Parcel;
 import androidx.test.filters.SmallTest;
 
 import com.android.server.telecom.CallAudioCommunicationDeviceTracker;
+import com.android.server.telecom.CallAudioRouteAdapter;
 import com.android.server.telecom.bluetooth.BluetoothDeviceManager;
 import com.android.server.telecom.bluetooth.BluetoothRouteManager;
 import com.android.server.telecom.bluetooth.BluetoothStateReceiver;
@@ -138,6 +139,7 @@ public class BluetoothDeviceManagerTest extends TelecomTestCase {
 
         when(mSpeakerInfo.getType()).thenReturn(TYPE_BUILTIN_SPEAKER);
         when(mFeatureFlags.callAudioCommunicationDeviceRefactor()).thenReturn(false);
+        when(mFeatureFlags.useRefactoredAudioRouteSwitching()).thenReturn(false);
     }
 
     @Override

@@ -1685,6 +1685,10 @@ public class CallAudioRouteStateMachine extends StateMachine implements CallAudi
         sendMessage(message, arg, 0, args);
     }
 
+    public void sendMessageWithSessionInfo(int message, int arg, int data) {
+        // ignore, only used in CallAudioRouteController
+    }
+
     public void sendMessageWithSessionInfo(int message, int arg, BluetoothDevice bluetoothDevice) {
         // ignore, only used in CallAudioRouteController
     }

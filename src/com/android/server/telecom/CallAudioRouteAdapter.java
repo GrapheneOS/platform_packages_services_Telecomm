@@ -128,6 +128,7 @@ public interface CallAudioRouteAdapter {
     void sendMessageWithSessionInfo(int message);
     void sendMessageWithSessionInfo(int message, int arg);
     void sendMessageWithSessionInfo(int message, int arg, String data);
+    void sendMessageWithSessionInfo(int message, int arg, int data);
     void sendMessageWithSessionInfo(int message, int arg, BluetoothDevice bluetoothDevice);
     void sendMessage(int message, Runnable r);
     void setCallAudioManager(CallAudioManager callAudioManager);
