@@ -32,3 +32,11 @@ flag {
   description: "Ensure onCallEndpointChanged is sent to ICS when it connects."
   bug: "348297436"
 }
+
+# OWNER=tjstuart TARGET=24Q4
+flag {
+  name: "do_not_send_call_to_null_ics"
+  namespace: "telecom"
+  description: "Only send calls to the InCallService if the binding is not null"
+  bug: "345473659"
+}

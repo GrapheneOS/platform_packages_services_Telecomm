@@ -1946,6 +1946,25 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mFeatureFlags.profileUserSupport()).thenReturn(true);
     }
 
+    /**
+     * Verify that if a null inCallService object is passed to sendCallToInCallService, a
+     * NullPointerException is not thrown.
+     */
+    @Test
+    public void testSendCallToInCallServiceWithNullService() {
+        when(mFeatureFlags.doNotSendCallToNullIcs()).thenReturn(true);
+        //Setup up parent and child/work profile relation
+        when(mMockChildUserCall.getAssociatedUser()).thenReturn(mChildUserHandle);
+        when(mMockCallsManager.getCurrentUserHandle()).thenReturn(mParentUserHandle);
+        when(mMockUserManager.getProfileParent(mChildUserHandle)).thenReturn(mParentUserHandle);
+        when(mFeatureFlags.profileUserSupport()).thenReturn(true);
+        when(mMockContext.getSystemService(eq(UserManager.class)))
+                .thenReturn(mMockUserManager);
+        // verify a NullPointerException is not thrown
+        int res = mInCallController.sendCallToService(mMockCall, mInCallServiceInfo, null);
+        assertEquals(0, res);
+    }
+
     @Test
     public void testProfileCallQueriesIcsUsingParentUserToo() throws Exception {
         setupMocksForProfileTest();

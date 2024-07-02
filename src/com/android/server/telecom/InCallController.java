@@ -103,7 +103,10 @@ public class InCallController extends CallsManagerListenerBase implements
             UUID.fromString("0c2adf96-353a-433c-afe9-1e5564f304f9");
     public static final String SET_IN_CALL_ADAPTER_ERROR_MSG =
             "Exception thrown while setting the in-call adapter.";
-
+    public static final UUID NULL_IN_CALL_SERVICE_BINDING_UUID =
+            UUID.fromString("7d58dedf-b71d-4c18-9d23-47b434bde58b");
+    public static final String NULL_IN_CALL_SERVICE_BINDING_ERROR_MSG =
+            "InCallController#sendCallToInCallService with null InCallService binding";
     @VisibleForTesting
     public void setAnomalyReporterAdapter(AnomalyReporterAdapter mAnomalyReporterAdapter){
         mAnomalyReporter = mAnomalyReporterAdapter;
@@ -2602,7 +2605,8 @@ public class InCallController extends CallsManagerListenerBase implements
         return true;
     }
 
-    private int sendCallToService(Call call, InCallServiceInfo info,
+    @VisibleForTesting
+    public int sendCallToService(Call call, InCallServiceInfo info,
             IInCallService inCallService) {
         try {
             if ((call.isSelfManaged() && (!info.isSelfManagedCallsSupported()
@@ -2628,7 +2632,20 @@ public class InCallController extends CallsManagerListenerBase implements
                     includeRttCall,
                     info.getType() == IN_CALL_SERVICE_TYPE_SYSTEM_UI ||
                             info.getType() == IN_CALL_SERVICE_TYPE_NON_UI);
-            inCallService.addCall(sanitizeParcelableCallForService(info, parcelableCall));
+            if (mFeatureFlags.doNotSendCallToNullIcs()) {
+                if (inCallService != null) {
+                    inCallService.addCall(sanitizeParcelableCallForService(info, parcelableCall));
+                } else {
+                    Log.w(this, "call=[%s], was not sent to InCallService"
+                                    + " with info=[%s] due to a null InCallService binding",
+                            call, info);
+                    mAnomalyReporter.reportAnomaly(NULL_IN_CALL_SERVICE_BINDING_UUID,
+                            NULL_IN_CALL_SERVICE_BINDING_ERROR_MSG);
+                    return 0;
+                }
+            } else {
+                inCallService.addCall(sanitizeParcelableCallForService(info, parcelableCall));
+            }
             updateCallTracking(call, info, true /* isAdd */);
             return 1;
         } catch (RemoteException ignored) {
