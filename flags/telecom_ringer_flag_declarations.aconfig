@@ -8,3 +8,11 @@ flag {
   description: "Gates whether to use a serialized, device-specific ring vibration."
   bug: "282113261"
 }
+
+# OWNER=grantmenke TARGET=24Q4
+flag {
+  name: "ensure_in_car_ringing"
+  namespace: "telecom"
+  description: "Gates whether to ensure that when a user is in their car, they are able to hear ringing for an incoming call."
+  bug: "348708398"
+}

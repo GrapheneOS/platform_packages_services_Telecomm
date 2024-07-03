@@ -136,6 +136,7 @@ public class RingerTest extends TelecomTestCase {
         super.setUp();
         mContext = spy(mComponentContextFixture.getTestDouble().getApplicationContext());
         when(mFeatureFlags.telecomResolveHiddenDependencies()).thenReturn(true);
+        when(mFeatureFlags.ensureInCarRinging()).thenReturn(false);
         doReturn(URI_VIBRATION_EFFECT).when(spyVibrationEffectProxy).get(any(), any());
         when(mockPlayerFactory.createPlayer(any(Call.class), anyInt())).thenReturn(mockTonePlayer);
         mockAudioManager = mContext.getSystemService(AudioManager.class);
@@ -434,6 +435,66 @@ public class RingerTest extends TelecomTestCase {
         verify(mockRingtone).play();
         verify(mockVibrator, never()).vibrate(any(VibrationEffect.class),
                 any(VibrationAttributes.class));
+    }
+
+    @SmallTest
+    @Test
+    public void testAudibleRingWhenNotificationSoundShouldPlay() throws Exception {
+        when(mFeatureFlags.ensureInCarRinging()).thenReturn(true);
+        Ringtone mockRingtone = ensureRingtoneMocked();
+
+        mRingerUnderTest.startCallWaiting(mockCall1);
+        AudioAttributes aa = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        // Set AudioManager#shouldNotificationSoundPlay to true:
+        when(mockAudioManager.shouldNotificationSoundPlay(aa)).thenReturn(true);
+        enableVibrationWhenRinging();
+
+        // This will set AudioManager#getStreamVolume to 0. This test ensures that whether a
+        // ringtone is audible is controlled by AudioManager#shouldNotificationSoundPlay instead:
+        ensureRingerIsNotAudible();
+
+        // Ensure an audible ringtone is played:
+        assertTrue(startRingingAndWaitForAsync(mockCall2, false));
+        verify(mockTonePlayer).stopTone();
+        verify(mockRingtoneFactory, atLeastOnce()).getRingtone(any(Call.class),
+                nullable(VolumeShaper.Configuration.class), anyBoolean());
+        verifyNoMoreInteractions(mockRingtoneFactory);
+        verify(mockRingtone).play();
+
+        // Ensure a vibration plays:
+        verify(mockVibrator).vibrate(any(VibrationEffect.class), any(VibrationAttributes.class));
+    }
+
+    @SmallTest
+    @Test
+    public void testNoAudibleRingWhenNotificationSoundShouldNotPlay() throws Exception {
+        when(mFeatureFlags.ensureInCarRinging()).thenReturn(true);
+        Ringtone mockRingtone = ensureRingtoneMocked();
+
+        mRingerUnderTest.startCallWaiting(mockCall1);
+        AudioAttributes aa = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        // Set AudioManager#shouldNotificationSoundPlay to false:
+        when(mockAudioManager.shouldNotificationSoundPlay(aa)).thenReturn(false);
+        enableVibrationWhenRinging();
+
+        // This will set AudioManager#getStreamVolume to 100. This test ensures that whether a
+        // ringtone is audible is controlled by AudioManager#shouldNotificationSoundPlay instead:
+        ensureRingerIsAudible();
+
+        // Ensure no audible ringtone is played:
+        assertFalse(startRingingAndWaitForAsync(mockCall2, false));
+        verify(mockTonePlayer).stopTone();
+        // Ensure a silent haptics only ringtone is played:
+        verify(mockRingtoneFactory, atLeastOnce()).getHapticOnlyRingtone();
+        verifyNoMoreInteractions(mockRingtoneFactory);
+        verify(mockRingtone).play();
+
+        // Ensure a vibration plays:
+        verify(mockVibrator).vibrate(any(VibrationEffect.class), any(VibrationAttributes.class));
     }
 
     @SmallTest

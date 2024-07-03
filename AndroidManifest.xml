@@ -45,6 +45,8 @@
     <!-- Required to determine source of ongoing audio recordings. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_ROUTING"/>
     <uses-permission android:name="android.permission.MODIFY_PHONE_STATE"/>
+    <!-- Required to query the audio framework to determine if a notification sound should play. -->
+    <uses-permission android:name="android.permission.QUERY_AUDIO_STATE"/>
     <uses-permission android:name="android.permission.READ_CALL_LOG"/>
     <!-- Required to check for direct to voicemail, to load custom ringtones for incoming calls
         which are specified on a per contact basis, and also to determine user preferred

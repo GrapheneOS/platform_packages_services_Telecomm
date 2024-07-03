@@ -28,6 +28,7 @@ import android.app.NotificationManager;
 import android.app.Person;
 import android.content.Context;
 import android.content.res.Resources;
+import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.Ringtone;
 import android.media.VolumeShaper;
@@ -704,7 +705,16 @@ public class Ringer {
 
         LogUtils.EventTimer timer = new EventTimer();
 
-        boolean isVolumeOverZero = mAudioManager.getStreamVolume(AudioManager.STREAM_RING) > 0;
+        boolean isVolumeOverZero;
+
+        if (mFlags.ensureInCarRinging()) {
+            AudioAttributes aa = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+            isVolumeOverZero = mAudioManager.shouldNotificationSoundPlay(aa);
+        } else {
+            isVolumeOverZero = mAudioManager.getStreamVolume(AudioManager.STREAM_RING) > 0;
+        }
         timer.record("isVolumeOverZero");
         boolean shouldRingForContact = shouldRingForContact(call);
         timer.record("shouldRingForContact");
