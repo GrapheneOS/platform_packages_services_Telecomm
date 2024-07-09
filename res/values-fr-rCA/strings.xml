@@ -30,9 +30,9 @@
     <string name="notification_disconnectedCall_body" msgid="600491714584417536">"L\'appel à <xliff:g id="CALLER">%s</xliff:g> a été déconnecté en raison d\'un appel d\'urgence qui a été passé."</string>
     <string name="notification_disconnectedCall_generic_body" msgid="5282765206349184853">"Votre appel a été déconnecté en raison d\'un appel d\'urgence en cours de lancement."</string>
     <string name="notification_audioProcessing_title" msgid="1619035039880584575">"Appel en arrière-plan"</string>
-    <string name="notification_audioProcessing_body" msgid="8811420157964118913">"<xliff:g id="AUDIO_PROCESSING_APP_NAME">%s</xliff:g> traite un appel en arrière-plan. Cette application peut accéder à l\'audio de l\'appel et faire jouer un contenu audio par l\'intermédiaire de l\'appel."</string>
+    <string name="notification_audioProcessing_body" msgid="8811420157964118913">"<xliff:g id="AUDIO_PROCESSING_APP_NAME">%s</xliff:g> traite un appel en arrière-plan. Cette appli peut accéder à l\'audio de l\'appel et faire jouer un contenu audio par l\'intermédiaire de l\'appel."</string>
     <string name="notification_incallservice_not_responding_title" msgid="5347557574288598548">"<xliff:g id="IN_CALL_SERVICE_APP_NAME">%s</xliff:g> a arrêté de répondre"</string>
-    <string name="notification_incallservice_not_responding_body" msgid="9209308270131968623">"Votre appel a utilisé l\'application Téléphone intégrée à votre appareil"</string>
+    <string name="notification_incallservice_not_responding_body" msgid="9209308270131968623">"Votre appel a utilisé l\'appli Téléphone intégrée à votre appareil"</string>
     <string name="accessibility_call_muted" msgid="2968461092554300779">"Son coupé"</string>
     <string name="accessibility_speakerphone_enabled" msgid="555386652061614267">"Haut-parleur activé"</string>
     <string name="respond_via_sms_canned_response_1" msgid="6332561460870382561">"Peux pas parler. Quoi de neuf?"</string>
@@ -47,20 +47,20 @@
     <string name="respond_via_sms_failure_format" msgid="5198680980054596391">"Échec de l\'envoi du message au <xliff:g id="PHONE_NUMBER">%s</xliff:g>."</string>
     <string name="enable_account_preference_title" msgid="6949224486748457976">"Comptes d\'appel"</string>
     <string name="outgoing_call_not_allowed_user_restriction" msgid="3424338207838851646">"Seuls les appels d\'urgence sont autorisés."</string>
-    <string name="outgoing_call_not_allowed_no_permission" msgid="8590468836581488679">"Cette application ne peut pas faire d\'appels sans l\'autorisation de l\'application Téléphone."</string>
+    <string name="outgoing_call_not_allowed_no_permission" msgid="8590468836581488679">"Cette appli ne peut pas faire d\'appels sans l\'autorisation de l\'appli Téléphone."</string>
     <string name="outgoing_call_error_no_phone_number_supplied" msgid="7665135102566099778">"Pour faire un appel, entrez un numéro valide."</string>
     <string name="duplicate_video_call_not_allowed" msgid="5754746140185781159">"Impossible d\'ajouter l\'appel pour le moment."</string>
     <string name="no_vm_number" msgid="2179959110602180844">"Numéro de messagerie vocale manquant"</string>
     <string name="no_vm_number_msg" msgid="1339245731058529388">"Aucun numéro de messagerie vocale n\'est enregistré sur la carte SIM."</string>
     <string name="add_vm_number_str" msgid="5179510133063168998">"Ajouter un numéro"</string>
-    <string name="change_default_dialer_dialog_title" msgid="5861469279421508060">"Définir <xliff:g id="NEW_APP">%s</xliff:g> comme votre application de téléphonie par défaut?"</string>
-    <string name="change_default_dialer_dialog_affirmative" msgid="8604665314757739550">"Définir comme application de téléphonie par défaut"</string>
+    <string name="change_default_dialer_dialog_title" msgid="5861469279421508060">"Définir <xliff:g id="NEW_APP">%s</xliff:g> comme votre appli de téléphonie par défaut?"</string>
+    <string name="change_default_dialer_dialog_affirmative" msgid="8604665314757739550">"Définir comme appli de téléphonie par défaut"</string>
     <string name="change_default_dialer_dialog_negative" msgid="8648669840052697821">"Annuler"</string>
-    <string name="change_default_dialer_warning_message" msgid="8461963987376916114">"<xliff:g id="NEW_APP">%s</xliff:g> sera en mesure de passer des appels et de contrôler tous les aspects des appels. Seules les applications auxquelles vous avez confiance doivent être définies comme l\'application de téléphonie par défaut."</string>
+    <string name="change_default_dialer_warning_message" msgid="8461963987376916114">"<xliff:g id="NEW_APP">%s</xliff:g> sera en mesure de passer des appels et de contrôler tous les aspects des appels. Seules les applis auxquelles vous avez confiance doivent être définies comme appli de téléphonie par défaut."</string>
     <string name="change_default_call_screening_dialog_title" msgid="5365787219927262408">"Définir <xliff:g id="NEW_APP">%s</xliff:g> comme appli de filtrage d\'appels par défaut?"</string>
     <string name="change_default_call_screening_warning_message_for_disable_old_app" msgid="2039830033533243164">"<xliff:g id="OLD_APP">%s</xliff:g> ne pourra plus filtrer les appels."</string>
-    <string name="change_default_call_screening_warning_message" msgid="9020537562292754269">"<xliff:g id="NEW_APP">%s</xliff:g> pourra accéder aux renseignements sur les appelants qui ne figurent pas dans vos contacts et pourra bloquer ces appels. L\'application de filtrage d\'appels par défaut doit être une application de confiance."</string>
-    <string name="change_default_call_screening_dialog_affirmative" msgid="7162433828280058647">"Définir comme application de filtrage d\'appels par défaut"</string>
+    <string name="change_default_call_screening_warning_message" msgid="9020537562292754269">"<xliff:g id="NEW_APP">%s</xliff:g> pourra accéder aux renseignements sur les appelants qui ne figurent pas dans vos contacts et pourra bloquer ces appels. L\'appli de filtrage d\'appels par défaut doit être une appli de confiance."</string>
+    <string name="change_default_call_screening_dialog_affirmative" msgid="7162433828280058647">"Définir comme appli de filtrage d\'appels par défaut"</string>
     <string name="change_default_call_screening_dialog_negative" msgid="1839266125623106342">"Annuler"</string>
     <string name="blocked_numbers" msgid="8322134197039865180">"Numéros bloqués"</string>
     <string name="blocked_numbers_msg" msgid="2797422132329662697">"Vous ne recevrez pas d\'appels ni de messages texte provenant des numéros bloqués."</string>
@@ -93,19 +93,19 @@
     <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"Impossible de passer cet appel, car aucun compte d\'appel ne prend en charge les appels de ce type."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"Impossible de faire l\'appel en raison de votre appel <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"Impossible de faire l\'appel en raison de vos appels <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
-    <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"Impossible de faire l\'appel en raison d\'un appel dans une autre application."</string>
+    <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"Impossible de faire l\'appel en raison d\'un appel dans une autre appli."</string>
     <string name="notification_channel_incoming_call" msgid="5245550964701715662">"Appels entrants"</string>
     <string name="notification_channel_missed_call" msgid="7168893015283909012">"Appels manqués"</string>
     <string name="notification_channel_call_blocking" msgid="2028807677868598710">"Blocage des appels"</string>
     <string name="notification_channel_background_calls" msgid="7785659903711350506">"Appels en arrière-plan"</string>
     <string name="notification_channel_disconnected_calls" msgid="8228636543997645757">"Appels déconnectés"</string>
-    <string name="notification_channel_in_call_service_crash" msgid="7313237519166984267">"Applications téléphoniques qui ont planté"</string>
+    <string name="notification_channel_in_call_service_crash" msgid="7313237519166984267">"Applis téléphoniques qui ont planté"</string>
     <string name="notification_channel_call_streaming" msgid="5100510699787538991">"Diffusion en continu d\'appels"</string>
     <string name="alert_outgoing_call" msgid="5319895109298927431">"Si vous passez cet appel, vous mettrez fin à l\'appel <xliff:g id="OTHER_APP">%1$s</xliff:g>."</string>
     <string name="alert_redirect_outgoing_call_or_not" msgid="665409645789521636">"Choisissez comment passer cet appel"</string>
     <string name="alert_place_outgoing_call_with_redirection" msgid="5221065030959024121">"Rediriger l\'appel en utilisant <xliff:g id="OTHER_APP">%1$s</xliff:g>"</string>
     <string name="alert_place_unredirect_outgoing_call" msgid="2467608535225764006">"Appeler en utilisant mon numéro de téléphone"</string>
-    <string name="alert_redirect_outgoing_call_timeout" msgid="5568101425637373060">"Impossible de passer l\'appel au moyen de l\'application <xliff:g id="OTHER_APP">%1$s</xliff:g>. Essayez d\'utiliser une autre application de redirection d\'appels ou de communiquer avec le développeur de l\'application pour obtenir de l\'aide."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="5568101425637373060">"Impossible de passer l\'appel au moyen de l\'appli <xliff:g id="OTHER_APP">%1$s</xliff:g>. Essayez d\'utiliser une autre appli de redirection d\'appels ou de communiquer avec le développeur de l\'appli pour obtenir de l\'aide."</string>
     <string name="phone_settings_call_blocking_txt" msgid="7311523114822507178">"Blocage des appels"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="2602249106007265757">"Numéros non répertoriés dans les contacts"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="963327038085718969">"Bloquer les numéros non répertoriés dans vos contacts"</string>

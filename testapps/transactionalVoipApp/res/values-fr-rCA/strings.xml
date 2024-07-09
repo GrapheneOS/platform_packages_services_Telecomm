@@ -20,7 +20,7 @@
     <string name="app_name" msgid="2907804426411305091">"Activité de test de l\'API transactionnelle"</string>
     <string name="in_call_activity_name" msgid="7545884666442897585">"Activité transactionnelle durant l\'appel"</string>
     <string name="register_phone_account" msgid="1920315963082350332">"Inscrire un compte téléphonique"</string>
-    <string name="start_foreground_service" msgid="8968755699895128574">"Démarrer FGS (simuler TA + application en arrière-plan)"</string>
+    <string name="start_foreground_service" msgid="8968755699895128574">"Démarrer FGS (simuler TA + appli en arrière-plan)"</string>
     <string name="start_outgoing" msgid="1441644037370361864">"Démarrer un appel sortant"</string>
     <string name="start_incoming" msgid="6444983300186361271">"Démarrer un appel entrant"</string>
     <string name="get_call_id" msgid="5513943242738347108">"identifiant de l\'appel non défini"</string>
