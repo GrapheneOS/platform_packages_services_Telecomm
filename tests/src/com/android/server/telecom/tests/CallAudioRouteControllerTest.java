@@ -72,6 +72,7 @@ import com.android.server.telecom.AudioRoute;
 import com.android.server.telecom.Call;
 import com.android.server.telecom.CallAudioManager;
 import com.android.server.telecom.CallAudioRouteController;
+import com.android.server.telecom.CallAudioRouteStateMachine;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.PendingAudioRoute;
 import com.android.server.telecom.StatusBarNotifier;
@@ -152,6 +153,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
         when(mCallsManager.getCurrentUserHandle()).thenReturn(
                 new UserHandle(UserHandle.USER_SYSTEM));
         when(mCallsManager.getLock()).thenReturn(mLock);
+        when(mCallsManager.getForegroundCall()).thenReturn(mCall);
         when(mBluetoothRouteManager.getDeviceManager()).thenReturn(mBluetoothDeviceManager);
         when(mBluetoothDeviceManager.connectAudio(any(BluetoothDevice.class), anyInt()))
                 .thenReturn(true);
@@ -172,6 +174,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
         mController.setCallAudioManager(mCallAudioManager);
         when(mCallAudioManager.getForegroundCall()).thenReturn(mCall);
         when(mCall.getVideoState()).thenReturn(VideoProfile.STATE_AUDIO_ONLY);
+        when(mCall.getSupportedAudioRoutes()).thenReturn(CallAudioState.ROUTE_ALL);
         when(mFeatureFlags.ignoreAutoRouteToWatchDevice()).thenReturn(false);
         when(mFeatureFlags.useRefactoredAudioRouteSwitching()).thenReturn(true);
     }
@@ -797,6 +800,35 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
                 | CallAudioState.ROUTE_SPEAKER, BLUETOOTH_DEVICE_1, BLUETOOTH_DEVICES);
         verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
             any(CallAudioState.class), eq(expectedState));
+    }
+
+    @SmallTest
+    @Test
+    public void testUpdateRouteForForeground() {
+        mController.initialize();
+        mController.sendMessageWithSessionInfo(BT_DEVICE_ADDED, AudioRoute.TYPE_BLUETOOTH_SCO,
+                BLUETOOTH_DEVICE_1);
+
+        CallAudioState expectedState = new CallAudioState(false, CallAudioState.ROUTE_BLUETOOTH,
+                CallAudioState.ROUTE_EARPIECE | CallAudioState.ROUTE_BLUETOOTH
+                        | CallAudioState.ROUTE_SPEAKER, BLUETOOTH_DEVICE_1, BLUETOOTH_DEVICES);
+        mController.sendMessageWithSessionInfo(BT_ACTIVE_DEVICE_PRESENT,
+                AudioRoute.TYPE_BLUETOOTH_SCO, BT_ADDRESS_1);
+        verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
+                any(CallAudioState.class), eq(expectedState));
+
+        // Ensure that supported routes is updated along with the current route to reflect the
+        // foreground call's supported audio routes.
+        when(mCall.getSupportedAudioRoutes()).thenReturn(CallAudioState.ROUTE_SPEAKER);
+        mController.sendMessageWithSessionInfo(
+                CallAudioRouteStateMachine.UPDATE_SYSTEM_AUDIO_ROUTE);
+        mController.sendMessageWithSessionInfo(SPEAKER_ON);
+        expectedState = new CallAudioState(false, CallAudioState.ROUTE_SPEAKER,
+                CallAudioState.ROUTE_SPEAKER, null, BLUETOOTH_DEVICES);
+        verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
+                any(CallAudioState.class), eq(expectedState));
+        assertEquals(3, mController.getAvailableRoutes().size());
+        assertEquals(1, mController.getCallSupportedRoutes().size());
     }
 
     private void verifyConnectBluetoothDevice(int audioType) {
