@@ -130,8 +130,8 @@ public class CallTest extends TelecomTestCase {
         Resources mockResources = mContext.getResources();
         when(mockResources.getBoolean(R.bool.skip_loading_canned_text_response))
                 .thenReturn(false);
-        when(mockResources.getBoolean(R.bool.skip_incoming_caller_info_query))
-                .thenReturn(false);
+        when(mockResources.getString(R.string.skip_incoming_caller_info_account_package))
+                .thenReturn("");
         EmergencyCallHelper helper = mock(EmergencyCallHelper.class);
         doReturn(helper).when(mMockCallsManager).getEmergencyCallHelper();
     }
@@ -694,8 +694,8 @@ public class CallTest extends TelecomTestCase {
     @SmallTest
     public void testGetFromCallerInfo_skipLookup() {
         Resources mockResources = mContext.getResources();
-        when(mockResources.getBoolean(R.bool.skip_incoming_caller_info_query))
-                .thenReturn(true);
+        when(mockResources.getString(R.string.skip_incoming_caller_info_account_package))
+                .thenReturn("com.foo");
 
         createCall("1");
 

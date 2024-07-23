@@ -83,8 +83,8 @@
     <!-- When true, skip fetching quick reply response -->
     <bool name="skip_loading_canned_text_response">false</bool>
 
-    <!-- When true, skip fetching incoming caller info -->
-    <bool name="skip_incoming_caller_info_query">false</bool>
+    <!-- When set, telecom will skip fetching incoming caller info for this account -->
+    <string name="skip_incoming_caller_info_account_package"></string>
 
     <string-array name="system_bluetooth_stack_package_name" translatable="false">
         <!-- AOSP -->
