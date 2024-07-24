@@ -62,7 +62,7 @@
     <string name="change_default_call_screening_warning_message" msgid="9020537562292754269">"<xliff:g id="NEW_APP">%s</xliff:g> контактілер тізімінде жоқ қоңырау шалушылар туралы ақпаратты көріп, бұндай қоңырауларды бөгей алады. Әдепкі қоңырауды тексеру қолданбасы ретінде тек өзіңіз сенетін қолданбаларды ғана орнатқан дұрыс."</string>
     <string name="change_default_call_screening_dialog_affirmative" msgid="7162433828280058647">"Әдепкі ретінде орнату"</string>
     <string name="change_default_call_screening_dialog_negative" msgid="1839266125623106342">"Жабу"</string>
-    <string name="blocked_numbers" msgid="8322134197039865180">"Бөгелген нөмірлер"</string>
+    <string name="blocked_numbers" msgid="8322134197039865180">"Блокталған нөмірлер"</string>
     <string name="blocked_numbers_msg" msgid="2797422132329662697">"Тыйым салынған нөмірлерден қоңыраулар немесе мәтіндік хабарлар алмайсыз."</string>
     <string name="block_number" msgid="3784343046852802722">"Нөмір қосу"</string>
     <string name="unblock_dialog_body" msgid="2723393535797217261">"<xliff:g id="NUMBER_TO_BLOCK">%1$s</xliff:g> бөгеуден шығарылсын ба?"</string>
@@ -70,7 +70,7 @@
     <string name="add_blocked_dialog_body" msgid="8599974422407139255">"Қоңыраулары мен мәтіндік хабарлары бөгелетін нөмір"</string>
     <string name="add_blocked_number_hint" msgid="8769422085658041097">"Телефон нөмірі"</string>
     <string name="block_button" msgid="485080149164258770">"Блоктау"</string>
-    <string name="non_primary_user" msgid="315564589279622098">"Бөгелген нөмірлерді тек құрылғы иесі көре және басқара алады."</string>
+    <string name="non_primary_user" msgid="315564589279622098">"Блокталған нөмірлерді тек құрылғы иесі көре және басқара алады."</string>
     <string name="delete_icon_description" msgid="5335959254954774373">"Бөгеуді алу"</string>
     <string name="blocked_numbers_butter_bar_title" msgid="582982373755950791">"Тыйым уақытша алынды"</string>
     <string name="blocked_numbers_butter_bar_body" msgid="1261213114919301485">"Төтенше жағдай нөмірін терген немесе мәтіндік хабар жіберген соң, төтенше жағдай қызметтері сізге хабарласа алуы үшін тыйым алынады."</string>
