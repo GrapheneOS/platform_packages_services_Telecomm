@@ -326,19 +326,6 @@ public class RingerTest extends TelecomTestCase {
 
     @SmallTest
     @Test
-    public void testNoActionInTheaterMode() throws Exception {
-        // Start call waiting to make sure that it doesn't stop when we start ringing
-        mRingerUnderTest.startCallWaiting(mockCall1);
-        when(mockSystemSettingsUtil.isTheaterModeOn(any(Context.class))).thenReturn(true);
-        assertFalse(startRingingAndWaitForAsync(mockCall2, false));
-        verifyZeroInteractions(mockRingtoneFactory);
-        verify(mockTonePlayer, never()).stopTone();
-        verify(mockVibrator, never())
-                .vibrate(any(VibrationEffect.class), any(VibrationAttributes.class));
-    }
-
-    @SmallTest
-    @Test
     public void testNoActionWithExternalRinger() throws Exception {
         Bundle externalRingerExtra = new Bundle();
         externalRingerExtra.putBoolean(TelecomManager.EXTRA_CALL_HAS_IN_BAND_RINGTONE, true);

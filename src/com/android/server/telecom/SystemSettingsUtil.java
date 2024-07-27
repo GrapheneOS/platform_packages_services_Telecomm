@@ -35,11 +35,6 @@ public class SystemSettingsUtil {
     private static final String RAMPING_RINGER_AUDIO_COUPLED_VIBRATION_ENABLED =
             "ramping_ringer_audio_coupled_vibration_enabled";
 
-    public boolean isTheaterModeOn(Context context) {
-        return Settings.Global.getInt(context.getContentResolver(), Settings.Global.THEATER_MODE_ON,
-                0) == 1;
-    }
-
     public boolean isRingVibrationEnabled(Context context) {
         // VIBRATE_WHEN_RINGING setting was deprecated, only RING_VIBRATION_INTENSITY controls the
         // ringtone vibrations on/off state now. Ramping ringer should only be applied when ring

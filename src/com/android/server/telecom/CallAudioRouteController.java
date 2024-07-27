@@ -67,6 +67,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     private static final Map<Integer, Integer> ROUTE_MAP;
     static {
         ROUTE_MAP = new ArrayMap<>();
+        ROUTE_MAP.put(TYPE_INVALID, 0);
         ROUTE_MAP.put(AudioRoute.TYPE_EARPIECE, CallAudioState.ROUTE_EARPIECE);
         ROUTE_MAP.put(AudioRoute.TYPE_WIRED, CallAudioState.ROUTE_WIRED_HEADSET);
         ROUTE_MAP.put(AudioRoute.TYPE_SPEAKER, CallAudioState.ROUTE_SPEAKER);
@@ -386,8 +387,10 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         // set current route
         if (mEarpieceWiredRoute != null) {
             mCurrentRoute = mEarpieceWiredRoute;
-        } else {
+        } else if (mSpeakerDockRoute != null) {
             mCurrentRoute = mSpeakerDockRoute;
+        } else {
+            mCurrentRoute = DUMMY_ROUTE;
         }
         mIsActive = false;
         mCallAudioState = new CallAudioState(mIsMute, ROUTE_MAP.get(mCurrentRoute.getType()),

@@ -52,9 +52,9 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.LogUtils.EventTimer;
 import com.android.server.telecom.flags.FeatureFlags;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -579,10 +579,6 @@ public class Ringer {
     }
 
     public void startCallWaiting(Call call, String reason) {
-        if (mSystemSettingsUtil.isTheaterModeOn(mContext)) {
-            return;
-        }
-
         if (mInCallController.doesConnectedDialerSupportRinging(
                 call.getAssociatedUser())) {
             Log.addEvent(call, LogUtils.Events.SKIP_RINGING, "Dialer handles");
@@ -734,8 +730,6 @@ public class Ringer {
         boolean hasExternalRinger = hasExternalRinger(call);
         timer.record("hasExternalRinger");
         // Don't do call waiting operations or vibration unless these are false.
-        boolean isTheaterModeOn = mSystemSettingsUtil.isTheaterModeOn(mContext);
-        timer.record("isTheaterModeOn");
         boolean letDialerHandleRinging = mInCallController.doesConnectedDialerSupportRinging(
                 call.getAssociatedUser());
         timer.record("letDialerHandleRinging");
@@ -744,15 +738,24 @@ public class Ringer {
         timer.record("isWorkProfileInQuietMode");
 
         Log.i(this, "startRinging timings: " + timer);
-        boolean endEarly = isTheaterModeOn || letDialerHandleRinging || isSelfManaged ||
-                hasExternalRinger || isSilentRingingRequested || isWorkProfileInQuietMode;
+        boolean endEarly =
+                letDialerHandleRinging
+                        || isSelfManaged
+                        || hasExternalRinger
+                        || isSilentRingingRequested
+                        || isWorkProfileInQuietMode;
 
         if (endEarly) {
-            Log.i(this, "Ending early -- isTheaterModeOn=%s, letDialerHandleRinging=%s, " +
-                            "isSelfManaged=%s, hasExternalRinger=%s, silentRingingRequested=%s, " +
-                            "isWorkProfileInQuietMode=%s",
-                    isTheaterModeOn, letDialerHandleRinging, isSelfManaged, hasExternalRinger,
-                    isSilentRingingRequested, isWorkProfileInQuietMode);
+            Log.i(
+                    this,
+                    "Ending early -- letDialerHandleRinging=%s, isSelfManaged=%s, "
+                            + "hasExternalRinger=%s, silentRingingRequested=%s, "
+                            + "isWorkProfileInQuietMode=%s",
+                    letDialerHandleRinging,
+                    isSelfManaged,
+                    hasExternalRinger,
+                    isSilentRingingRequested,
+                    isWorkProfileInQuietMode);
         }
 
         // Acquire audio focus under any of the following conditions:
