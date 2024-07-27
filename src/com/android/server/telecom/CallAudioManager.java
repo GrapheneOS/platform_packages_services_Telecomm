@@ -438,6 +438,10 @@ public class CallAudioManager extends CallsManagerListenerBase {
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public void onRingerModeChange() {
+        if (mFeatureFlags.ensureInCarRinging()) {
+            // Stop the current ringtone before attempting to start the new ringtone:
+            stopRinging();
+        }
         mCallAudioModeStateMachine.sendMessageWithArgs(
                 CallAudioModeStateMachine.RINGER_MODE_CHANGE, makeArgsForModeStateMachine());
     }

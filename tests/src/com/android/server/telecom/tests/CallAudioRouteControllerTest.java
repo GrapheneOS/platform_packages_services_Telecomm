@@ -52,12 +52,16 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothLeAudio;
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.media.IAudioService;
@@ -87,6 +91,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.HashSet;
@@ -562,6 +567,38 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
         verify(mCallsManager, timeout(TEST_TIMEOUT)).onCallAudioStateChanged(
                 any(CallAudioState.class), eq(expectedState));
     }
+
+    @SmallTest
+    @Test
+    public void testStreamRingMuteChange() {
+        mController.initialize();
+
+        // Make sure we register a receiver for the STREAM_MUTE_CHANGED_ACTION so we can see if the
+        // ring stream unmutes.
+        ArgumentCaptor<BroadcastReceiver> brCaptor = ArgumentCaptor.forClass(
+                BroadcastReceiver.class);
+        ArgumentCaptor<IntentFilter> filterCaptor = ArgumentCaptor.forClass(IntentFilter.class);
+        verify(mContext, times(3)).registerReceiver(brCaptor.capture(), filterCaptor.capture());
+        boolean foundValid = false;
+        for (int ix = 0; ix < brCaptor.getAllValues().size(); ix++) {
+            BroadcastReceiver receiver = brCaptor.getAllValues().get(ix);
+            IntentFilter filter = filterCaptor.getAllValues().get(ix);
+            if (!filter.hasAction(AudioManager.STREAM_MUTE_CHANGED_ACTION)) {
+                continue;
+            }
+
+            // Fake out a call to the broadcast receiver and make sure we call into audio manager
+            // to trigger re-evaluation of ringing.
+            Intent intent = new Intent(AudioManager.STREAM_MUTE_CHANGED_ACTION);
+            intent.putExtra(AudioManager.EXTRA_STREAM_VOLUME_MUTED, false);
+            intent.putExtra(AudioManager.EXTRA_VOLUME_STREAM_TYPE, AudioManager.STREAM_RING);
+            receiver.onReceive(mContext, intent);
+            verify(mCallAudioManager).onRingerModeChange();
+            foundValid = true;
+        }
+        assertTrue(foundValid);
+    }
+
 
     @SmallTest
     @Test
