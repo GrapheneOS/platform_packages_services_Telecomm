@@ -88,6 +88,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
     private static final String TEST_PACKAGE = "com.android.server.telecom.tests";
     private static final String TEST_CLASS =
             "com.android.server.telecom.tests.MockConnectionService";
+    private static final String CONNECTION_MANAGER_TEST_CLASS =
+            "com.android.server.telecom.tests.ConnectionManagerConnectionService";
     private static final UserHandle USER_HANDLE_10 = new UserHandle(10);
 
     @Mock
@@ -195,7 +197,7 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
 
     @SmallTest
     @Test
-    public void testbadPhoneAccount() throws Exception {
+    public void testBadPhoneAccount() throws Exception {
         PhoneAccountHandle pAHandle = null;
         when(mMockCall.isEmergencyCall()).thenReturn(false);
         when(mMockCall.getTargetPhoneAccount()).thenReturn(pAHandle);
@@ -219,9 +221,9 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         setTargetPhoneAccount(mMockCall, pAHandle);
         when(mMockCall.isEmergencyCall()).thenReturn(false);
         // Include a Connection Manager
-        PhoneAccountHandle callManagerPAHandle = getNewConnectionMangerHandleForCall(mMockCall,
+        PhoneAccountHandle callManagerPAHandle = getNewConnectionManagerHandleForCall(mMockCall,
                 "cm_acct");
-        ConnectionServiceWrapper service = makeConnectionServiceWrapper();
+        ConnectionServiceWrapper service = makeConnMgrConnectionServiceWrapper();
         // Make sure the target phone account has the correct permissions
         PhoneAccount mFakeTargetPhoneAccount = makeQuickAccount("cm_acct",
                 PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION, null);
@@ -243,14 +245,52 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
 
     @SmallTest
     @Test
+    public void testConnectionManagerConnectionServiceSuccess() throws Exception {
+        when(mFeatureFlags.updatedRcsCallCountTracking()).thenReturn(true);
+
+        // Configure the target phone account as the remote connection service:
+        PhoneAccountHandle pAHandle = getNewTargetPhoneAccountHandle("tel_acct");
+        setTargetPhoneAccount(mMockCall, pAHandle);
+        when(mMockCall.isEmergencyCall()).thenReturn(false);
+        ConnectionServiceWrapper remoteService = makeConnectionServiceWrapper();
+
+        // Configure the connection manager phone account as the primary connection service:
+        PhoneAccountHandle callManagerPAHandle = getNewConnectionManagerHandleForCall(mMockCall,
+                "cm_acct");
+        ConnectionServiceWrapper service = makeConnMgrConnectionServiceWrapper();
+
+        // Make sure the target phone account has the correct permissions
+        PhoneAccount mFakeTargetPhoneAccount = makeQuickAccount("cm_acct",
+                PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION, null);
+        when(mMockAccountRegistrar.getPhoneAccountUnchecked(pAHandle)).thenReturn(
+                mFakeTargetPhoneAccount);
+
+        mTestCreateConnectionProcessor.process();
+
+        verify(mMockCall).setConnectionManagerPhoneAccount(eq(callManagerPAHandle));
+        verify(mMockCall).setTargetPhoneAccount(eq(pAHandle));
+        // Ensure the remote connection service and primary connection service are set properly:
+        verify(mMockCall).setConnectionService(eq(service), eq(remoteService));
+        verify(service).createConnection(eq(mMockCall),
+                any(CreateConnectionResponse.class));
+        // Notify successful connection to call:
+        CallIdMapper mockCallIdMapper = mock(CallIdMapper.class);
+        mTestCreateConnectionProcessor.handleCreateConnectionSuccess(mockCallIdMapper, null);
+        verify(mMockCreateConnectionResponse).handleCreateConnectionSuccess(mockCallIdMapper, null);
+    }
+
+    @SmallTest
+    @Test
     public void testConnectionManagerFailedFallToSim() throws Exception {
         PhoneAccountHandle pAHandle = getNewTargetPhoneAccountHandle("tel_acct");
         setTargetPhoneAccount(mMockCall, pAHandle);
         when(mMockCall.isEmergencyCall()).thenReturn(false);
+        ConnectionServiceWrapper remoteService = makeConnectionServiceWrapper();
+
         // Include a Connection Manager
-        PhoneAccountHandle callManagerPAHandle = getNewConnectionMangerHandleForCall(mMockCall,
+        PhoneAccountHandle callManagerPAHandle = getNewConnectionManagerHandleForCall(mMockCall,
                 "cm_acct");
-        ConnectionServiceWrapper service = makeConnectionServiceWrapper();
+        ConnectionServiceWrapper service = makeConnMgrConnectionServiceWrapper();
         when(mMockCall.getConnectionManagerPhoneAccount()).thenReturn(callManagerPAHandle);
         PhoneAccount mFakeTargetPhoneAccount = makeQuickAccount("cm_acct",
                 PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION, null);
@@ -273,8 +313,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         // Verify that the Sim Phone Account is used correctly
         verify(mMockCall).setConnectionManagerPhoneAccount(eq(pAHandle));
         verify(mMockCall).setTargetPhoneAccount(eq(pAHandle));
-        verify(mMockCall).setConnectionService(eq(service));
-        verify(service).createConnection(eq(mMockCall), any(CreateConnectionResponse.class));
+        verify(mMockCall).setConnectionService(eq(remoteService));
+        verify(remoteService).createConnection(eq(mMockCall), any(CreateConnectionResponse.class));
         // Notify successful connection to call
         CallIdMapper mockCallIdMapper = mock(CallIdMapper.class);
         mTestCreateConnectionProcessor.handleCreateConnectionSuccess(mockCallIdMapper, null);
@@ -288,7 +328,7 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         setTargetPhoneAccount(mMockCall, pAHandle);
         when(mMockCall.isEmergencyCall()).thenReturn(false);
         // Include a Connection Manager
-        PhoneAccountHandle callManagerPAHandle = getNewConnectionMangerHandleForCall(mMockCall,
+        PhoneAccountHandle callManagerPAHandle = getNewConnectionManagerHandleForCall(mMockCall,
                 "cm_acct");
         ConnectionServiceWrapper service = makeConnectionServiceWrapper();
         when(mMockCall.getConnectionManagerPhoneAccount()).thenReturn(callManagerPAHandle);
@@ -990,8 +1030,8 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         when(mMockAccountRegistrar.phoneAccountRequiresBindPermission(eq(handle))).thenReturn(true);
     }
 
-    private PhoneAccountHandle getNewConnectionMangerHandleForCall(Call call, String id) {
-        PhoneAccountHandle callManagerPAHandle = makeQuickAccountHandle(id, null);
+    private PhoneAccountHandle getNewConnectionManagerHandleForCall(Call call, String id) {
+        PhoneAccountHandle callManagerPAHandle = makeQuickConnMgrAccountHandle(id, null);
         when(mMockAccountRegistrar.getSimCallManagerFromCall(eq(call))).thenReturn(
                 callManagerPAHandle);
         givePhoneAccountBindPermission(callManagerPAHandle);
@@ -1033,6 +1073,10 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         return new ComponentName(TEST_PACKAGE, TEST_CLASS);
     }
 
+    private static ComponentName makeQuickConnMgrConnectionServiceComponentName() {
+        return new ComponentName(TEST_PACKAGE, CONNECTION_MANAGER_TEST_CLASS);
+    }
+
     private ConnectionServiceWrapper makeConnectionServiceWrapper() {
         ConnectionServiceWrapper wrapper = mock(ConnectionServiceWrapper.class);
 
@@ -1040,6 +1084,24 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
                 eq(makeQuickConnectionServiceComponentName()), any(UserHandle.class)))
                 .thenReturn(wrapper);
         return wrapper;
+    }
+
+    private ConnectionServiceWrapper makeConnMgrConnectionServiceWrapper() {
+        ConnectionServiceWrapper wrapper = mock(ConnectionServiceWrapper.class);
+
+        when(mMockConnectionServiceRepository.getService(
+                eq(makeQuickConnMgrConnectionServiceComponentName()), any(UserHandle.class)))
+                .thenReturn(wrapper);
+        return wrapper;
+    }
+
+    private static PhoneAccountHandle makeQuickConnMgrAccountHandle(String id,
+            UserHandle userHandle) {
+        if (userHandle == null) {
+            userHandle = Binder.getCallingUserHandle();
+        }
+        return new PhoneAccountHandle(makeQuickConnMgrConnectionServiceComponentName(),
+                id, userHandle);
     }
 
     private static PhoneAccountHandle makeQuickAccountHandle(String id, UserHandle userHandle) {

@@ -70,7 +70,7 @@ public class AudioRoute {
                 return;
             }
 
-            Log.i(this, "creating AudioRoute with type %s and address %s, retry count %d",
+            Log.i(this, "createRetry; type=%s, address=%s, retryCount=%d",
                     DEVICE_TYPE_STRINGS.get(type), bluetoothAddress, retryCount);
             AudioDeviceInfo routeInfo = null;
             List<AudioDeviceInfo> infos = audioManager.getAvailableCommunicationDevices();
@@ -239,7 +239,8 @@ public class AudioRoute {
     void onDestRouteAsPendingRoute(boolean active, PendingAudioRoute pendingAudioRoute,
             BluetoothDevice device, AudioManager audioManager,
             BluetoothRouteManager bluetoothRouteManager, boolean isScoAudioConnected) {
-        Log.i(this, "onDestRouteAsPendingRoute: active (%b), type (%d)", active, mAudioRouteType);
+        Log.i(this, "onDestRouteAsPendingRoute: active (%b), type (%s)", active,
+                DEVICE_TYPE_STRINGS.get(mAudioRouteType));
         if (pendingAudioRoute.isActive() && !active) {
             clearCommunicationDevice(pendingAudioRoute, bluetoothRouteManager, audioManager);
         } else if (active) {
@@ -281,8 +282,8 @@ public class AudioRoute {
                     if (result) {
                         pendingAudioRoute.setCommunicationDeviceType(mAudioRouteType);
                     }
-                    Log.i(this, "Result of setting communication device for audio "
-                            + "route (%s) - %b", this, result);
+                    Log.i(this, "onDestRouteAsPendingRoute: route=%s, "
+                            + "AudioManager#setCommunicationDevice()=%b", this, result);
                     break;
                 }
             }
@@ -380,11 +381,11 @@ public class AudioRoute {
 
         int result = BluetoothStatusCodes.SUCCESS;
         if (pendingAudioRoute.getCommunicationDeviceType() == TYPE_BLUETOOTH_SCO) {
-            Log.i(this, "Disconnecting SCO device.");
+            Log.i(this, "clearCommunicationDevice: Disconnecting SCO device.");
             result = bluetoothRouteManager.getDeviceManager().disconnectSco();
         } else {
-            Log.i(this, "Clearing communication device for audio type %d.",
-                    pendingAudioRoute.getCommunicationDeviceType());
+            Log.i(this, "clearCommunicationDevice: AudioManager#clearCommunicationDevice, type=%s",
+                    DEVICE_TYPE_STRINGS.get(pendingAudioRoute.getCommunicationDeviceType()));
             audioManager.clearCommunicationDevice();
         }
 

@@ -799,6 +799,10 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
         switch (focus) {
             case NO_FOCUS -> {
                 if (mIsActive) {
+                    // Notify the CallAudioModeStateMachine that audio operations are complete so
+                    // that we can relinquish audio focus.
+                    mCallAudioManager.notifyAudioOperationsComplete();
+
                     // Reset mute state after call ends.
                     handleMuteChanged(false);
                     // Route back to inactive route.
