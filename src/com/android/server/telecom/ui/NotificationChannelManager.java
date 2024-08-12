@@ -83,61 +83,62 @@ public class NotificationChannelManager {
         boolean vibration = false;
         Uri sound = silentRingtone;
         switch (channelId) {
-            case CHANNEL_ID_INCOMING_CALLS:
+            case CHANNEL_ID_INCOMING_CALLS -> {
                 name = context.getText(R.string.notification_channel_incoming_call);
                 importance = NotificationManager.IMPORTANCE_MAX;
                 canShowBadge = false;
                 lights = true;
                 vibration = false;
                 sound = silentRingtone;
-                break;
-            case CHANNEL_ID_MISSED_CALLS:
+            }
+            case CHANNEL_ID_MISSED_CALLS -> {
                 name = context.getText(R.string.notification_channel_missed_call);
                 importance = NotificationManager.IMPORTANCE_DEFAULT;
                 canShowBadge = true;
                 lights = true;
                 vibration = true;
                 sound = silentRingtone;
-                break;
-            case CHANNEL_ID_CALL_BLOCKING:
+            }
+            case CHANNEL_ID_CALL_BLOCKING -> {
                 name = context.getText(R.string.notification_channel_call_blocking);
                 importance = NotificationManager.IMPORTANCE_LOW;
                 canShowBadge = false;
                 lights = false;
                 vibration = false;
                 sound = null;
-                break;
-            case CHANNEL_ID_AUDIO_PROCESSING:
+            }
+            case CHANNEL_ID_AUDIO_PROCESSING -> {
                 name = context.getText(R.string.notification_channel_background_calls);
                 importance = NotificationManager.IMPORTANCE_LOW;
                 canShowBadge = false;
                 lights = false;
                 vibration = false;
                 sound = null;
-                break;
-            case CHANNEL_ID_DISCONNECTED_CALLS:
+            }
+            case CHANNEL_ID_DISCONNECTED_CALLS -> {
                 name = context.getText(R.string.notification_channel_disconnected_calls);
                 importance = NotificationManager.IMPORTANCE_DEFAULT;
                 canShowBadge = true;
                 lights = true;
                 vibration = true;
                 sound = silentRingtone;
-                break;
-            case CHANNEL_ID_IN_CALL_SERVICE_CRASH:
+            }
+            case CHANNEL_ID_IN_CALL_SERVICE_CRASH -> {
                 name = context.getText(R.string.notification_channel_in_call_service_crash);
                 importance = NotificationManager.IMPORTANCE_DEFAULT;
                 canShowBadge = true;
                 lights = true;
                 vibration = true;
                 sound = null;
-            case CHANNEL_ID_CALL_STREAMING:
+            }
+            case CHANNEL_ID_CALL_STREAMING -> {
                 name = context.getText(R.string.notification_channel_call_streaming);
                 importance = NotificationManager.IMPORTANCE_DEFAULT;
                 canShowBadge = false;
                 lights = false;
                 vibration = false;
                 sound = null;
-                break;
+            }
         }
 
         NotificationChannel channel = new NotificationChannel(channelId, name, importance);
