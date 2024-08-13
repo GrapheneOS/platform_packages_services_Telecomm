@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"ਜਵਾਬ ਦੇਣ ਨਾਲ ਤੁਹਾਡੀ ਜਾਰੀ ਵੀਡੀਓ ਕਾਲ ਸਮਾਪਤ ਹੋ ਜਾਵੇਗੀ"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"ਕਾਲ ਚੁੱਕੋ"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"ਕਾਲ ਕੱਟੋ"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"ਕਾਲ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕਦੀ ਕਿਉਂਕਿ ਇੱਥੇ ਅਜਿਹੇ ਕੋਈ ਕਾਲਿੰਗ ਖਾਤੇ ਨਹੀਂ ਹਨ ਜਿਨ੍ਹਾਂ ਵਿੱਚ ਇਸ ਕਿਸਮ ਦੀਆਂ ਕਾਲਾਂ ਦੀ ਸੁਵਿਧਾ ਹੋਵੇ।"</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"ਕਾਲ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕਦੀ। ਆਪਣੇ ਡੀਵਾਈਸ ਦੇ ਕਨੈਕਸ਼ਨ ਦੀ ਜਾਂਚ ਕਰੋ।"</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"ਤੁਹਾਡੀ <xliff:g id="OTHER_CALL">%1$s</xliff:g> ਕਾਲ ਦੇ ਕਾਰਨ ਕਾਲ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕਦੀ।"</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"ਤੁਹਾਡੀਆਂ <xliff:g id="OTHER_CALL">%1$s</xliff:g> ਕਾਲਾਂ ਦੇ ਕਾਰਨ ਕਾਲ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕਦੀ।"</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"ਕਿਸੇ ਹੋਰ ਐਪ ਵਿੱਚ ਇੱਕ ਕਾਲ ਹੋਣ ਦੇ ਕਾਰਨ ਕਾਲ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕਦੀ।"</string>

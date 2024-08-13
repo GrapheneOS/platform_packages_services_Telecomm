@@ -127,24 +127,6 @@ public class RingtoneFactory {
             .build();
     }
 
-    /** Returns a ringtone to be used when ringer is not audible for the incoming call. */
-    @Nullable
-    public Pair<Uri, Ringtone> getHapticOnlyRingtone() {
-        // Initializing ringtones on the main thread can deadlock
-        ThreadUtil.checkNotOnMainThread();
-        Uri ringtoneUri = Uri.parse("file://" + mContext.getString(
-                com.android.internal.R.string.config_defaultRingtoneVibrationSound));
-        AudioAttributes audioAttrs = getDefaultRingtoneAudioAttributes(
-            /* hapticChannelsMuted */ false);
-        Ringtone ringtone = RingtoneManager.getRingtone(
-                mContext, ringtoneUri, /* volumeShaperConfig */ null, audioAttrs);
-        if (ringtone != null) {
-            // Make sure the sound is muted.
-            ringtone.setVolume(0);
-        }
-        return new Pair(ringtoneUri, ringtone);
-    }
-
     private Context getWorkProfileContextForUser(UserHandle userHandle) {
         // UserManager.getUserProfiles returns the enabled profiles along with the context user's
         // handle itself (so we must filter out the user).

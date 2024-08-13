@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"מענה יסיים את שיחת הווידאו הנוכחית"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"מענה"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"דחייה"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"אי אפשר להתקשר כי אין במכשיר חשבון שתומך בשיחות מהסוג הזה."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"אי אפשר להתקשר. כדאי לבדוק את החיבורים השונים של המכשיר."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"אי אפשר להתקשר בגלל שיש שיחה ב-<xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"אי אפשר להתקשר בגלל שיש שיחות ב-<xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"אי אפשר להתקשר בגלל שיש שיחה באפליקציה אחרת."</string>

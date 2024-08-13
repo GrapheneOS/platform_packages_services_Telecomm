@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"ការ​ឆ្លើយ​នឹង​បញ្ចប់​ការ​ហៅ​តាម​វីដេអូ​ដែល​កំពុង​តែ​ដំណើរការ​របស់​អ្នក"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"ឆ្លើយ"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"បដិសេធ"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"មិន​អាច​ធ្វើ​ការ​ហៅ​ទូរសព្ទ​បាន​ទេ ពីព្រោះ​មិនមាន​គណនី​ហៅ​ទូរសព្ទ​ដែល​អាច​ប្រើបាន​ជាមួយ​ការ​ហៅ​ប្រភេទ​នេះ​ទេ។"</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"មិនអាច​ហៅទូរសព្ទ​បានទេ។ សូម​ពិនិត្យមើល​ការតភ្ជាប់​របស់​ឧបករណ៍​អ្នក។"</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"ការ​ហៅ​មិន​អាចធ្វើ​បាន​ទេ ដោយ​សារ​ការហៅ​ <xliff:g id="OTHER_CALL">%1$s</xliff:g> របស់​អ្នក។"</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"ការ​ហៅ​មិន​អាច​ធ្វើ​បាន​ទេ ដោយ​សារ​ការ​ហៅ <xliff:g id="OTHER_CALL">%1$s</xliff:g> របស់​អ្នក។"</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"ការ​ហៅ​មិន​អាច​ធ្វើ​បាន​ទេ ដោយ​សារ​មាន​ការហៅ​មួយ​នៅ​ក្នុង​កម្មវិធី​ផ្សេង។"</string>

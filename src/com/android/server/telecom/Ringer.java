@@ -415,17 +415,9 @@ public class Ringer {
                         isVibratorEnabled, mIsHapticPlaybackSupportedByDevice);
             }
             // Defer ringtone creation to the async player thread.
-            Supplier<Pair<Uri, Ringtone>> ringtoneInfoSupplier;
+            Supplier<Pair<Uri, Ringtone>> ringtoneInfoSupplier = null;
             final boolean finalHapticChannelsMuted = hapticChannelsMuted;
-            if (isHapticOnly) {
-                if (hapticChannelsMuted) {
-                    Log.i(this,
-                            "want haptic only ringtone but haptics are muted, skip ringtone play");
-                    ringtoneInfoSupplier = null;
-                } else {
-                    ringtoneInfoSupplier = mRingtoneFactory::getHapticOnlyRingtone;
-                }
-            } else {
+            if (!isHapticOnly) {
                 ringtoneInfoSupplier = () -> mRingtoneFactory.getRingtone(
                         foregroundCall, mVolumeShaperConfig, finalHapticChannelsMuted);
             }

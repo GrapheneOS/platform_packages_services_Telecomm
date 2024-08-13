@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"전화를 받으면 진행 중인 화상 통화가 종료됩니다."</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"통화"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"거부"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"이 유형의 전화를 지원하는 전화 계정이 없으므로 전화를 걸 수 없습니다."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"전화를 걸 수 없습니다. 기기의 연결 상태를 확인하세요."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"<xliff:g id="OTHER_CALL">%1$s</xliff:g> 통화 중이므로 전화를 걸 수 없습니다."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"<xliff:g id="OTHER_CALL">%1$s</xliff:g> 통화 중이므로 전화를 걸 수 없습니다."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"다른 앱에서 통화 중이므로 전화를 걸 수 없습니다."</string>

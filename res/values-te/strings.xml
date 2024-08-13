@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"సమాధానమివ్వడం వలన మీ కొనసాగుతున్న వీడియో కాల్ ముగుస్తుంది"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"సమాధానమివ్వండి"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"తిరస్కరించు"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"కాల్ చేయడం సాధ్యపడదు ఎందుకంటే, ఈ రకమైన కాల్స్‌కు మద్దతిచ్చే కాల్ చేయడానికి ఉపయోగించే ఖాతాలు లేవు."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"కాల్ చేయడం సాధ్యపడదు. మీ పరికర కనెక్షన్‌ను చెక్ చేయండి."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"మీ <xliff:g id="OTHER_CALL">%1$s</xliff:g> కాల్ కొనసాగుతున్నందున కాల్ చేయడం సాధ్యపడదు."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"మీ <xliff:g id="OTHER_CALL">%1$s</xliff:g> కాల్స్‌ కొనసాగుతున్నందున కాల్ చేయడం సాధ్యపడదు."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"వేరొక యాప్‌లో కాల్ కొనసాగుతున్నందున కాల్ చేయడం సాధ్యపడదు."</string>

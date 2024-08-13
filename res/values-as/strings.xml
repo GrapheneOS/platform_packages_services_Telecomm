@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"উত্তৰ দিলে আপোনাৰ বৰ্তমান চলি থকা ভিডিঅ\' কলটোৰ অন্ত পৰিব"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"উত্তৰ"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"প্ৰত্যাখ্যান কৰক"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"এইধৰণৰ কল কৰিব পৰা কলিং একাউণ্ট নোহোৱাৰ কাৰণে কল কৰিব নোৱাৰি।"</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"কল কৰিব নোৱাৰি। আপোনাৰ ডিভাইচৰ সংযোগ পৰীক্ষা কৰক।"</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"আপোনাৰ <xliff:g id="OTHER_CALL">%1$s</xliff:g> কল চলি থকাৰ কাৰণে বেলেগ কল কৰিব নোৱাৰি।"</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"আপোনাৰ <xliff:g id="OTHER_CALL">%1$s</xliff:g> কলকেইটা চলি থকাৰ কাৰণে বেলেগ কল কৰিব নোৱাৰি।"</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"অইন এটা এপত কল চলি থকাৰ কাৰণে বেলেগ কল কৰিব নোৱাৰি।"</string>

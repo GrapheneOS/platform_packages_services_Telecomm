@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"En respondre, finalitzarà la videotrucada en curs"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"Respon"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"Rebutja"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"No es pot trucar perquè, en aquest moment, no hi ha cap compte de trucades compatible amb les trucades d\'aquest tipus."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"No es pot fer la trucada. Comprova la connexió del dispositiu."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"No es pot trucar perquè ja hi ha una trucada en curs a <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"No es pot trucar perquè ja hi ha trucades en curs a <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"No es pot trucar perquè ja hi ha una trucada en curs en una altra aplicació."</string>

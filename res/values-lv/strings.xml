@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"Atbildot uz zvanu, tiks beigts pašreizējais videozvans"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"Atbildēt"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"Noraidīt"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"Nevar veikt zvanu, jo ierīcē nav neviena zvanu konta, kurā tiktu atbalstīti šī veida zvani."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"Nevar veikt zvanu. Pārbaudiet ierīces savienojumu."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"Nevar veikt zvanu notiekoša <xliff:g id="OTHER_CALL">%1$s</xliff:g> zvana dēļ."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"Nevar veikt zvanu notiekošu <xliff:g id="OTHER_CALL">%1$s</xliff:g> zvanu dēļ."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"Nevar veikt zvanu citā lietotnē notiekoša zvana dēļ."</string>

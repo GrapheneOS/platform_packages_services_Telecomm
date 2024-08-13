@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"Ako odgovorite, prekinut ćete videopoziv u tijeku"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"Odgovori"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"Odbij"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"Poziv se ne može uputiti jer nema računa za pozivanje koji podržavaju pozive te vrste."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"Poziv se ne može uputiti. Provjerite vezu uređaja."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"Poziv se ne može uspostaviti zbog poziva u aplikaciji <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"Poziv se ne može uspostaviti zbog poziva u aplikaciji <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"Poziv se ne može uspostaviti zbog poziva u drugoj aplikaciji."</string>

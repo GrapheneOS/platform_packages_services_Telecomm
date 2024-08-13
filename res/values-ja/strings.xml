@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"応答すると、進行中のビデオ通話は終了します"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"応答"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"拒否"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"この種の通話に対応している通話アカウントがないため、通話を発信できません。"</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"発信できません。デバイスの接続状態を確認してください。"</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"<xliff:g id="OTHER_CALL">%1$s</xliff:g> で通話中のため、この通話を発信することはできません。"</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"<xliff:g id="OTHER_CALL">%1$s</xliff:g> で通話中のため、この通話を発信することはできません。"</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"別のアプリで通話中のため、この通話を発信することはできません。"</string>

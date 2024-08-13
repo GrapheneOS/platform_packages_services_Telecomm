@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"Se rispondi, la videochiamata in corso verrà terminata"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"Rispondi"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"Rifiuta"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"Impossibile effettuare la chiamata perché non sono presenti account che supportano chiamate di questo tipo."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"Impossibile effettuare la chiamata. Controlla la connessione del dispositivo."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"Impossibile effettuare la chiamata a causa della chiamata <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"Impossibile effettuare la chiamata a causa delle chiamate <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"Impossibile effettuare la chiamata a causa di una chiamata in un\'altra app."</string>

@@ -90,7 +90,7 @@
     <string name="answering_ends_other_managed_video_call" msgid="1988508241432031327">"ಕರೆಗೆ ಉತ್ತರಿಸುವುದರಿಂದ ನಿಮ್ಮ ಚಾಲ್ತಿಯಲ್ಲಿರುವ ವೀಡಿಯೊ ಕರೆಯು ಅಂತ್ಯಗೊಳ್ಳುತ್ತದೆ"</string>
     <string name="answer_incoming_call" msgid="2045888814782215326">"ಉತ್ತರ"</string>
     <string name="decline_incoming_call" msgid="922147089348451310">"ನಿರಾಕರಿಸಿ"</string>
-    <string name="cant_call_due_to_no_supported_service" msgid="1635626384149947077">"ಈ ಪ್ರಕಾರದ ಕರೆಗಳನ್ನು ಬೆಂಬಲಿಸುವ ಯಾವುದೇ ಕರೆಮಾಡುವಿಕೆ ಖಾತೆಗಳು ಇಲ್ಲದಿರುವ ಕಾರಣ ಕರೆಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ."</string>
+    <string name="cant_call_due_to_no_supported_service" msgid="6720817368116820027">"ಕರೆ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಸಾಧನದ ಕನೆಕ್ಷನ್ ಅನ್ನು ಪರಿಶೀಲಿಸಿ."</string>
     <string name="cant_call_due_to_ongoing_call" msgid="8004235328451385493">"ನಿಮ್ಮ <xliff:g id="OTHER_CALL">%1$s</xliff:g> ಕರೆ ಇರುವ ಕಾರಣ ಕರೆ ಮಾಡಲು ಸಾಧ್ಯವಾಗಿಲ್ಲ."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="6379163795277824868">"ನಿಮ್ಮ <xliff:g id="OTHER_CALL">%1$s</xliff:g> ಕರೆಗಳ ಕಾರಣ ಕರೆ ಮಾಡಲು ಸಾಧ್ಯವಾಗಿಲ್ಲ."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="8243532328969433172">"ಬೇರೊಂದು ಅಪ್ಲಿಕೇಶನ್‍ನಲ್ಲಿ ಕರೆಯಲ್ಲಿರುವುದರಿಂದ ಕರೆ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."</string>
