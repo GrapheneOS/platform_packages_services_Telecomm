@@ -137,7 +137,7 @@
                          contacts provider entries. Any data not fitting the schema described is ignored. -->
         <activity android:name=".components.UserCallActivity"
              android:label="@string/userCallActivityLabel"
-             android:theme="@style/Theme.Telecomm.Transparent"
+             android:theme="@style/Theme.Telecomm.UserCallActivityNoSplash"
              android:permission="android.permission.CALL_PHONE"
              android:excludeFromRecents="true"
              android:process=":ui"
