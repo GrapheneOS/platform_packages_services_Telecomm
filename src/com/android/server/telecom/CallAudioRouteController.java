@@ -53,6 +53,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.telecom.bluetooth.BluetoothRouteManager;
 import com.android.server.telecom.flags.FeatureFlags;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1086,7 +1087,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     }
 
     private void updateAudioStateForTrackedCalls(CallAudioState newCallAudioState) {
-        Set<Call> calls = mCallsManager.getTrackedCalls();
+        List<Call> calls = new ArrayList<>(mCallsManager.getTrackedCalls());
         for (Call call : calls) {
             if (call != null && call.getConnectionService() != null) {
                 call.getConnectionService().onCallAudioStateChanged(call, newCallAudioState);

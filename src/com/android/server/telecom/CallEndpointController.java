@@ -29,7 +29,9 @@ import android.telecom.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.flags.FeatureFlags;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
@@ -197,7 +199,7 @@ public class CallEndpointController extends CallsManagerListenerBase {
         }
         mCallsManager.updateCallEndpoint(mActiveCallEndpoint);
 
-        Set<Call> calls = mCallsManager.getTrackedCalls();
+        List<Call> calls = new ArrayList<>(mCallsManager.getTrackedCalls());
         for (Call call : calls) {
             if (mFeatureFlags.cacheCallAudioCallbacks()) {
                 onCallEndpointChangedOrCache(call);
@@ -227,7 +229,7 @@ public class CallEndpointController extends CallsManagerListenerBase {
     private void notifyAvailableCallEndpointsChange() {
         mCallsManager.updateAvailableCallEndpoints(mAvailableCallEndpoints);
 
-        Set<Call> calls = mCallsManager.getTrackedCalls();
+        List<Call> calls = new ArrayList<>(mCallsManager.getTrackedCalls());
         for (Call call : calls) {
             if (mFeatureFlags.cacheCallAudioCallbacks()) {
                 onAvailableEndpointsChangedOrCache(call);
@@ -258,7 +260,7 @@ public class CallEndpointController extends CallsManagerListenerBase {
     private void notifyMuteStateChange(boolean isMuted) {
         mCallsManager.updateMuteState(isMuted);
 
-        Set<Call> calls = mCallsManager.getTrackedCalls();
+        List<Call> calls = new ArrayList<>(mCallsManager.getTrackedCalls());
         for (Call call : calls) {
             if (mFeatureFlags.cacheCallAudioCallbacks()) {
                 onMuteStateChangedOrCache(call, isMuted);
