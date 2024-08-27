@@ -37,7 +37,6 @@ import android.os.OutcomeReceiver;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.os.SystemClock;
-import android.os.Trace;
 import android.os.UserHandle;
 import android.provider.CallLog;
 import android.provider.ContactsContract.Contacts;
@@ -2151,10 +2150,15 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                 isWorkCall = UserUtil.isManagedProfile(mContext, userHandle, mFlags);
             }
 
-            isCallRecordingToneSupported = (phoneAccount.hasCapabilities(
-                    PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION) && phoneAccount.getExtras() != null
-                    && phoneAccount.getExtras().getBoolean(
-                    PhoneAccount.EXTRA_PLAY_CALL_RECORDING_TONE, false));
+            if (!mFlags.telecomResolveHiddenDependencies()) {
+                isCallRecordingToneSupported = (phoneAccount.hasCapabilities(
+                        PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)
+                        && phoneAccount.getExtras() != null
+                        && phoneAccount.getExtras().getBoolean(
+                        PhoneAccount.EXTRA_PLAY_CALL_RECORDING_TONE, false));
+            } else {
+                isCallRecordingToneSupported = false;
+            }
             isSimCall = phoneAccount.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION);
         }
         mIsWorkCall = isWorkCall;
@@ -3858,7 +3862,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * @param callerInfo The new caller information to set.
      */
     private void setCallerInfo(Uri handle, CallerInfo callerInfo) {
-        Trace.beginSection("setCallerInfo");
         if (callerInfo == null) {
             Log.i(this, "CallerInfo lookup returned null, skipping update");
             return;
@@ -3882,8 +3885,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                 l.onCallerInfoChanged(this);
             }
         }
-
-        Trace.endSection();
     }
 
     public CallerInfo getCallerInfo() {

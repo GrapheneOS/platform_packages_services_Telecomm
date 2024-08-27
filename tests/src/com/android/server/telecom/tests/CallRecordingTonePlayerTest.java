@@ -42,6 +42,7 @@ import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Looper;
+import android.platform.test.annotations.RequiresFlagsDisabled;
 import android.telecom.PhoneAccountHandle;
 
 import androidx.test.filters.MediumTest;
@@ -52,6 +53,7 @@ import com.android.server.telecom.CallRecordingTonePlayer;
 import com.android.server.telecom.CallState;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.Timeouts;
+import com.android.server.telecom.flags.Flags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -71,6 +73,7 @@ import java.util.List;
  * Unit tests for the {@link com.android.server.telecom.CallRecordingTonePlayer} class.
  */
 @RunWith(JUnit4.class)
+@RequiresFlagsDisabled(Flags.FLAG_TELECOM_RESOLVE_HIDDEN_DEPENDENCIES)
 public class CallRecordingTonePlayerTest extends TelecomTestCase {
 
     private static final String PHONE_ACCOUNT_PACKAGE = "com.android.telecom.test";

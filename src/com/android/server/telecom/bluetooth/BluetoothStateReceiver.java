@@ -23,6 +23,8 @@ import static com.android.server.telecom.CallAudioRouteAdapter.BT_AUDIO_DISCONNE
 import static com.android.server.telecom.CallAudioRouteAdapter.BT_DEVICE_ADDED;
 import static com.android.server.telecom.CallAudioRouteAdapter.BT_DEVICE_REMOVED;
 import static com.android.server.telecom.CallAudioRouteAdapter.PENDING_ROUTE_FAILED;
+import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_BASELINE_ROUTE;
+import static com.android.server.telecom.CallAudioRouteController.INCLUDE_BLUETOOTH_IN_BASELINE;
 import static com.android.server.telecom.bluetooth.BluetoothRouteManager.BT_AUDIO_IS_ON;
 import static com.android.server.telecom.bluetooth.BluetoothRouteManager.BT_AUDIO_LOST;
 
@@ -153,8 +155,19 @@ public class BluetoothStateReceiver extends BroadcastReceiver {
                     CallAudioRouteController audioRouteController =
                             (CallAudioRouteController) mCallAudioRouteAdapter;
                     audioRouteController.setIsScoAudioConnected(false);
-                    mCallAudioRouteAdapter.sendMessageWithSessionInfo(BT_AUDIO_DISCONNECTED, 0,
-                            device);
+                    if (audioRouteController.isPending()) {
+                        mCallAudioRouteAdapter.sendMessageWithSessionInfo(BT_AUDIO_DISCONNECTED, 0,
+                                device);
+                    } else {
+                        // Handle case where BT stack signals SCO disconnected but Telecom isn't
+                        // processing any pending routes. This explicitly addresses cf instances
+                        // where a remote device disconnects SCO. Telecom should ensure that audio
+                        // is properly routed in the UI.
+                        audioRouteController.getPendingAudioRoute()
+                                .setCommunicationDeviceType(AudioRoute.TYPE_INVALID);
+                        mCallAudioRouteAdapter.sendMessageWithSessionInfo(SWITCH_BASELINE_ROUTE,
+                                INCLUDE_BLUETOOTH_IN_BASELINE, device.getAddress());
+                    }
                 }  else {
                     mBluetoothRouteManager.sendMessage(BT_AUDIO_LOST, args);
                 }

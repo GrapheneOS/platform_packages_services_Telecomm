@@ -25,7 +25,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Trace;
 import android.os.UserHandle;
 import android.telecom.GatewayInfo;
 import android.telecom.Log;
@@ -126,7 +125,6 @@ public class NewOutgoingCallIntentBroadcaster {
         public void onReceive(Context context, Intent intent) {
             try {
                 Log.startSession("NOCBIR.oR");
-                Trace.beginSection("onReceiveNewOutgoingCallBroadcast");
                 synchronized (mLock) {
                     Log.v(this, "onReceive: %s", intent);
 
@@ -194,7 +192,6 @@ public class NewOutgoingCallIntentBroadcaster {
                                     VideoProfile.STATE_AUDIO_ONLY));
                 }
             } finally {
-                Trace.endSection();
                 Log.endSession();
             }
         }

@@ -21,7 +21,6 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Looper;
 import android.os.Message;
-import android.os.Trace;
 import android.telecom.Log;
 import android.telecom.Logging.Runnable;
 import android.telecom.Logging.Session;
@@ -461,40 +460,35 @@ public class CallAudioModeStateMachine extends StateMachine {
         private boolean mHasFocus = false;
 
         private void tryStartRinging() {
-            Trace.traceBegin(Trace.TRACE_TAG_AUDIO, "CallAudioMode.tryStartRinging");
-            try {
-                if (mHasFocus && mCallAudioManager.isRingtonePlaying()) {
-                    Log.i(LOG_TAG,
-                        "RingingFocusState#tryStartRinging -- audio focus previously"
-                            + " acquired and ringtone already playing -- skipping.");
-                    return;
-                }
+            if (mHasFocus && mCallAudioManager.isRingtonePlaying()) {
+                Log.i(LOG_TAG,
+                    "RingingFocusState#tryStartRinging -- audio focus previously"
+                        + " acquired and ringtone already playing -- skipping.");
+                return;
+            }
 
-                if (mCallAudioManager.startRinging()) {
-                    if (mFeatureFlags.telecomResolveHiddenDependencies()) {
-                        mCurrentAudioFocusRequest = RING_AUDIO_FOCUS_REQUEST;
-                        Log.i(this, "tryStartRinging: AudioManager#requestAudioFocus(RING)");
-                        mAudioManager.requestAudioFocus(RING_AUDIO_FOCUS_REQUEST);
-                    } else {
-                        mAudioManager.requestAudioFocusForCall(
-                                AudioManager.STREAM_RING, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
-                    }
-                    // Do not set MODE_RINGTONE if we were previously in the CALL_SCREENING mode --
-                    // this trips up the audio system.
-                    if (mAudioManager.getMode() != AudioManager.MODE_CALL_SCREENING) {
-                        Log.i(this, "enter: AudioManager#setMode(MODE_RINGTONE)");
-                        mAudioManager.setMode(AudioManager.MODE_RINGTONE);
-                        mLocalLog.log("Mode MODE_RINGTONE");
-                    }
-                    mCallAudioManager.setCallAudioRouteFocusState(
-                        CallAudioRouteStateMachine.RINGING_FOCUS);
-                    mHasFocus = true;
+            if (mCallAudioManager.startRinging()) {
+                if (mFeatureFlags.telecomResolveHiddenDependencies()) {
+                    mCurrentAudioFocusRequest = RING_AUDIO_FOCUS_REQUEST;
+                    Log.i(this, "tryStartRinging: AudioManager#requestAudioFocus(RING)");
+                    mAudioManager.requestAudioFocus(RING_AUDIO_FOCUS_REQUEST);
                 } else {
-                    Log.i(
-                        LOG_TAG, "RINGING state, try start ringing but not acquiring audio focus");
+                    mAudioManager.requestAudioFocusForCall(
+                            AudioManager.STREAM_RING, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
                 }
-            } finally {
-                Trace.traceEnd(Trace.TRACE_TAG_AUDIO);
+                // Do not set MODE_RINGTONE if we were previously in the CALL_SCREENING mode --
+                // this trips up the audio system.
+                if (mAudioManager.getMode() != AudioManager.MODE_CALL_SCREENING) {
+                    Log.i(this, "enter: AudioManager#setMode(MODE_RINGTONE)");
+                    mAudioManager.setMode(AudioManager.MODE_RINGTONE);
+                    mLocalLog.log("Mode MODE_RINGTONE");
+                }
+                mCallAudioManager.setCallAudioRouteFocusState(
+                    CallAudioRouteStateMachine.RINGING_FOCUS);
+                mHasFocus = true;
+            } else {
+                Log.i(
+                    LOG_TAG, "RINGING state, try start ringing but not acquiring audio focus");
             }
         }
 

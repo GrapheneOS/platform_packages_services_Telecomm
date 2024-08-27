@@ -533,14 +533,6 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                 mIsScoAudioConnected);
         mIsActive = active;
         mPendingAudioRoute.evaluatePendingState();
-        postTimeoutMessage();
-    }
-
-    private void postTimeoutMessage() {
-        // reset timeout handler
-        mHandler.removeMessages(PENDING_ROUTE_TIMEOUT);
-        mHandler.postDelayed(() -> mHandler.sendMessage(
-                Message.obtain(mHandler, PENDING_ROUTE_TIMEOUT)), TIMEOUT_LIMIT);
     }
 
     private void handleWiredHeadsetConnected() {
@@ -657,9 +649,6 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                 mPendingAudioRoute.onMessageReceived(new Pair<>(BT_AUDIO_CONNECTED,
                         bluetoothDevice.getAddress()), null);
             }
-        } else {
-            // ignore, not triggered by telecom
-            Log.i(this, "handleBtAudioActive: ignoring handling bt audio active.");
         }
     }
 
@@ -679,9 +668,6 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                 mPendingAudioRoute.onMessageReceived(new Pair<>(BT_AUDIO_DISCONNECTED,
                         bluetoothDevice.getAddress()), null);
             }
-        } else {
-            // ignore, not triggered by telecom
-            Log.i(this, "handleBtAudioInactive: ignoring handling bt audio inactive.");
         }
     }
 
@@ -1227,7 +1213,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
 
     public AudioRoute getBaseRoute(boolean includeBluetooth, String btAddressToExclude) {
         AudioRoute destRoute = getPreferredAudioRouteFromStrategy();
-        if (destRoute == null || (destRoute.getBluetoothAddress() != null && !includeBluetooth)) {
+        if (destRoute == null || (destRoute.getBluetoothAddress() != null && (!includeBluetooth
+                || destRoute.getBluetoothAddress().equals(btAddressToExclude)))) {
             destRoute = getPreferredAudioRouteFromDefault(includeBluetooth, btAddressToExclude);
         }
         if (destRoute != null && !getCallSupportedRoutes().contains(destRoute)) {

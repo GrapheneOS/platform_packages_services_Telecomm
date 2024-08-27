@@ -14,7 +14,6 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Looper;
-import android.os.Trace;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.telecom.DefaultDialerManager;
@@ -95,14 +94,12 @@ public class CallIntentProcessor {
         final boolean isUnknownCall = intent.getBooleanExtra(KEY_IS_UNKNOWN_CALL, false);
         Log.i(this, "onReceive - isUnknownCall: %s", isUnknownCall);
 
-        Trace.beginSection("processNewCallCallIntent");
         if (isUnknownCall) {
             processUnknownCallIntent(mCallsManager, intent);
         } else {
             processOutgoingCallIntent(mContext, mCallsManager, intent, callingPackage,
                     mDefaultDialerCache, mFeatureFlags);
         }
-        Trace.endSection();
     }
 
 

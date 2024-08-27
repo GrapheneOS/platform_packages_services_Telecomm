@@ -45,7 +45,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PackageTagsList;
 import android.os.RemoteException;
-import android.os.Trace;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.telecom.CallAudioState;
@@ -2573,7 +2572,6 @@ public class InCallController extends CallsManagerListenerBase implements
             Log.e(this, e, "Failed to set the in-call adapter.");
             mAnomalyReporter.reportAnomaly(SET_IN_CALL_ADAPTER_ERROR_UUID,
                     SET_IN_CALL_ADAPTER_ERROR_MSG);
-            Trace.endSection();
             return false;
         }
 
