@@ -8,3 +8,11 @@ flag {
   description: "When getCurrentFocusCall times out, generate an anom. report"
   bug: "309541253"
 }
+
+# OWNER=tjstuart TARGET=25Q2
+flag {
+  name: "disconnect_self_managed_stuck_startup_calls"
+  namespace: "telecom"
+  description: "If a self-managed call is stuck in certain states, disconnect it"
+  bug: "360298368"
+}

@@ -122,7 +122,7 @@ public class CallAnomalyWatchdogTest extends TelecomTestCase {
         doReturn(new ComponentName(mContext, CallTest.class))
                 .when(mMockConnectionService).getComponentName();
         mCallAnomalyWatchdog = new CallAnomalyWatchdog(mTestScheduledExecutorService, mLock,
-                mTimeouts, mMockClockProxy, mMockEmergencyCallDiagnosticLogger);
+                mFeatureFlags, mTimeouts, mMockClockProxy, mMockEmergencyCallDiagnosticLogger);
         mCallAnomalyWatchdog.setAnomalyReporterAdapter(mAnomalyReporterAdapter);
         when(mMockCallsManager.getCurrentUserHandle()).thenReturn(UserHandle.CURRENT);
     }

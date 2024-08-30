@@ -375,7 +375,8 @@ public class TelecomSystem {
 
             CallAnomalyWatchdog callAnomalyWatchdog = new CallAnomalyWatchdog(
                     Executors.newSingleThreadScheduledExecutor(),
-                    mLock, timeoutsAdapter, clockProxy, emergencyCallDiagnosticLogger);
+                    mLock, mFeatureFlags, timeoutsAdapter, clockProxy,
+                    emergencyCallDiagnosticLogger);
 
             TransactionManager transactionManager = TransactionManager.getInstance();
 

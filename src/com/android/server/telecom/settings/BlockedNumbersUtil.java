@@ -133,9 +133,12 @@ public final class BlockedNumbersUtil {
     public static boolean isEnhancedCallBlockingEnabledByPlatform(Context context) {
         CarrierConfigManager configManager = (CarrierConfigManager) context.getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle carrierConfig = configManager.getConfig();
+        PersistableBundle carrierConfig = null;
+        if (configManager != null) {
+            carrierConfig = configManager.getConfig();
+        }
         if (carrierConfig == null) {
-            carrierConfig = configManager.getDefaultConfig();
+            carrierConfig = CarrierConfigManager.getDefaultConfig();
         }
         return carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_SUPPORT_ENHANCED_CALL_BLOCKING_BOOL)

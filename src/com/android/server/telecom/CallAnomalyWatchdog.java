@@ -18,15 +18,22 @@ package com.android.server.telecom;
 
 import static com.android.server.telecom.LogUtils.Events.STATE_TIMEOUT;
 
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.UserHandle;
 import android.provider.DeviceConfig;
 import android.telecom.ConnectionService;
 import android.telecom.DisconnectCause;
 import android.telecom.Log;
+import android.telecom.PhoneAccountHandle;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.telecom.stats.CallStateChangedAtomWriter;
+import com.android.server.telecom.flags.FeatureFlags;
 
 import java.util.Collections;
 import java.util.Map;
@@ -113,6 +120,7 @@ public class CallAnomalyWatchdog extends CallsManagerListenerBase implements Cal
     private final TelecomSystem.SyncRoot mLock;
     private final Timeouts.Adapter mTimeoutAdapter;
     private final ClockProxy mClockProxy;
+    private final FeatureFlags mFeatureFlags;
     private AnomalyReporterAdapter mAnomalyReporter = new AnomalyReporterAdapterImpl();
     // Pre-allocate space for 2 calls; realistically thats all we should ever need (tm)
     private final Map<Call, ScheduledFuture<?>> mScheduledFutureMap = new ConcurrentHashMap<>(2);
@@ -140,6 +148,11 @@ public class CallAnomalyWatchdog extends CallsManagerListenerBase implements Cal
             UUID.fromString("d57d8aab-d723-485e-a0dd-d1abb0f346c8");
     public static final String WATCHDOG_DISCONNECTED_STUCK_EMERGENCY_CALL_MSG =
             "Telecom CallAnomalyWatchdog caught and disconnected a stuck/zombie emergency call.";
+    public static final UUID WATCHDOG_DISCONNECTED_STUCK_VOIP_CALL_UUID =
+            UUID.fromString("3fbecd12-059d-4fd3-87b7-6c3079891c23");
+    public static final String WATCHDOG_DISCONNECTED_STUCK_VOIP_CALL_MSG =
+            "Telecom CallAnomalyWatchdog caught stuck VoIP call in a starting state";
+
 
     @VisibleForTesting
     public void setAnomalyReporterAdapter(AnomalyReporterAdapter mAnomalyReporterAdapter){
@@ -148,10 +161,12 @@ public class CallAnomalyWatchdog extends CallsManagerListenerBase implements Cal
 
     public CallAnomalyWatchdog(ScheduledExecutorService executorService,
             TelecomSystem.SyncRoot lock,
+            FeatureFlags featureFlags,
             Timeouts.Adapter timeoutAdapter, ClockProxy clockProxy,
             EmergencyCallDiagnosticLogger emergencyCallDiagnosticLogger) {
         mScheduledExecutorService = executorService;
         mLock = lock;
+        mFeatureFlags = featureFlags;
         mTimeoutAdapter = timeoutAdapter;
         mClockProxy = clockProxy;
         mEmergencyCallDiagnosticLogger = emergencyCallDiagnosticLogger;
@@ -272,8 +287,13 @@ public class CallAnomalyWatchdog extends CallsManagerListenerBase implements Cal
      */
     private void maybeTrackCall(Call call) {
         final WatchdogCallState currentState = mWatchdogCallStateMap.get(call);
+        boolean isCreateConnectionComplete = call.isCreateConnectionComplete();
+        if (mFeatureFlags.disconnectSelfManagedStuckStartupCalls()) {
+            isCreateConnectionComplete =
+                    isCreateConnectionComplete || call.isTransactionalCall();
+        }
         final WatchdogCallState newState = new WatchdogCallState(call.getState(),
-                call.isCreateConnectionComplete(), mClockProxy.elapsedRealtime());
+                isCreateConnectionComplete, mClockProxy.elapsedRealtime());
         if (Objects.equals(currentState, newState)) {
             // No state change; skip.
             return;
@@ -348,8 +368,13 @@ public class CallAnomalyWatchdog extends CallsManagerListenerBase implements Cal
                 }
                 // Ensure that at timeout we are still in the original state when we posted the
                 // timeout.
+                boolean isCreateConnectionComplete = call.isCreateConnectionComplete();
+                if (mFeatureFlags.disconnectSelfManagedStuckStartupCalls()) {
+                    isCreateConnectionComplete =
+                            isCreateConnectionComplete || call.isTransactionalCall();
+                }
                 final WatchdogCallState expiredState = new WatchdogCallState(call.getState(),
-                        call.isCreateConnectionComplete(), mClockProxy.elapsedRealtime());
+                        isCreateConnectionComplete, mClockProxy.elapsedRealtime());
                 if (expiredState.equals(newState)
                         && getDurationInCurrentStateMillis(newState) > timeoutMillis) {
                     // The call has been in this transitory or intermediate state too long,
@@ -368,7 +393,7 @@ public class CallAnomalyWatchdog extends CallsManagerListenerBase implements Cal
                                 WATCHDOG_DISCONNECTED_STUCK_CALL_MSG);
                     }
 
-                    if (isEnabledDisconnect) {
+                    if (isEnabledDisconnect || isInSelfManagedStuckStartingState(call)) {
                         call.setOverrideDisconnectCauseCode(
                                 new DisconnectCause(DisconnectCause.ERROR, "state_timeout"));
                         call.disconnect("State timeout");
@@ -385,6 +410,50 @@ public class CallAnomalyWatchdog extends CallsManagerListenerBase implements Cal
             }
         }.prepare();
         return cleanupRunnable;
+    }
+
+    private boolean isInSelfManagedStuckStartingState(Call call) {
+        Context context = call.getContext();
+        if (!mFeatureFlags.disconnectSelfManagedStuckStartupCalls() || context == null) {
+            return false;
+        }
+        int currentStuckState = call.getState();
+        return call.isSelfManaged() &&
+                (currentStuckState == CallState.NEW ||
+                        currentStuckState == CallState.RINGING ||
+                        currentStuckState == CallState.DIALING ||
+                        currentStuckState == CallState.CONNECTING) &&
+                isVanillaIceCreamBuildOrHigher(context, call);
+    }
+
+    private boolean isVanillaIceCreamBuildOrHigher(Context context, Call call) {
+        // report the anomaly for metrics purposes
+        mAnomalyReporter.reportAnomaly(
+                WATCHDOG_DISCONNECTED_STUCK_VOIP_CALL_UUID,
+                WATCHDOG_DISCONNECTED_STUCK_VOIP_CALL_MSG);
+        // only disconnect calls running on V and when the flag is enabled!
+        PhoneAccountHandle phoneAccountHandle = call.getTargetPhoneAccount();
+        PackageManager pm = context.getPackageManager();
+        if (pm == null ||
+                phoneAccountHandle == null ||
+                phoneAccountHandle.getComponentName() == null) {
+            return false;
+        }
+        String packageName = phoneAccountHandle.getComponentName().getPackageName();
+        Log.d(this, "pah=[%s], user=[%s]", phoneAccountHandle, call.getAssociatedUser());
+        ApplicationInfo applicationInfo;
+        try {
+            applicationInfo = pm.getApplicationInfoAsUser(
+                    packageName,
+                    0,
+                    call.getAssociatedUser());
+        } catch (Exception e) {
+            Log.e(this, e, "iVICBOH: pm.getApplicationInfoAsUser(...) exception");
+            return false;
+        }
+        int targetSdk = (applicationInfo == null) ? 0 : applicationInfo.targetSdkVersion;
+        Log.i(this, "iVICBOH: packageName=[%s], sdk=[%d]", packageName, targetSdk);
+        return targetSdk >= Build.VERSION_CODES.VANILLA_ICE_CREAM;
     }
 
     /**

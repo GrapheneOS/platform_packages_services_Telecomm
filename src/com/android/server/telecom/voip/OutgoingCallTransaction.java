@@ -114,6 +114,12 @@ public class OutgoingCallTransaction extends VoipCallTransaction {
                             Log.d(TAG, "processTransaction: call done. id=" + call.getId());
                         }
 
+                        if (mFeatureFlags.disconnectSelfManagedStuckStartupCalls()) {
+                            // set to dialing so the CallAnomalyWatchdog gives the VoIP calls 1
+                            // minute to timeout rather than 5 seconds.
+                            mCallsManager.markCallAsDialing(call);
+                        }
+
                         return CompletableFuture.completedFuture(
                                 new VoipCallTransactionResult(
                                         VoipCallTransactionResult.RESULT_SUCCEED,
