@@ -680,7 +680,7 @@ public class CallsManager extends Call.ListenerBase
                                         audioManager.generateAudioSessionId()));
         InCallTonePlayer.Factory playerFactory = new InCallTonePlayer.Factory(
                 callAudioRoutePeripheralAdapter, lock, toneGeneratorFactory, mediaPlayerFactory,
-                () -> audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0);
+                () -> audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0, featureFlags);
 
         SystemSettingsUtil systemSettingsUtil = new SystemSettingsUtil();
         RingtoneFactory ringtoneFactory = new RingtoneFactory(this, context, featureFlags);

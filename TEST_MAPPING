@@ -58,5 +58,15 @@
         }
       ]
     }
+  ],
+  "postsubmit": [
+    {
+      "name": "CtsTelecomCujTestCases",
+      "options": [
+        {
+          "exclude-annotation": "androidx.test.filters.FlakyTest"
+        }
+      ]
+    }
   ]
 }

@@ -26,3 +26,14 @@ flag {
       purpose: PURPOSE_BUGFIX
     }
 }
+
+# OWNER=breadley TARGET=24Q4
+flag {
+  name: "use_stream_voice_call_tones"
+  namespace: "telecom"
+  description: "Use STREAM_VOICE_CALL only for ToneGenerator"
+  bug: "363262590"
+  metadata {
+      purpose: PURPOSE_BUGFIX
+    }
+}

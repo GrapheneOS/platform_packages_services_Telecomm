@@ -27,7 +27,6 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -43,10 +42,10 @@ import com.android.server.telecom.CallAudioRouteStateMachine;
 import com.android.server.telecom.DockManager;
 import com.android.server.telecom.InCallTonePlayer;
 import com.android.server.telecom.TelecomSystem;
-import com.android.server.telecom.Timeouts;
 import com.android.server.telecom.WiredHeadsetManager;
 import com.android.server.telecom.bluetooth.BluetoothDeviceManager;
 import com.android.server.telecom.bluetooth.BluetoothRouteManager;
+import com.android.server.telecom.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -64,7 +63,6 @@ public class InCallTonePlayerTest extends TelecomTestCase {
 
     @Mock private BluetoothRouteManager mBluetoothRouteManager;
     @Mock private CallAudioRouteStateMachine mCallAudioRouteStateMachine;
-    @Mock private Timeouts.Adapter mTimeoutsAdapter;
     @Mock private BluetoothDeviceManager mBluetoothDeviceManager;
     @Mock private TelecomSystem.SyncRoot mLock;
     @Mock private ToneGenerator mToneGenerator;
@@ -73,7 +71,6 @@ public class InCallTonePlayerTest extends TelecomTestCase {
     @Mock private DockManager mDockManager;
     @Mock private AsyncRingtonePlayer mRingtonePlayer;
     @Mock private BluetoothDevice mDevice;
-    @Mock private BluetoothAdapter mBluetoothAdapter;
 
     private InCallTonePlayer.MediaPlayerAdapter mMediaPlayerAdapter =
             new InCallTonePlayer.MediaPlayerAdapter() {
@@ -115,7 +112,6 @@ public class InCallTonePlayerTest extends TelecomTestCase {
     private CallAudioManager mCallAudioManager;
     @Mock
     private Call mCall;
-
     private InCallTonePlayer mInCallTonePlayer;
 
     @Override
@@ -131,7 +127,7 @@ public class InCallTonePlayerTest extends TelecomTestCase {
                 mCallAudioRouteStateMachine, mBluetoothRouteManager, mWiredHeadsetManager,
                 mDockManager, mRingtonePlayer);
         mFactory = new InCallTonePlayer.Factory(mCallAudioRoutePeripheralAdapter, mLock,
-                mToneGeneratorFactory, mMediaPlayerFactory, mAudioManagerAdapter);
+                mToneGeneratorFactory, mMediaPlayerFactory, mAudioManagerAdapter, mFeatureFlags);
         mFactory.setCallAudioManager(mCallAudioManager);
         mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_CALL_ENDED);
     }
@@ -209,39 +205,80 @@ public class InCallTonePlayerTest extends TelecomTestCase {
                 eq(true));
     }
 
+    /**
+     * Only applicable when {@link FeatureFlags#useStreamVoiceCallTones()} is false and we use
+     * STREAM_BLUETOOTH_SCO for tones.
+     */
     @SmallTest
     @Test
     public void testRingbackToneAudioStreamHeadset() {
+        when(mFeatureFlags.useStreamVoiceCallTones()).thenReturn(false);
         when(mAudioManagerAdapter.isVolumeOverZero()).thenReturn(true);
-        mBluetoothDeviceManager.setBluetoothRouteManager(mBluetoothRouteManager);
-        when(mBluetoothRouteManager.getBluetoothAudioConnectedDevice()).thenReturn(mDevice);
-        when(mBluetoothRouteManager.isBluetoothAudioConnectedOrPending()).thenReturn(true);
-
-        when(mBluetoothRouteManager.isCachedLeAudioDevice(mDevice)).thenReturn(false);
-        when(mBluetoothRouteManager.isCachedHearingAidDevice(mDevice)).thenReturn(false);
+        setConnectedBluetoothDevice(false /*isLe*/, false /*isHearingAid*/);
 
         mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_RING_BACK);
         assertTrue(mInCallTonePlayer.startTone());
+
         verify(mToneGeneratorFactory, timeout(TEST_TIMEOUT))
                 .get(eq(AudioManager.STREAM_BLUETOOTH_SCO), anyInt());
         verify(mCallAudioManager).setIsTonePlaying(any(Call.class), eq(true));
     }
 
+    /**
+     * Only applicable when {@link FeatureFlags#useStreamVoiceCallTones()} is false and we use
+     * STREAM_BLUETOOTH_SCO for tones.
+     */
     @SmallTest
     @Test
     public void testCallWaitingToneAudioStreamHeadset() {
+        when(mFeatureFlags.useStreamVoiceCallTones()).thenReturn(false);
         when(mAudioManagerAdapter.isVolumeOverZero()).thenReturn(true);
-        mBluetoothDeviceManager.setBluetoothRouteManager(mBluetoothRouteManager);
-        when(mBluetoothRouteManager.getBluetoothAudioConnectedDevice()).thenReturn(mDevice);
-        when(mBluetoothRouteManager.isBluetoothAudioConnectedOrPending()).thenReturn(true);
-
-        when(mBluetoothRouteManager.isCachedLeAudioDevice(mDevice)).thenReturn(false);
-        when(mBluetoothRouteManager.isCachedHearingAidDevice(mDevice)).thenReturn(false);
+        setConnectedBluetoothDevice(false /*isLe*/, false /*isHearingAid*/);
 
         mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_CALL_WAITING);
         assertTrue(mInCallTonePlayer.startTone());
+
         verify(mToneGeneratorFactory, timeout(TEST_TIMEOUT))
                 .get(eq(AudioManager.STREAM_BLUETOOTH_SCO), anyInt());
+        verify(mCallAudioManager).setIsTonePlaying(any(Call.class), eq(true));
+    }
+
+
+    /**
+     * Only applicable when {@link FeatureFlags#useStreamVoiceCallTones()} is true and we use
+     * STREAM_VOICE_CALL for ALL tones.
+     */
+    @SmallTest
+    @Test
+    public void testRingbackToneAudioStreamSco() {
+        when(mFeatureFlags.useStreamVoiceCallTones()).thenReturn(true);
+        when(mAudioManagerAdapter.isVolumeOverZero()).thenReturn(true);
+        setConnectedBluetoothDevice(false /*isLe*/, false /*isHearingAid*/);
+
+        mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_RING_BACK);
+        assertTrue(mInCallTonePlayer.startTone());
+
+        verify(mToneGeneratorFactory, timeout(TEST_TIMEOUT))
+                .get(eq(AudioManager.STREAM_VOICE_CALL), anyInt());
+        verify(mCallAudioManager).setIsTonePlaying(any(Call.class), eq(true));
+    }
+
+    /**
+     * Only applicable when {@link FeatureFlags#useStreamVoiceCallTones()} is true and we use
+     * STREAM_VOICE_CALL for ALL tones.
+     */
+    @SmallTest
+    @Test
+    public void testRingbackToneAudioStreamLe() {
+        when(mFeatureFlags.useStreamVoiceCallTones()).thenReturn(true);
+        when(mAudioManagerAdapter.isVolumeOverZero()).thenReturn(true);
+        setConnectedBluetoothDevice(true /*isLe*/, false /*isHearingAid*/);
+
+        mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_RING_BACK);
+        assertTrue(mInCallTonePlayer.startTone());
+
+        verify(mToneGeneratorFactory, timeout(TEST_TIMEOUT))
+                .get(eq(AudioManager.STREAM_VOICE_CALL), anyInt());
         verify(mCallAudioManager).setIsTonePlaying(any(Call.class), eq(true));
     }
 
@@ -249,15 +286,11 @@ public class InCallTonePlayerTest extends TelecomTestCase {
     @Test
     public void testRingbackToneAudioStreamHearingAid() {
         when(mAudioManagerAdapter.isVolumeOverZero()).thenReturn(true);
-        mBluetoothDeviceManager.setBluetoothRouteManager(mBluetoothRouteManager);
-        when(mBluetoothRouteManager.getBluetoothAudioConnectedDevice()).thenReturn(mDevice);
-        when(mBluetoothRouteManager.isBluetoothAudioConnectedOrPending()).thenReturn(true);
-
-        when(mBluetoothRouteManager.isCachedLeAudioDevice(mDevice)).thenReturn(false);
-        when(mBluetoothRouteManager.isCachedHearingAidDevice(mDevice)).thenReturn(true);
+        setConnectedBluetoothDevice(false /*isLe*/, true /*isHearingAid*/);
 
         mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_RING_BACK);
         assertTrue(mInCallTonePlayer.startTone());
+
         verify(mToneGeneratorFactory, timeout(TEST_TIMEOUT))
                 .get(eq(AudioManager.STREAM_VOICE_CALL), anyInt());
         verify(mCallAudioManager).setIsTonePlaying(any(Call.class), eq(true));
@@ -267,17 +300,27 @@ public class InCallTonePlayerTest extends TelecomTestCase {
     @Test
     public void testCallWaitingToneAudioStreamHearingAid() {
         when(mAudioManagerAdapter.isVolumeOverZero()).thenReturn(true);
+        setConnectedBluetoothDevice(false /*isLe*/, true /*isHearingAid*/);
+
+        mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_CALL_WAITING);
+        assertTrue(mInCallTonePlayer.startTone());
+
+        verify(mToneGeneratorFactory, timeout(TEST_TIMEOUT))
+                .get(eq(AudioManager.STREAM_VOICE_CALL), anyInt());
+        verify(mCallAudioManager).setIsTonePlaying(any(Call.class), eq(true));
+    }
+
+    /**
+     * Set a connected BT device. If not LE or Hearing Aid, it will be configured as SCO
+     * @param isLe true if LE
+     * @param isHearingAid true if hearing aid
+     */
+    private void setConnectedBluetoothDevice(boolean isLe, boolean isHearingAid) {
         mBluetoothDeviceManager.setBluetoothRouteManager(mBluetoothRouteManager);
         when(mBluetoothRouteManager.getBluetoothAudioConnectedDevice()).thenReturn(mDevice);
         when(mBluetoothRouteManager.isBluetoothAudioConnectedOrPending()).thenReturn(true);
 
-        when(mBluetoothRouteManager.isCachedLeAudioDevice(mDevice)).thenReturn(false);
-        when(mBluetoothRouteManager.isCachedHearingAidDevice(mDevice)).thenReturn(true);
-
-        mInCallTonePlayer = mFactory.createPlayer(mCall, InCallTonePlayer.TONE_CALL_WAITING);
-        assertTrue(mInCallTonePlayer.startTone());
-        verify(mToneGeneratorFactory, timeout(TEST_TIMEOUT))
-                .get(eq(AudioManager.STREAM_VOICE_CALL), anyInt());
-        verify(mCallAudioManager).setIsTonePlaying(any(Call.class), eq(true));
+        when(mBluetoothRouteManager.isCachedLeAudioDevice(mDevice)).thenReturn(isLe);
+        when(mBluetoothRouteManager.isCachedHearingAidDevice(mDevice)).thenReturn(isHearingAid);
     }
 }
