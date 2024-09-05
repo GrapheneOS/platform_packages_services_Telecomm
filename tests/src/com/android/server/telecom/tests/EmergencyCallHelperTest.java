@@ -75,7 +75,7 @@ public class EmergencyCallHelperTest extends TelecomTestCase {
     mContext = mComponentContextFixture.getTestDouble().getApplicationContext();
     when(mContext.getPackageManager()).thenReturn(mPackageManager);
     mEmergencyCallHelper = new EmergencyCallHelper(mContext, mDefaultDialerCache,
-        mTimeoutsAdapter);
+        mTimeoutsAdapter, mFeatureFlags);
     when(mDefaultDialerCache.getSystemDialerApplication()).thenReturn(SYSTEM_DIALER_PACKAGE);
 
     //start with no perms
@@ -181,6 +181,61 @@ public class EmergencyCallHelperTest extends TelecomTestCase {
     verifyGrantNotInvokedFor(ACCESS_FINE_LOCATION);
     verifyRevokeNotInvokedFor(ACCESS_BACKGROUND_LOCATION);
     verifyRevokeNotInvokedFor(ACCESS_FINE_LOCATION);
+  }
+
+  @SmallTest
+  @Test
+  public void testPermGrantAndRevokeForEmergencyCall() {
+
+    when(mFeatureFlags.preventRedundantLocationPermissionGrantAndRevoke()).thenReturn(true);
+
+    mEmergencyCallHelper.maybeGrantTemporaryLocationPermission(mCall, mUserHandle);
+    mEmergencyCallHelper.maybeRevokeTemporaryLocationPermission();
+
+    //permissions should be granted then revoked
+    verifyGrantInvokedFor(ACCESS_BACKGROUND_LOCATION);
+    verifyGrantInvokedFor(ACCESS_FINE_LOCATION);
+    verifyRevokeInvokedFor(ACCESS_BACKGROUND_LOCATION);
+    verifyRevokeInvokedFor(ACCESS_FINE_LOCATION);
+  }
+
+  @SmallTest
+  @Test
+  public void testPermGrantAndRevokeForMultiEmergencyCall() {
+
+    when(mFeatureFlags.preventRedundantLocationPermissionGrantAndRevoke()).thenReturn(true);
+
+    //first call is emergency call
+    mEmergencyCallHelper.maybeGrantTemporaryLocationPermission(mCall, mUserHandle);
+    //second call is emergency call
+    mEmergencyCallHelper.maybeGrantTemporaryLocationPermission(mCall, mUserHandle);
+    mEmergencyCallHelper.maybeRevokeTemporaryLocationPermission();
+
+    //permissions should be granted then revoked
+    verifyGrantInvokedFor(ACCESS_BACKGROUND_LOCATION);
+    verifyGrantInvokedFor(ACCESS_FINE_LOCATION);
+    verifyRevokeInvokedFor(ACCESS_BACKGROUND_LOCATION);
+    verifyRevokeInvokedFor(ACCESS_FINE_LOCATION);
+  }
+
+  @SmallTest
+  @Test
+  public void testPermGrantAndRevokeForEmergencyCallAndNormalCall() {
+
+    when(mFeatureFlags.preventRedundantLocationPermissionGrantAndRevoke()).thenReturn(true);
+
+    //first call is emergency call
+    mEmergencyCallHelper.maybeGrantTemporaryLocationPermission(mCall, mUserHandle);
+    //second call is normal call
+    when(mCall.isEmergencyCall()).thenReturn(false);
+    mEmergencyCallHelper.maybeGrantTemporaryLocationPermission(mCall, mUserHandle);
+    mEmergencyCallHelper.maybeRevokeTemporaryLocationPermission();
+
+    //permissions should be granted then revoked
+    verifyGrantInvokedFor(ACCESS_BACKGROUND_LOCATION);
+    verifyGrantInvokedFor(ACCESS_FINE_LOCATION);
+    verifyRevokeInvokedFor(ACCESS_BACKGROUND_LOCATION);
+    verifyRevokeInvokedFor(ACCESS_FINE_LOCATION);
   }
 
   @SmallTest

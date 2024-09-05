@@ -3,6 +3,13 @@ container: "system"
 
 # OWNER=tjstuart TARGET=24Q3
 flag {
+  name: "prevent_redundant_location_permission_grant_and_revoke"
+  namespace: "telecom"
+  description: "avoid redundant action of grant and revoke location permission for multiple emergency calls"
+  bug: "345386002"
+}
+
+flag {
   name: "transactional_cs_verifier"
   namespace: "telecom"
   description: "verify connection service callbacks via a transaction"

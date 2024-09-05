@@ -230,7 +230,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 new ComponentName(SYS_PKG, SYS_CLASS));
         when(mDefaultDialerCache.getBTInCallServicePackages()).thenReturn(new String[] {BT_PKG});
         mEmergencyCallHelper = new EmergencyCallHelper(mMockContext, mDefaultDialerCache,
-                mTimeoutsAdapter);
+                mTimeoutsAdapter, mFeatureFlags);
         when(mMockCallsManager.getRoleManagerAdapter()).thenReturn(mMockRoleManagerAdapter);
         when(mMockContext.getSystemService(eq(Context.NOTIFICATION_SERVICE)))
                 .thenReturn(mNotificationManager);
