@@ -43,8 +43,8 @@
     <string name="respond_via_sms_setting_title_2" msgid="4914853536609553457">"હાજરજવાબમાં ફેરફાર કરો"</string>
     <string name="respond_via_sms_setting_summary" msgid="8054571501085436868"></string>
     <string name="respond_via_sms_edittext_dialog_title" msgid="6579353156073272157">"ઝડપી પ્રતિસાદ"</string>
-    <string name="respond_via_sms_confirmation_format" msgid="2932395476561267842">"<xliff:g id="PHONE_NUMBER">%s</xliff:g> પર સંદેશ મોકલ્યો."</string>
-    <string name="respond_via_sms_failure_format" msgid="5198680980054596391">"<xliff:g id="PHONE_NUMBER">%s</xliff:g>ને સંદેશ મોકલવામાં નિષ્ફળ રહ્યાં."</string>
+    <string name="respond_via_sms_confirmation_format" msgid="2932395476561267842">"<xliff:g id="PHONE_NUMBER">%s</xliff:g> પર મેસેજ મોકલ્યો."</string>
+    <string name="respond_via_sms_failure_format" msgid="5198680980054596391">"<xliff:g id="PHONE_NUMBER">%s</xliff:g> પર મેસેજ મોકલવામાં નિષ્ફળ રહ્યાં."</string>
     <string name="enable_account_preference_title" msgid="6949224486748457976">"કૉલ કરવા માટેના એકાઉન્ટ"</string>
     <string name="outgoing_call_not_allowed_user_restriction" msgid="3424338207838851646">"ફક્ત કટોકટીના કૉલ્સને મંજૂરી છે."</string>
     <string name="outgoing_call_not_allowed_no_permission" msgid="8590468836581488679">"ફોન પરવાનગી વિના આ ઍપ્લિકેશન આઉટગોઇંગ કૉલ્સ કરી શકતી નથી."</string>

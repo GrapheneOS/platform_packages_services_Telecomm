@@ -23,6 +23,17 @@ flag {
   bug: "321369729"
 }
 
+# OWNER=breadley TARGET=24Q4
+flag {
+  name: "cache_call_events"
+  namespace: "telecom"
+  description: "Cache call events to wait for the ServiceWrapper to be set"
+  bug: "364311190"
+  metadata {
+      purpose: PURPOSE_BUGFIX
+    }
+}
+
 # OWNER = breadley TARGET=24Q3
 flag {
   name: "cancel_removal_on_emergency_redial"

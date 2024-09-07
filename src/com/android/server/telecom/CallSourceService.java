@@ -16,6 +16,7 @@
 
 package com.android.server.telecom;
 
+import android.os.Bundle;
 import android.telecom.CallEndpoint;
 
 import java.util.Set;
@@ -37,4 +38,6 @@ public interface CallSourceService {
     void onAvailableCallEndpointsChanged(Call activeCall, Set<CallEndpoint> availableCallEndpoints);
 
     void onVideoStateChanged(Call activeCall, int videoState);
+
+    void sendCallEvent(Call activeCall, String event, Bundle extras);
 }

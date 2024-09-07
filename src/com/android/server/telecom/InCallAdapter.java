@@ -606,7 +606,7 @@ class InCallAdapter extends IInCallAdapter.Stub {
                 synchronized (mLock) {
                     Call call = mCallIdMapper.getCall(callId);
                     if (call != null) {
-                        call.sendCallEvent(event, targetSdkVer, extras);
+                        call.sendCallEvent(event, extras);
                     } else {
                         Log.w(this, "sendCallEvent, unknown call id: %s", callId);
                     }

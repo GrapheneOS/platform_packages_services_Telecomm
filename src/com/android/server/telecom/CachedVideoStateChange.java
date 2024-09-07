@@ -33,6 +33,11 @@ public class CachedVideoStateChange implements CachedCallback {
     }
 
     @Override
+    public int getCacheType() {
+        return TYPE_STATE;
+    }
+
+    @Override
     public void executeCallback(CallSourceService service, Call call) {
         service.onVideoStateChanged(call, mCurrentVideoState);
         Log.addEvent(call, LogUtils.Events.VIDEO_STATE_CHANGED,

@@ -16,47 +16,33 @@
 
 package com.android.server.telecom;
 
-public class CachedMuteStateChange implements CachedCallback {
-    public static final String ID = CachedMuteStateChange.class.getSimpleName();
-    boolean mIsMuted;
+import android.os.Bundle;
+import android.telecom.Log;
 
-    public boolean isMuted() {
-        return mIsMuted;
-    }
+public class CachedCallEventQueue implements CachedCallback {
+    public static final String ID = CachedCallEventQueue.class.getSimpleName();
 
-    public CachedMuteStateChange(boolean isMuted) {
-        mIsMuted = isMuted;
+    private final String mEvent;
+    private final Bundle mExtras;
+
+    public CachedCallEventQueue(String event, Bundle extras) {
+        mEvent = event;
+        mExtras = extras;
     }
 
     @Override
     public int getCacheType() {
-        return TYPE_STATE;
+        return TYPE_QUEUE;
     }
 
     @Override
     public void executeCallback(CallSourceService service, Call call) {
-        service.onMuteStateChanged(call, mIsMuted);
+        Log.addEvent(call, LogUtils.Events.CALL_EVENT, mEvent);
+        service.sendCallEvent(call, mEvent, mExtras);
     }
 
     @Override
     public String getCallbackId() {
         return ID;
     }
-
-    @Override
-    public int hashCode() {
-        return Boolean.hashCode(mIsMuted);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (!(obj instanceof CachedMuteStateChange other)) {
-            return false;
-        }
-        return mIsMuted == other.mIsMuted;
-    }
 }
-

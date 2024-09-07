@@ -22,6 +22,27 @@ package com.android.server.telecom;
  * The callback will be executed once the service is set.
  */
 public interface CachedCallback {
+
+    /**
+     * This callback is caching a state, meaning any new CachedCallbacks with the same
+     * {@link #getCallbackId()} will REPLACE any existing CachedCallback.
+     */
+    int TYPE_STATE = 0;
+    /**
+     * This callback is caching a Queue, meaning that any new CachedCallbacks with the same
+     * {@link #getCallbackId()} will enqueue as a FIFO queue and each instance of this
+     * CachedCallback will run {@link #executeCallback(CallSourceService, Call)}.
+     */
+    int TYPE_QUEUE = 1;
+
+    /**
+     * This method allows the callback to determine whether it is caching a {@link #TYPE_STATE} or
+     * a {@link #TYPE_QUEUE}.
+     *
+     * @return Either {@link #TYPE_STATE} or {@link #TYPE_QUEUE} based on the callback type.
+     */
+    int getCacheType();
+
     /**
      * This method executes the callback that was cached because the service was not available
      * at the time the callback was ready.
@@ -33,11 +54,19 @@ public interface CachedCallback {
     void executeCallback(CallSourceService service, Call call);
 
     /**
-     * This method is helpful for caching the callbacks.  If the callback is called multiple times
-     * while the service is not set, ONLY the last callback should be sent to the client since the
-     * last callback is the most relevant
+     * The ID that this CachedCallback should use to identify itself as a distinct operation.
+     * <p>
+     * If {@link #TYPE_STATE} is set for {@link #getCacheType()}, and a CachedCallback with the
+     * same ID is called multiple times while the service is not set, ONLY the last callback will be
+     * sent to the client since the last callback is the most relevant.
+     * <p>
+     * If {@link #TYPE_QUEUE} is set for {@link #getCacheType()} and the CachedCallback with the
+     * same ID is called multiple times while the service is not set, each CachedCallback will be
+     * enqueued in FIFO order. Once the service is set, {@link #executeCallback} will be called
+     * for each CachedCallback with the same ID.
      *
-     * @return the callback id that is used in a map to only store the last callback value
+     * @return A unique callback id that will be used differentiate this CachedCallback type with
+     * other CachedCallback types.
      */
     String getCallbackId();
 }

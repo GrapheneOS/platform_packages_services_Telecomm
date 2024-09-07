@@ -626,7 +626,8 @@ public class TransactionalServiceWrapper implements
         }
     }
 
-    public void onEvent(Call call, String event, Bundle extras) {
+    @Override
+    public void sendCallEvent(Call call, String event, Bundle extras) {
         if (call != null) {
             try {
                 mICallEventCallback.onEvent(call.getId(), event, extras);

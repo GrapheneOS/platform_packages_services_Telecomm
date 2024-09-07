@@ -1142,7 +1142,8 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                     : mSpeakerDockRoute;
             // Ensure that we default to speaker route if we're in a video call, but disregard it if
             // a wired headset is plugged in.
-            if (skipEarpiece && defaultRoute.getType() == AudioRoute.TYPE_EARPIECE) {
+            if (skipEarpiece && defaultRoute != null
+                    && defaultRoute.getType() == AudioRoute.TYPE_EARPIECE) {
                 Log.i(this, "getPreferredAudioRouteFromDefault: Audio routing defaulting to "
                         + "speaker route for video call.");
                 defaultRoute = mSpeakerDockRoute;

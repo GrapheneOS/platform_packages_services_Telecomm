@@ -47,6 +47,7 @@ import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.Ringtone;
 import android.media.VolumeShaper;
+import android.media.audio.Flags;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.UserHandle;
@@ -55,8 +56,10 @@ import android.os.VibrationAttributes;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorInfo;
+import android.platform.test.annotations.EnableFlags;
 import android.platform.test.flag.junit.CheckFlagsRule;
 import android.platform.test.flag.junit.DeviceFlagsValueProvider;
+import android.platform.test.flag.junit.SetFlagsRule;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.util.Pair;
@@ -91,7 +94,14 @@ public class RingerTest extends TelecomTestCase {
     @Rule
     public final CheckFlagsRule mCheckFlagsRule = DeviceFlagsValueProvider.createCheckFlagsRule();
 
+    @Rule
+    public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
+
     private static final Uri FAKE_RINGTONE_URI = Uri.parse("content://media/fake/audio/1729");
+
+    private static final Uri FAKE_VIBRATION_URI = Uri.parse("file://media/fake/vibration/1729");
+
+    private static final String VIBRATION_PARAM = "vibration_uri";
     // Returned when the a URI-based VibrationEffect is attempted, to avoid depending on actual
     // device configuration for ringtone URIs. The actual Uri can be verified via the
     // VibrationEffectProxy mock invocation.
@@ -803,6 +813,37 @@ public class RingerTest extends TelecomTestCase {
         verifyZeroInteractions(mockRingtoneFactory);
         verify(mockVibrator, never())
                 .vibrate(any(VibrationEffect.class), any(VibrationAttributes.class));
+    }
+
+    @SmallTest
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_RINGTONE_HAPTICS_CUSTOMIZATION)
+    public void testNoVibrateForSilentRingtoneIfRingtoneHasVibration() throws Exception {
+        Uri FAKE_RINGTONE_VIBRATION_URI =
+                FAKE_RINGTONE_URI.buildUpon().appendQueryParameter(
+                        VIBRATION_PARAM, FAKE_VIBRATION_URI.toString()).build();
+        Ringtone mockRingtone = mock(Ringtone.class);
+        Pair<Uri, Ringtone> ringtoneInfo = new Pair(FAKE_RINGTONE_VIBRATION_URI, mockRingtone);
+        when(mockRingtoneFactory.getRingtone(
+                any(Call.class), nullable(VolumeShaper.Configuration.class), anyBoolean()))
+                .thenReturn(ringtoneInfo);
+        mComponentContextFixture.putBooleanResource(
+                com.android.internal.R.bool.config_ringtoneVibrationSettingsSupported, true);
+        createRingerUnderTest(); // Needed after mock the config.
+
+        mRingerUnderTest.startCallWaiting(mockCall1);
+        when(mockAudioManager.getRingerMode()).thenReturn(AudioManager.RINGER_MODE_VIBRATE);
+        when(mockAudioManager.getStreamVolume(AudioManager.STREAM_RING)).thenReturn(0);
+        enableVibrationWhenRinging();
+        assertFalse(startRingingAndWaitForAsync(mockCall2, false));
+
+        verify(mockRingtoneFactory, atLeastOnce())
+                .getRingtone(any(Call.class), eq(null), eq(false));
+        verifyNoMoreInteractions(mockRingtoneFactory);
+        verify(mockTonePlayer).stopTone();
+        // Skip vibration play in Ringer if a vibration was specified to the ringtone
+        verify(mockVibrator, never()).vibrate(any(VibrationEffect.class),
+                any(VibrationAttributes.class));
     }
 
     /**

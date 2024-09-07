@@ -19,6 +19,8 @@ package com.android.server.telecom;
 import static android.provider.CallLog.Calls.MISSED_REASON_NOT_MISSED;
 import static android.telephony.TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE;
 
+import static com.android.server.telecom.CachedCallback.TYPE_QUEUE;
+import static com.android.server.telecom.CachedCallback.TYPE_STATE;
 import static com.android.server.telecom.voip.VideoStateTranslation.TransactionalVideoStateToString;
 import static com.android.server.telecom.voip.VideoStateTranslation.VideoProfileStateToTransactionalVideoState;
 
@@ -849,14 +851,51 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      */
     private CompletableFuture<Boolean> mBtIcsFuture;
 
-    Map<String, CachedCallback> mCachedServiceCallbacks = new HashMap<>();
+    /**
+     * Map of CachedCallbacks that are pending to be executed when the *ServiceWrapper connects
+     */
+    private final Map<String, List<CachedCallback>> mCachedServiceCallbacks = new HashMap<>();
 
     public void cacheServiceCallback(CachedCallback callback) {
-        mCachedServiceCallbacks.put(callback.getCallbackId(), callback);
+        synchronized (mCachedServiceCallbacks) {
+            if (mFlags.cacheCallEvents()) {
+                // If there are multiple threads caching + calling processCachedCallbacks at the
+                // same time, there is a race - double check here to ensure that we do not lose an
+                // operation due to a a cache happening after processCachedCallbacks.
+                // Either service will be non-null in this case, but both will not be non-null
+                if (mConnectionService != null) {
+                    callback.executeCallback(mConnectionService, this);
+                    return;
+                }
+                if (mTransactionalService != null) {
+                    callback.executeCallback(mTransactionalService, this);
+                    return;
+                }
+            }
+            List<CachedCallback> cbs = mCachedServiceCallbacks.computeIfAbsent(
+                    callback.getCallbackId(), k -> new ArrayList<>());
+            switch (callback.getCacheType()) {
+                case TYPE_STATE: {
+                    cbs.clear();
+                    cbs.add(callback);
+                    break;
+                }
+                case TYPE_QUEUE: {
+                    cbs.add(callback);
+                }
+            }
+        }
     }
 
-    public Map<String, CachedCallback> getCachedServiceCallbacks() {
-        return mCachedServiceCallbacks;
+    @VisibleForTesting
+    public Map<String, List<CachedCallback>> getCachedServiceCallbacksCopy() {
+        synchronized (mCachedServiceCallbacks) {
+            // This should only be used during testing, but to be safe, since there is internally a
+            // List value, we need to do a deep copy to ensure someone with a ref to the Map doesn't
+            // mutate the underlying list while we are modifying it in cacheServiceCallback.
+            return mCachedServiceCallbacks.entrySet().stream().collect(
+                    Collectors.toUnmodifiableMap(Map.Entry::getKey, e-> List.copyOf(e.getValue())));
+        }
     }
 
     private FeatureFlags mFlags;
@@ -2052,11 +2091,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     private void processCachedCallbacks(CallSourceService service) {
         if(mFlags.cacheCallAudioCallbacks()) {
-            for (CachedCallback callback : mCachedServiceCallbacks.values()) {
-                callback.executeCallback(service, this);
+            synchronized (mCachedServiceCallbacks) {
+                for (List<CachedCallback> callbacks : mCachedServiceCallbacks.values()) {
+                    callbacks.forEach( callback -> callback.executeCallback(service, this));
+                }
+                // clear list for memory cleanup purposes. The Service should never be reset
+                mCachedServiceCallbacks.clear();
             }
-            // clear list for memory cleanup purposes. The Service should never be reset
-            mCachedServiceCallbacks.clear();
         }
     }
 
@@ -3520,26 +3561,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     }
 
     /**
-     * Sends a call event to the {@link ConnectionService} for this call. This function is
-     * called for event other than {@link Call#EVENT_REQUEST_HANDOVER}
+     * Sends a call event to the {@link ConnectionService} for this call.
      *
      * @param event The call event.
      * @param extras Associated extras.
      */
     public void sendCallEvent(String event, Bundle extras) {
-        sendCallEvent(event, 0/*For Event != EVENT_REQUEST_HANDOVER*/, extras);
-    }
-
-    /**
-     * Sends a call event to the {@link ConnectionService} for this call.
-     *
-     * See {@link Call#sendCallEvent(String, Bundle)}.
-     *
-     * @param event The call event.
-     * @param targetSdkVer SDK version of the app calling this api
-     * @param extras Associated extras.
-     */
-    public void sendCallEvent(String event, int targetSdkVer, Bundle extras) {
         if (mConnectionService != null || mTransactionalService != null) {
             // Relay bluetooth call quality reports to the call diagnostic service.
             if (BluetoothCallQualityReport.EVENT_BLUETOOTH_CALL_QUALITY_REPORT.equals(event)
@@ -3552,19 +3579,25 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             Log.addEvent(this, LogUtils.Events.CALL_EVENT, event);
             sendEventToService(this, event, extras);
         } else {
-            Log.e(this, new NullPointerException(),
-                    "sendCallEvent failed due to null CS callId=%s", getId());
+            if (mFlags.cacheCallEvents()) {
+                Log.i(this, "sendCallEvent: caching call event for callId=%s, event=%s",
+                        getId(), event);
+                cacheServiceCallback(new CachedCallEventQueue(event, extras));
+            } else {
+                Log.e(this, new NullPointerException(),
+                        "sendCallEvent failed due to null CS callId=%s", getId());
+            }
         }
     }
 
     /**
-     *  This method should only be called from sendCallEvent(String, int, Bundle).
+     *  This method should only be called from sendCallEvent(String, Bundle).
      */
     private void sendEventToService(Call call, String event, Bundle extras) {
         if (mConnectionService != null) {
             mConnectionService.sendCallEvent(call, event, extras);
         } else if (mTransactionalService != null) {
-            mTransactionalService.onEvent(call, event, extras);
+            mTransactionalService.sendCallEvent(call, event, extras);
         }
     }
 
