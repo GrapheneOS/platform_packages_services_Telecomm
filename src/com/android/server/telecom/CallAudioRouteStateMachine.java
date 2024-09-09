@@ -2110,8 +2110,9 @@ public class CallAudioRouteStateMachine extends StateMachine implements CallAudi
     private int getCurrentCallSupportedRoutes() {
         int supportedRoutes = CallAudioState.ROUTE_ALL;
 
-        if (mCallsManager.getForegroundCall() != null) {
-            supportedRoutes &= mCallsManager.getForegroundCall().getSupportedAudioRoutes();
+        Call foregroundCall = mCallsManager.getForegroundCall();
+        if (foregroundCall != null) {
+            supportedRoutes &= foregroundCall.getSupportedAudioRoutes();
         }
 
         return supportedRoutes;

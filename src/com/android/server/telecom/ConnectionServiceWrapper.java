@@ -1712,14 +1712,19 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                         .setRttPipeToInCall(call.getCsToInCallRttPipeForCs())
                         .build();
                 try {
-                    mServiceInterface.createConnection(
-                            call.getConnectionManagerPhoneAccount(),
-                            callId,
-                            connectionRequest,
-                            call.shouldAttachToExistingConnection(),
-                            call.isUnknown(),
-                            Log.getExternalSession(TELECOM_ABBREVIATION));
-
+                    if (mFlags.cswServiceInterfaceIsNull() && mServiceInterface == null) {
+                        mPendingResponses.remove(callId).handleCreateConnectionFailure(
+                                new DisconnectCause(DisconnectCause.ERROR,
+                                        "CSW#oCC ServiceInterface is null"));
+                    } else {
+                        mServiceInterface.createConnection(
+                                call.getConnectionManagerPhoneAccount(),
+                                callId,
+                                connectionRequest,
+                                call.shouldAttachToExistingConnection(),
+                                call.isUnknown(),
+                                Log.getExternalSession(TELECOM_ABBREVIATION));
+                    }
                 } catch (RemoteException e) {
                     Log.e(this, e, "Failure to createConnection -- %s", getComponentName());
                     mPendingResponses.remove(callId).handleCreateConnectionFailure(
