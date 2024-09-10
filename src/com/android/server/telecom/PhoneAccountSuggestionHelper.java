@@ -27,6 +27,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.os.UserHandle;
 import android.telecom.Log;
 import android.telecom.Logging.Session;
 import android.telecom.PhoneAccountHandle;
@@ -46,6 +47,7 @@ import java.util.stream.Stream;
 public class PhoneAccountSuggestionHelper {
     private static final String TAG = PhoneAccountSuggestionHelper.class.getSimpleName();
     private static ComponentName sOverrideComponent;
+    private static UserHandle sOverrideUserHandle;
 
     /**
      * @return A future (possible already complete) that contains a list of suggestions.
@@ -53,6 +55,15 @@ public class PhoneAccountSuggestionHelper {
     public static CompletableFuture<List<PhoneAccountSuggestion>>
     bindAndGetSuggestions(Context context, Uri handle,
             List<PhoneAccountHandle> availablePhoneAccounts) {
+        Context userContext;
+        if (sOverrideUserHandle != null) {
+            userContext = context.createContextAsUser(sOverrideUserHandle, 0);
+            Log.i(TAG, "bindAndGetSuggestions created context as user;  userContext=%s",
+                    userContext);
+        } else {
+            userContext = context;
+        }
+
         // Use the default list if there's no handle
         if (handle == null) {
             return CompletableFuture.completedFuture(getDefaultSuggestions(availablePhoneAccounts));
@@ -60,7 +71,7 @@ public class PhoneAccountSuggestionHelper {
         String number = PhoneNumberUtils.extractNetworkPortion(handle.getSchemeSpecificPart());
 
         // Use the default list if there's no service on the device.
-        ServiceInfo suggestionServiceInfo = getSuggestionServiceInfo(context);
+        ServiceInfo suggestionServiceInfo = getSuggestionServiceInfo(userContext);
         if (suggestionServiceInfo == null) {
             return CompletableFuture.completedFuture(getDefaultSuggestions(availablePhoneAccounts));
         }
@@ -124,7 +135,7 @@ public class PhoneAccountSuggestionHelper {
             }
         };
 
-        if (!context.bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE)) {
+        if (!userContext.bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE)) {
             Log.i(TAG, "Cancelling suggestion process due to bind failure.");
             future.complete(getDefaultSuggestions(availablePhoneAccounts));
         }
@@ -143,7 +154,7 @@ public class PhoneAccountSuggestionHelper {
                         Log.endSession();
                     }
                 },
-                Timeouts.getPhoneAccountSuggestionServiceTimeout(context.getContentResolver()));
+                Timeouts.getPhoneAccountSuggestionServiceTimeout(userContext.getContentResolver()));
         return future;
     }
 
@@ -162,9 +173,24 @@ public class PhoneAccountSuggestionHelper {
     }
 
     private static ServiceInfo getSuggestionServiceInfo(Context context) {
-        PackageManager packageManager = context.getPackageManager();
+        Context userContext;
+        if (sOverrideUserHandle != null) {
+            userContext = context.createContextAsUser(sOverrideUserHandle, 0);
+            Log.i(TAG, "getSuggestionServiceInfo: Created context as user; userContext= %s",
+                    userContext);
+        } else {
+            userContext = context;
+        }
+
+        PackageManager packageManager = userContext.getPackageManager();
+
         Intent queryIntent = new Intent();
         queryIntent.setAction(PhoneAccountSuggestionService.SERVICE_INTERFACE);
+
+        if (packageManager == null) {
+            Log.i(TAG, "getSuggestionServiceInfo: PackageManager is null. Using defaults.");
+            return null;
+        }
 
         List<ResolveInfo> services;
         if (sOverrideComponent == null) {
@@ -195,6 +221,15 @@ public class PhoneAccountSuggestionHelper {
                     ? null : ComponentName.unflattenFromString(flattenedComponentName);
         } catch (Exception e) {
             sOverrideComponent = null;
+            throw e;
+        }
+    }
+
+    static void setOverrideUserHandle(UserHandle userHandle) {
+        try {
+            sOverrideUserHandle = userHandle;
+        } catch (Exception e) {
+            sOverrideUserHandle = null;
             throw e;
         }
     }

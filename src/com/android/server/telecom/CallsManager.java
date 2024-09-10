@@ -2066,7 +2066,8 @@ public class CallsManager extends Call.ListenerBase
                         return CompletableFuture.completedFuture(
                                 Collections.singletonList(suggestion));
                     }
-                    return PhoneAccountSuggestionHelper.bindAndGetSuggestions(mContext,
+                    Context userContext = mContext.createContextAsUser(getCurrentUserHandle(), 0);
+                    return PhoneAccountSuggestionHelper.bindAndGetSuggestions(userContext,
                             finalCall.getHandle(), potentialPhoneAccounts);
                 }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.cOCSS", mLock));
 

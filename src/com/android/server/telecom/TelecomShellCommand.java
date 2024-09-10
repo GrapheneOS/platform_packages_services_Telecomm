@@ -341,7 +341,8 @@ public class TelecomShellCommand extends BasicShellCommandHandler {
 
     private void runSetTestPhoneAcctSuggestionComponent() throws RemoteException {
         final String componentName = getNextArg();
-        mTelecomService.setTestPhoneAcctSuggestionComponent(componentName);
+        final UserHandle userHandle = getUserHandleFromArgs();
+        mTelecomService.setTestPhoneAcctSuggestionComponent(componentName, userHandle);
     }
 
     private void runSetUserSelectedOutgoingPhoneAccount() throws RemoteException {
@@ -455,6 +456,22 @@ public class TelecomShellCommand extends BasicShellCommandHandler {
     private void runLogMark() throws RemoteException {
         String message = Arrays.stream(peekRemainingArgs()).collect(Collectors.joining(" "));
         mTelecomService.requestLogMark(message);
+    }
+
+    private UserHandle getUserHandleFromArgs() throws RemoteException {
+        if (TextUtils.isEmpty(peekNextArg())) {
+            return null;
+        }
+        final String userSnInStr = getNextArgRequired();
+        UserHandle userHandle;
+        try {
+            final int userSn = Integer.parseInt(userSnInStr);
+            userHandle = UserHandle.of(getUserManager().getUserHandle(userSn));
+        } catch (NumberFormatException ex) {
+            Log.w(this, "getPhoneAccountHandleFromArgs - invalid user %s", userSnInStr);
+            throw new IllegalArgumentException ("Invalid user serial number " + userSnInStr);
+        }
+        return userHandle;
     }
 
     private PhoneAccountHandle getPhoneAccountHandleFromArgs() throws RemoteException {
