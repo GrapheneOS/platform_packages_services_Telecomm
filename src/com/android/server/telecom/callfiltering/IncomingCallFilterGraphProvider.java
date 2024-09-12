@@ -21,6 +21,7 @@ import android.content.Context;
 import com.android.server.telecom.Call;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.Timeouts;
+import com.android.server.telecom.flags.FeatureFlags;
 
 /**
  * Interface to provide a {@link IncomingCallFilterGraph}. This class serve for unit test purpose
@@ -35,10 +36,13 @@ public interface IncomingCallFilterGraphProvider {
      * @param listener Callback object to trigger when filtering is done.
      * @param context An android context.
      * @param timeoutsAdapter Adapter to provide timeout value for call filtering.
+     * @param featureFlags Telecom flags
      * @param lock Telecom lock.
      * @return
      */
     IncomingCallFilterGraph createGraph(Call call, CallFilterResultCallback listener,
             Context context,
-            Timeouts.Adapter timeoutsAdapter, TelecomSystem.SyncRoot lock);
+            Timeouts.Adapter timeoutsAdapter,
+            FeatureFlags featureFlags,
+            TelecomSystem.SyncRoot lock);
 }

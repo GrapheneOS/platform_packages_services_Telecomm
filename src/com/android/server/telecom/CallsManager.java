@@ -913,7 +913,7 @@ public class CallsManager extends Call.ListenerBase
         DndCallFilter dndCallFilter = new DndCallFilter(incomingHfpCall, mRinger);
         IncomingCallFilterGraph graph = mIncomingCallFilterGraphProvider.createGraph(
                 incomingHfpCall,
-                this::onCallFilteringComplete, mContext, mTimeoutsAdapter, mLock);
+                this::onCallFilteringComplete, mContext, mTimeoutsAdapter, mFeatureFlags, mLock);
         graph.addFilter(dndCallFilter);
         mGraphHandlerThreads.add(graph.getHandlerThread());
         return graph;
@@ -932,7 +932,7 @@ public class CallsManager extends Call.ListenerBase
         ParcelableCallUtils.Converter converter = new ParcelableCallUtils.Converter();
 
         IncomingCallFilterGraph graph = mIncomingCallFilterGraphProvider.createGraph(incomingCall,
-                this::onCallFilteringComplete, mContext, mTimeoutsAdapter, mLock);
+                this::onCallFilteringComplete, mContext, mTimeoutsAdapter, mFeatureFlags, mLock);
         DirectToVoicemailFilter voicemailFilter = new DirectToVoicemailFilter(incomingCall,
                 mCallerInfoLookupHelper);
         BlockCheckerFilter blockCheckerFilter = new BlockCheckerFilter(mContext, incomingCall,

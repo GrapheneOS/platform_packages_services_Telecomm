@@ -27,6 +27,7 @@ import com.android.server.telecom.LoggedHandlerExecutor;
 import com.android.server.telecom.LogUtils;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.Timeouts;
+import com.android.server.telecom.flags.FeatureFlags;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,7 @@ public class IncomingCallFilterGraph {
     private CallFilteringResult mCurrentResult;
     private Context mContext;
     private Timeouts.Adapter mTimeoutsAdapter;
+    private final FeatureFlags mFeatureFlags;
 
     private class PostFilterTask {
         private final CallFilter mFilter;
@@ -84,11 +86,12 @@ public class IncomingCallFilterGraph {
     }
 
     public IncomingCallFilterGraph(Call call, CallFilterResultCallback listener, Context context,
-            Timeouts.Adapter timeoutsAdapter, TelecomSystem.SyncRoot lock) {
+            Timeouts.Adapter timeoutsAdapter, FeatureFlags featureFlags,
+            TelecomSystem.SyncRoot lock) {
         mListener = listener;
         mCall = call;
         mFiltersList = new ArrayList<>();
-
+        mFeatureFlags = featureFlags;
         mHandlerThread = new HandlerThread(TAG);
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
@@ -121,8 +124,8 @@ public class IncomingCallFilterGraph {
             @Override
             public void loggedRun() {
                 if (!mFinished) {
-                    Log.i(this, "Graph timed out when performing filtering.");
                     Log.addEvent(mCall, LogUtils.Events.FILTERING_TIMED_OUT);
+                    mCurrentResult = onTimeoutCombineFinishedFilters(mFiltersList, mCurrentResult);
                     mListener.onCallFilteringComplete(mCall, mCurrentResult, true);
                     mFinished = true;
                     mHandlerThread.quit();
@@ -137,6 +140,28 @@ public class IncomingCallFilterGraph {
         }.prepare(), mTimeoutsAdapter.getCallScreeningTimeoutMillis(mContext.getContentResolver()));
     }
 
+    /**
+     * This helper takes all the call filters that were added to the graph, checks if filters have
+     * finished, and combines the results.
+     *
+     * @param filtersList   all the CallFilters that were added to the call
+     * @param currentResult the current call filter result
+     * @return CallFilterResult of the combined finished Filters.
+     */
+    private CallFilteringResult onTimeoutCombineFinishedFilters(
+            List<CallFilter> filtersList,
+            CallFilteringResult currentResult) {
+        if (!mFeatureFlags.checkCompletedFiltersOnTimeout()) {
+            return currentResult;
+        }
+        for (CallFilter filter : filtersList) {
+            if (filter.result != null) {
+                currentResult = currentResult.combine(filter.result);
+            }
+        }
+        return currentResult;
+    }
+
     private void scheduleFilter(CallFilter filter) {
         CallFilteringResult result = new CallFilteringResult.Builder()
                 .setShouldAllowCall(true)
@@ -147,6 +172,9 @@ public class IncomingCallFilterGraph {
                 .setDndSuppressed(false)
                 .build();
         for (CallFilter dependencyFilter : filter.getDependencies()) {
+            // When sequential nodes are completed, they are combined progressively.
+            // ex.) node_a --> node_b  --> node_c
+            // node_a will combine with node_b before starting node_c
             result = result.combine(dependencyFilter.getResult());
         }
         mCurrentResult = result;

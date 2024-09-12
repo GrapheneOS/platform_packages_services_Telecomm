@@ -8,3 +8,14 @@ flag {
   description: "Gates whether to still perform Dnd filter when phone account has skip_filter call extra."
   bug: "222333869"
 }
+
+# OWNER=tjstuart TARGET=25Q1
+flag {
+  name: "check_completed_filters_on_timeout"
+  namespace: "telecom"
+  description: "If the Filtering Graph times out, combine the finished results"
+  bug: "364946812"
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
+}

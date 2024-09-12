@@ -392,7 +392,8 @@ public class CallsManagerTest extends TelecomTestCase {
                 mBluetoothDeviceManager,
                 mFeatureFlags,
                 mTelephonyFlags,
-                (call, listener, context, timeoutsAdapter, lock) -> mIncomingCallFilterGraph);
+                (call, listener, context, timeoutsAdapter,
+                        mFeatureFlags, lock) -> mIncomingCallFilterGraph);
 
         when(mPhoneAccountRegistrar.getPhoneAccount(
                 eq(SELF_MANAGED_HANDLE), any())).thenReturn(SELF_MANAGED_ACCOUNT);
