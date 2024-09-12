@@ -911,7 +911,7 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
     }
 
     private void handleSwitchBaselineRoute(boolean includeBluetooth, String btAddressToExclude) {
-        routeTo(mIsActive, getBaseRoute(includeBluetooth, btAddressToExclude));
+        routeTo(mIsActive, calculateBaselineRoute(includeBluetooth, btAddressToExclude));
     }
 
     private void handleSpeakerOn() {
@@ -1218,6 +1218,16 @@ public class CallAudioRouteController implements CallAudioRouteAdapter {
                 || destRoute.getBluetoothAddress().equals(btAddressToExclude)))) {
             destRoute = getPreferredAudioRouteFromDefault(includeBluetooth, btAddressToExclude);
         }
+        if (destRoute != null && !getCallSupportedRoutes().contains(destRoute)) {
+            destRoute = null;
+        }
+        Log.i(this, "getBaseRoute - audio routing to %s", destRoute);
+        return destRoute;
+    }
+
+    private AudioRoute calculateBaselineRoute(boolean includeBluetooth, String btAddressToExclude) {
+        AudioRoute destRoute = getPreferredAudioRouteFromDefault(
+                includeBluetooth, btAddressToExclude);
         if (destRoute != null && !getCallSupportedRoutes().contains(destRoute)) {
             destRoute = null;
         }
