@@ -55,3 +55,14 @@ flag {
       purpose: PURPOSE_BUGFIX
     }
 }
+
+# OWNER=tjstuart TARGET=25Q1
+flag {
+  name: "remap_transactional_capabilities"
+  namespace: "telecom"
+  description: "Transactional call capabilities need to be remapped to Connection capabilities"
+  bug: "366063695"
+  metadata {
+      purpose: PURPOSE_BUGFIX
+    }
+}

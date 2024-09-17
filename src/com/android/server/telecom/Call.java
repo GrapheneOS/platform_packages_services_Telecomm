@@ -2331,6 +2331,25 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         setConnectionCapabilities(connectionCapabilities, false /* forceUpdate */);
     }
 
+    public void setTransactionalCapabilities(Bundle extras) {
+        if (!mFlags.remapTransactionalCapabilities()) {
+            setConnectionCapabilities(
+                    extras.getInt(CallAttributes.CALL_CAPABILITIES_KEY,
+                            CallAttributes.SUPPORTS_SET_INACTIVE), true);
+            return;
+        }
+        int connectionCapabilitesBitmap = 0;
+        int transactionalCapabilitiesBitmap = extras.getInt(
+                CallAttributes.CALL_CAPABILITIES_KEY,
+                CallAttributes.SUPPORTS_SET_INACTIVE);
+        if ((transactionalCapabilitiesBitmap & CallAttributes.SUPPORTS_SET_INACTIVE)
+                == CallAttributes.SUPPORTS_SET_INACTIVE) {
+            connectionCapabilitesBitmap = connectionCapabilitesBitmap | Connection.CAPABILITY_HOLD
+                    | Connection.CAPABILITY_SUPPORT_HOLD;
+        }
+        setConnectionCapabilities(connectionCapabilitesBitmap, true);
+    }
+
     void setConnectionCapabilities(int connectionCapabilities, boolean forceUpdate) {
         Log.v(this, "setConnectionCapabilities: %s", Connection.capabilitiesToString(
                 connectionCapabilities));

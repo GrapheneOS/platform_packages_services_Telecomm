@@ -1563,9 +1563,7 @@ public class CallsManager extends Call.ListenerBase
         if (extras.containsKey(TelecomManager.TRANSACTION_CALL_ID_KEY)) {
             call.setIsTransactionalCall(true);
             call.setCallingPackageIdentity(extras);
-            call.setConnectionCapabilities(
-                    extras.getInt(CallAttributes.CALL_CAPABILITIES_KEY,
-                            CallAttributes.SUPPORTS_SET_INACTIVE), true);
+            call.setTransactionalCapabilities(extras);
             call.setTargetPhoneAccount(phoneAccountHandle);
             if (extras.containsKey(CallAttributes.DISPLAY_NAME_KEY)) {
                 CharSequence displayName = extras.getCharSequence(CallAttributes.DISPLAY_NAME_KEY);
@@ -1917,9 +1915,7 @@ public class CallsManager extends Call.ListenerBase
             if (extras.containsKey(TelecomManager.TRANSACTION_CALL_ID_KEY)) {
                 call.setIsTransactionalCall(true);
                 call.setCallingPackageIdentity(extras);
-                call.setConnectionCapabilities(
-                        extras.getInt(CallAttributes.CALL_CAPABILITIES_KEY,
-                                CallAttributes.SUPPORTS_SET_INACTIVE), true);
+                call.setTransactionalCapabilities(extras);
                 if (extras.containsKey(CallAttributes.DISPLAY_NAME_KEY)) {
                     CharSequence displayName = extras.getCharSequence(
                             CallAttributes.DISPLAY_NAME_KEY);

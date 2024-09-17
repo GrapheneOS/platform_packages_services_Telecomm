@@ -46,7 +46,7 @@ public class CallAudioCommunicationDeviceTracker {
     private static final int sAUDIO_DEVICE_TYPE_INVALID = -1;
     private AudioManager mAudioManager;
     private BluetoothRouteManager mBluetoothRouteManager;
-    private int mAudioDeviceType = sAUDIO_DEVICE_TYPE_INVALID;
+    private @AudioDeviceInfo.AudioDeviceType int mAudioDeviceType = sAUDIO_DEVICE_TYPE_INVALID;
     // Keep track of the locally requested BT audio device if set
     private String mBtAudioDevice = null;
     private final Lock mLock = new ReentrantLock();
@@ -59,7 +59,7 @@ public class CallAudioCommunicationDeviceTracker {
         mBluetoothRouteManager = bluetoothRouteManager;
     }
 
-    public boolean isAudioDeviceSetForType(int audioDeviceType) {
+    public boolean isAudioDeviceSetForType(@AudioDeviceInfo.AudioDeviceType int audioDeviceType) {
         if (Flags.communicationDeviceProtectedByLock()) {
             mLock.lock();
         }
@@ -86,7 +86,7 @@ public class CallAudioCommunicationDeviceTracker {
     }
 
     @VisibleForTesting
-    public void setTestCommunicationDevice(int audioDeviceType) {
+    public void setTestCommunicationDevice(@AudioDeviceInfo.AudioDeviceType int audioDeviceType) {
         mAudioDeviceType = audioDeviceType;
     }
 
@@ -119,7 +119,7 @@ public class CallAudioCommunicationDeviceTracker {
      * @return {@code true} if the device was set for communication, {@code false} if the device
      * wasn't set.
      */
-    public boolean setCommunicationDevice(int audioDeviceType,
+    public boolean setCommunicationDevice(@AudioDeviceInfo.AudioDeviceType int audioDeviceType,
             BluetoothDevice btDevice) {
         if (Flags.communicationDeviceProtectedByLock()) {
             mLock.lock();
@@ -133,8 +133,8 @@ public class CallAudioCommunicationDeviceTracker {
         }
     }
 
-    private boolean processSetCommunicationDevice(int audioDeviceType,
-            BluetoothDevice btDevice) {
+    private boolean processSetCommunicationDevice(
+        @AudioDeviceInfo.AudioDeviceType int audioDeviceType, BluetoothDevice btDevice) {
         // There is only one audio device type associated with each type of BT device.
         boolean isBtDevice = BT_AUDIO_DEVICE_INFO_TYPES.contains(audioDeviceType);
         Log.i(this, "setCommunicationDevice: type = %s, isBtDevice = %s, btDevice = %s",
@@ -208,7 +208,7 @@ public class CallAudioCommunicationDeviceTracker {
      * has previously been set for communication.
      * @param audioDeviceTypes The supported audio device types for the device.
      */
-    public void clearCommunicationDevice(int audioDeviceType) {
+    public void clearCommunicationDevice(@AudioDeviceInfo.AudioDeviceType int audioDeviceType) {
         if (Flags.communicationDeviceProtectedByLock()) {
             mLock.lock();
         }
@@ -221,7 +221,8 @@ public class CallAudioCommunicationDeviceTracker {
         }
     }
 
-    public void processClearCommunicationDevice(int audioDeviceType) {
+    public void processClearCommunicationDevice(
+        @AudioDeviceInfo.AudioDeviceType int audioDeviceType) {
         if (audioDeviceType == sAUDIO_DEVICE_TYPE_INVALID) {
             Log.i(this, "clearCommunicationDevice: Skip clearing communication device"
                     + "for invalid audio type (-1).");
@@ -260,7 +261,8 @@ public class CallAudioCommunicationDeviceTracker {
         }
     }
 
-    private boolean isUsbHeadsetType(int audioDeviceType, int sourceType) {
+    private boolean isUsbHeadsetType(@AudioDeviceInfo.AudioDeviceType int audioDeviceType,
+        @AudioDeviceInfo.AudioDeviceType int sourceType) {
         return audioDeviceType == AudioDeviceInfo.TYPE_WIRED_HEADSET
                 && sourceType == AudioDeviceInfo.TYPE_USB_HEADSET;
     }
