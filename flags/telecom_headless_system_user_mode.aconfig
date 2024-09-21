@@ -1,0 +1,14 @@
+package: "com.android.server.telecom.flags"
+container: "system"
+
+# OWNER=grantmenke TARGET=25Q1
+flag {
+    name: "telecom_main_user_in_get_respond_message_app"
+    is_exported: true
+    namespace: "telecom"
+    description: "Support HSUM mode by using the main user when getting respond via message app."
+    bug: "358587742"
+    metadata {
+        purpose: PURPOSE_BUGFIX
+      }
+}
