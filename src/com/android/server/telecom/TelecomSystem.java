@@ -48,6 +48,7 @@ import com.android.server.telecom.callfiltering.IncomingCallFilterGraph;
 import com.android.server.telecom.components.UserCallIntentProcessor;
 import com.android.server.telecom.components.UserCallIntentProcessorFactory;
 import com.android.server.telecom.flags.FeatureFlags;
+import com.android.server.telecom.metrics.TelecomMetricsController;
 import com.android.server.telecom.ui.AudioProcessingNotification;
 import com.android.server.telecom.ui.CallStreamingNotification;
 import com.android.server.telecom.ui.DisconnectedCallNotifier;
@@ -373,10 +374,13 @@ public class TelecomSystem {
                             BugreportManager.class), timeoutsAdapter, mContext.getSystemService(
                             DropBoxManager.class), asyncTaskExecutor, clockProxy);
 
+            TelecomMetricsController metricsController = featureFlags.telecomMetricsSupport()
+                    ? TelecomMetricsController.make(mContext) : null;
+
             CallAnomalyWatchdog callAnomalyWatchdog = new CallAnomalyWatchdog(
                     Executors.newSingleThreadScheduledExecutor(),
                     mLock, mFeatureFlags, timeoutsAdapter, clockProxy,
-                    emergencyCallDiagnosticLogger);
+                    emergencyCallDiagnosticLogger, metricsController);
 
             TransactionManager transactionManager = TransactionManager.getInstance();
 
@@ -428,7 +432,8 @@ public class TelecomSystem {
                     bluetoothDeviceManager,
                     featureFlags,
                     telephonyFlags,
-                    IncomingCallFilterGraph::new);
+                    IncomingCallFilterGraph::new,
+                    metricsController);
 
             mIncomingCallNotifier = incomingCallNotifier;
             incomingCallNotifier.setCallsManagerProxy(new IncomingCallNotifier.CallsManagerProxy() {

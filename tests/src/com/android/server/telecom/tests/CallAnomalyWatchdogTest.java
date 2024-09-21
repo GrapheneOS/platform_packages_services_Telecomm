@@ -45,6 +45,7 @@ import com.android.server.telecom.PhoneAccountRegistrar;
 import com.android.server.telecom.PhoneNumberUtilsAdapter;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.Timeouts;
+import com.android.server.telecom.metrics.TelecomMetricsController;
 import com.android.server.telecom.ui.ToastFactory;
 
 import org.junit.After;
@@ -90,6 +91,7 @@ public class CallAnomalyWatchdogTest extends TelecomTestCase {
     @Mock private AnomalyReporterAdapter mAnomalyReporterAdapter;
 
     @Mock private EmergencyCallDiagnosticLogger mMockEmergencyCallDiagnosticLogger;
+    @Mock private TelecomMetricsController mMockTelecomMetricsController;
 
     @Override
     @Before
@@ -122,7 +124,8 @@ public class CallAnomalyWatchdogTest extends TelecomTestCase {
         doReturn(new ComponentName(mContext, CallTest.class))
                 .when(mMockConnectionService).getComponentName();
         mCallAnomalyWatchdog = new CallAnomalyWatchdog(mTestScheduledExecutorService, mLock,
-                mFeatureFlags, mTimeouts, mMockClockProxy, mMockEmergencyCallDiagnosticLogger);
+                mFeatureFlags, mTimeouts, mMockClockProxy, mMockEmergencyCallDiagnosticLogger,
+                mMockTelecomMetricsController);
         mCallAnomalyWatchdog.setAnomalyReporterAdapter(mAnomalyReporterAdapter);
         when(mMockCallsManager.getCurrentUserHandle()).thenReturn(UserHandle.CURRENT);
     }

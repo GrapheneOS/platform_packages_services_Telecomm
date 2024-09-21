@@ -134,6 +134,7 @@ import com.android.server.telecom.callredirection.CallRedirectionProcessor;
 import com.android.server.telecom.components.ErrorDialogActivity;
 import com.android.server.telecom.components.TelecomBroadcastReceiver;
 import com.android.server.telecom.flags.FeatureFlags;
+import com.android.server.telecom.metrics.TelecomMetricsController;
 import com.android.server.telecom.stats.CallFailureCause;
 import com.android.server.telecom.ui.AudioProcessingNotification;
 import com.android.server.telecom.ui.CallRedirectionTimeoutDialogActivity;
@@ -616,7 +617,8 @@ public class CallsManager extends Call.ListenerBase
             BluetoothDeviceManager bluetoothDeviceManager,
             FeatureFlags featureFlags,
             com.android.internal.telephony.flags.FeatureFlags telephonyFlags,
-            IncomingCallFilterGraphProvider incomingCallFilterGraphProvider) {
+            IncomingCallFilterGraphProvider incomingCallFilterGraphProvider,
+            TelecomMetricsController metricsController) {
 
         mContext = context;
         mLock = lock;
@@ -659,7 +661,7 @@ public class CallsManager extends Call.ListenerBase
         } else {
             callAudioRouteAdapter = new CallAudioRouteController(context, this, audioServiceFactory,
                     new AudioRoute.Factory(), wiredHeadsetManager, mBluetoothRouteManager,
-                    statusBarNotifier, featureFlags);
+                    statusBarNotifier, featureFlags, metricsController);
         }
         callAudioRouteAdapter.initialize();
         bluetoothStateReceiver.setCallAudioRouteAdapter(callAudioRouteAdapter);

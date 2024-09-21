@@ -1,0 +1,10 @@
+package: "com.android.server.telecom.flags"
+container: "system"
+
+# OWNER=huiwang TARGET=25Q1
+flag {
+  name: "telecom_metrics_support"
+  namespace: "telecom"
+  description: "Support telecom metrics"
+  bug: "362394177"
+}

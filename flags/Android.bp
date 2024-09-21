@@ -43,5 +43,6 @@ aconfig_declarations {
         "telecom_profile_user_flags.aconfig",
         "telecom_bluetoothdevicemanager_flags.aconfig",
         "telecom_non_critical_security_flags.aconfig",
+        "telecom_metrics_flags.aconfig",
     ],
 }

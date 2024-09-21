@@ -85,6 +85,7 @@ import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.WiredHeadsetManager;
 import com.android.server.telecom.bluetooth.BluetoothDeviceManager;
 import com.android.server.telecom.bluetooth.BluetoothRouteManager;
+import com.android.server.telecom.metrics.TelecomMetricsController;
 
 import org.junit.After;
 import org.junit.Before;
@@ -116,6 +117,7 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
     @Mock CallAudioManager mCallAudioManager;
     @Mock Call mCall;
     @Mock private TelecomSystem.SyncRoot mLock;
+    @Mock private TelecomMetricsController mMockTelecomMetricsController;
     private AudioRoute mEarpieceRoute;
     private AudioRoute mSpeakerRoute;
     private boolean mOverrideSpeakerToBus;
@@ -174,8 +176,8 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
                 .thenReturn(BLUETOOTH_DEVICE_1);
         when(mAudioDeviceInfo.getAddress()).thenReturn(BT_ADDRESS_1);
         mController = new CallAudioRouteController(mContext, mCallsManager, mAudioServiceFactory,
-                mAudioRouteFactory, mWiredHeadsetManager,
-                mBluetoothRouteManager, mockStatusBarNotifier, mFeatureFlags);
+                mAudioRouteFactory, mWiredHeadsetManager, mBluetoothRouteManager,
+                mockStatusBarNotifier, mFeatureFlags, mMockTelecomMetricsController);
         mController.setAudioRouteFactory(mAudioRouteFactory);
         mController.setAudioManager(mAudioManager);
         mEarpieceRoute = new AudioRoute(AudioRoute.TYPE_EARPIECE, null, null);

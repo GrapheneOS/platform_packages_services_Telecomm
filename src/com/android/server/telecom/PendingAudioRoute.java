@@ -52,6 +52,7 @@ public class PendingAudioRoute {
     private AudioRoute mDestRoute;
     private Set<Pair<Integer, String>> mPendingMessages;
     private boolean mActive;
+    private boolean mIsFailed;
     /**
      * The device that has been set for communication by Telecom
      */
@@ -72,7 +73,7 @@ public class PendingAudioRoute {
         mOrigRoute = origRoute;
     }
 
-    AudioRoute getOrigRoute() {
+    public AudioRoute getOrigRoute() {
         return mOrigRoute;
     }
 
@@ -95,6 +96,7 @@ public class PendingAudioRoute {
     public void onMessageReceived(Pair<Integer, String> message, String btAddressToExclude) {
         Log.i(this, "onMessageReceived: message - %s", message);
         if (message.first == PENDING_ROUTE_FAILED) {
+            mIsFailed = true;
             // Fallback to base route
             mCallAudioRouteController.sendMessageWithSessionInfo(
                     SWITCH_BASELINE_ROUTE, INCLUDE_BLUETOOTH_IN_BASELINE, btAddressToExclude);
@@ -138,5 +140,9 @@ public class PendingAudioRoute {
 
     public void overrideDestRoute(AudioRoute route) {
         mDestRoute = route;
+    }
+
+    public boolean isFailed() {
+        return mIsFailed;
     }
 }

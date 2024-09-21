@@ -137,6 +137,7 @@ public class AudioRoute {
     private @AudioRouteType int mAudioRouteType;
     private String mBluetoothAddress;
     private AudioDeviceInfo mInfo;
+    private boolean mIsDestRouteForWatch;
     public static final Set<Integer> BT_AUDIO_DEVICE_INFO_TYPES = Set.of(
             AudioDeviceInfo.TYPE_BLE_HEADSET,
             AudioDeviceInfo.TYPE_BLE_SPEAKER,
@@ -241,6 +242,10 @@ public class AudioRoute {
         return mAudioRouteType;
     }
 
+    public boolean isWatch() {
+        return mIsDestRouteForWatch;
+    }
+
     String getBluetoothAddress() {
         return mBluetoothAddress;
     }
@@ -251,10 +256,6 @@ public class AudioRoute {
             BluetoothRouteManager bluetoothRouteManager, boolean isScoAudioConnected) {
         Log.i(this, "onDestRouteAsPendingRoute: active (%b), type (%s)", active,
                 DEVICE_TYPE_STRINGS.get(mAudioRouteType));
-        if (mAudioRouteType == TYPE_BUS) {
-            Log.i(this, "onDestRouteAsPendingRoute: Ignore processing dest route for TYPE_BUS");
-            return;
-        }
         if (pendingAudioRoute.isActive() && !active) {
             clearCommunicationDevice(pendingAudioRoute, bluetoothRouteManager, audioManager);
         } else if (active) {
@@ -264,6 +265,8 @@ public class AudioRoute {
                         audioManager, bluetoothRouteManager);
                 // Special handling for SCO case.
                 if (mAudioRouteType == TYPE_BLUETOOTH_SCO) {
+                    // Set whether the dest route is for the watch
+                    mIsDestRouteForWatch = bluetoothRouteManager.isWatch(device);
                     // Check if the communication device was set for the device, even if
                     // BluetoothHeadset#connectAudio reports that the SCO connection wasn't
                     // successfully established.
@@ -316,10 +319,6 @@ public class AudioRoute {
     void onOrigRouteAsPendingRoute(boolean active, PendingAudioRoute pendingAudioRoute,
             AudioManager audioManager, BluetoothRouteManager bluetoothRouteManager) {
         Log.i(this, "onOrigRouteAsPendingRoute: active (%b), type (%d)", active, mAudioRouteType);
-        if (mAudioRouteType == TYPE_BUS) {
-            Log.i(this, "onOrigRouteAsPendingRoute: Ignore processing dest route for TYPE_BUS");
-            return;
-        }
         if (active) {
             if (mAudioRouteType == TYPE_SPEAKER) {
                 pendingAudioRoute.addMessage(SPEAKER_OFF, null);

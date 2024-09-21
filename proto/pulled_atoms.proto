@@ -1,0 +1,114 @@
+syntax = "proto2";
+
+package com.android.server.telecom;
+
+option java_package = "com.android.server.telecom";
+option java_outer_classname = "PulledAtomsClass";
+
+message PulledAtoms {
+  repeated CallStats call_stats = 1;
+  optional int64 call_stats_pull_timestamp_millis = 2;
+  repeated CallAudioRouteStats call_audio_route_stats = 3;
+  optional int64 call_audio_route_stats_pull_timestamp_millis = 4;
+  repeated TelecomApiStats telecom_api_stats = 5;
+  optional int64 telecom_api_stats_pull_timestamp_millis = 6;
+  repeated TelecomErrorStats telecom_error_stats = 7;
+  optional int64 telecom_error_stats_pull_timestamp_millis = 8;
+}
+
+/**
+ * Pulled atom to capture stats of the calls
+ * From frameworks/proto_logging/stats/atoms/telecomm/telecom_extension_atom.proto
+ */
+message CallStats {
+    // The value should be converted to android.telecom.CallDirectionEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 call_direction = 1;
+
+    // True if call is external. External calls are calls on connected Wear
+    // devices but show up in Telecom so the user can pull them onto the device.
+    optional bool external_call = 2;
+
+    // True if call is emergency call.
+    optional bool emergency_call = 3;
+
+    // True if there are multiple audio routes available
+    optional bool multiple_audio_available = 4;
+
+    // The value should be converted to android.telecom.AccountTypeEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 account_type = 5;
+
+    // UID of the package to init the call. This should always be -1/unknown for
+    // the private space calls
+    optional int32 uid = 6;
+
+    // Total number of the calls
+    optional int32 count = 7;
+
+    // Average elapsed time between CALL_STATE_ACTIVE to CALL_STATE_DISCONNECTED.
+    optional int32 average_duration_ms = 8;
+}
+
+/**
+ * Pulled atom to capture stats of the call audio route
+ * From frameworks/proto_logging/stats/atoms/telecomm/telecom_extension_atom.proto
+ */
+message CallAudioRouteStats {
+    // The value should be converted to android.telecom.CallAudioEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 call_audio_route_source = 1;
+
+    // The value should be converted to android.telecom.CallAudioEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 call_audio_route_dest = 2;
+
+    // True if the route is successful.
+    optional bool success = 3;
+
+    // True if the route is revert
+    optional bool revert = 4;
+
+    // Total number of the audio route
+    optional int32 count = 5;
+
+    // Average time from the audio route start to complete
+    optional int32 average_latency_ms = 6;
+}
+
+/**
+ * Pulled atom to capture stats of Telecom API usage
+ * From frameworks/proto_logging/stats/atoms/telecomm/telecom_extension_atom.proto
+ */
+message TelecomApiStats {
+    // The value should be converted to android.telecom.ApiNameEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 api_name = 1;
+
+    // UID of the caller. This is always -1/unknown for the private space.
+    optional int32 uid = 2;
+
+    // The value should be converted to android.telecom.ApiResultEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 api_result = 3;
+
+    // The number of times this event occurs
+    optional int32 count = 4;
+}
+
+/**
+ * Pulled atom to capture stats of Telecom module errors
+ * From frameworks/proto_logging/stats/atoms/telecomm/telecom_extension_atom.proto
+ */
+message TelecomErrorStats {
+    // The value should be converted to android.telecom.SubmoduleNameEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 submodule_name = 1;
+
+    // The value should be converted to android.telecom.ErrorNameEnum
+    // From frameworks/proto_logging/stats/enums/telecomm/enums.proto
+    optional int32 error_name = 2;
+
+    // The number of times this error occurs
+    optional int32 count = 3;
+}
