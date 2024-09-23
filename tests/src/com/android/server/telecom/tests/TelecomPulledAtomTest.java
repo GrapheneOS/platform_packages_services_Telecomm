@@ -122,7 +122,6 @@ public class TelecomPulledAtomTest extends TelecomTestCase {
         mTempFile = mTempFolder.newFile(FILE_NAME_TEST_ATOM);
         doReturn(mTempFile).when(mSpyContext).getFileStreamPath(anyString());
         doReturn(mFileOutputStream).when(mSpyContext).openFileOutput(anyString(), anyInt());
-        doReturn(false).when(mMockPendingAudioRoute).isFailed();
         doReturn(mMockSourceRoute).when(mMockPendingAudioRoute).getOrigRoute();
         doReturn(mMockDestRoute).when(mMockPendingAudioRoute).getDestRoute();
         doReturn(TYPE_EARPIECE).when(mMockSourceRoute).getType();
@@ -345,7 +344,7 @@ public class TelecomPulledAtomTest extends TelecomTestCase {
 
         audioRouteStats.onRouteEnter(mMockPendingAudioRoute);
         waitForHandlerActionDelayed(audioRouteStats, TEST_TIMEOUT, latency);
-        audioRouteStats.onRouteExit(mMockPendingAudioRoute);
+        audioRouteStats.onRouteExit(mMockPendingAudioRoute, true);
         waitForHandlerAction(audioRouteStats, 100);
 
         // Verify that the stats should not be saved before the revert threshold is expired
@@ -375,7 +374,7 @@ public class TelecomPulledAtomTest extends TelecomTestCase {
 
         audioRouteStats.onRouteEnter(mMockPendingAudioRoute);
         waitForHandlerActionDelayed(audioRouteStats, TEST_TIMEOUT, latency);
-        audioRouteStats.onRouteExit(mMockPendingAudioRoute);
+        audioRouteStats.onRouteExit(mMockPendingAudioRoute, true);
         waitForHandlerAction(audioRouteStats, delay);
 
         // Verify that the stats should not be saved before the revert threshold is expired
@@ -411,7 +410,7 @@ public class TelecomPulledAtomTest extends TelecomTestCase {
 
         audioRouteStats.onRouteEnter(mMockPendingAudioRoute);
         waitForHandlerActionDelayed(audioRouteStats, TEST_TIMEOUT, latency);
-        audioRouteStats.onRouteExit(mMockPendingAudioRoute);
+        audioRouteStats.onRouteExit(mMockPendingAudioRoute, true);
         waitForHandlerAction(audioRouteStats, delay);
 
         // Verify that the stats should not be saved before the revert threshold is expired
@@ -449,7 +448,7 @@ public class TelecomPulledAtomTest extends TelecomTestCase {
 
         audioRouteStats.onRouteEnter(mMockPendingAudioRoute);
         waitForHandlerActionDelayed(audioRouteStats, TEST_TIMEOUT, latency);
-        audioRouteStats.onRouteExit(mMockPendingAudioRoute);
+        audioRouteStats.onRouteExit(mMockPendingAudioRoute, true);
         waitForHandlerAction(audioRouteStats, delay);
 
         // Verify that the stats should not be saved before the revert threshold is expired
@@ -505,7 +504,7 @@ public class TelecomPulledAtomTest extends TelecomTestCase {
 
         audioRouteStats.onRouteEnter(mMockPendingAudioRoute);
         waitForHandlerActionDelayed(audioRouteStats, TEST_TIMEOUT, latency);
-        audioRouteStats.onRouteExit(mMockPendingAudioRoute);
+        audioRouteStats.onRouteExit(mMockPendingAudioRoute, true);
         waitForHandlerAction(audioRouteStats, 100);
 
         doReturn(mMockDestRoute).when(mMockPendingAudioRoute).getOrigRoute();

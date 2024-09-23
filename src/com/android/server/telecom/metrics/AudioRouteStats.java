@@ -180,10 +180,9 @@ public class AudioRouteStats extends TelecomPulledAtom {
         });
     }
 
-    public void onRouteExit(PendingAudioRoute pendingRoute) {
+    public void onRouteExit(PendingAudioRoute pendingRoute, boolean isSuccess) {
         // Check the dest type on the route exiting as it may be different as the enter
         int destType = convertAudioType(pendingRoute.getDestRoute(), false);
-        boolean isSuccess = !pendingRoute.isFailed();
         long curTime = SystemClock.elapsedRealtime();
         post(() -> {
             if (mIsOngoing) {
