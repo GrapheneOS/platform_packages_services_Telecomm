@@ -53,6 +53,7 @@ import com.android.server.telecom.CallAudioRouteStateMachine;
 import com.android.server.telecom.CallState;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.DtmfLocalTonePlayer;
+import com.android.server.telecom.InCallController;
 import com.android.server.telecom.InCallTonePlayer;
 import com.android.server.telecom.RingbackPlayer;
 import com.android.server.telecom.Ringer;
@@ -77,6 +78,7 @@ import java.util.stream.Collectors;
 @RunWith(JUnit4.class)
 public class CallAudioManagerTest extends TelecomTestCase {
     @Mock private CallAudioRouteStateMachine mCallAudioRouteStateMachine;
+    @Mock private InCallController mInCallController;
     @Mock private CallsManager mCallsManager;
     @Mock private CallAudioModeStateMachine mCallAudioModeStateMachine;
     @Mock private InCallTonePlayer.Factory mPlayerFactory;
@@ -103,6 +105,8 @@ public class CallAudioManagerTest extends TelecomTestCase {
             return mockInCallTonePlayer;
         }).when(mPlayerFactory).createPlayer(any(Call.class), anyInt());
         when(mCallsManager.getLock()).thenReturn(mLock);
+        when(mCallsManager.getInCallController()).thenReturn(mInCallController);
+        when(mInCallController.getBtBindingFuture(any(Call.class))).thenReturn(null);
         when(mFlags.ensureAudioModeUpdatesOnForegroundCallChange()).thenReturn(true);
         mCallAudioManager = new CallAudioManager(
                 mCallAudioRouteStateMachine,
