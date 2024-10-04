@@ -56,7 +56,7 @@
     <string name="change_default_dialer_dialog_title" msgid="5861469279421508060">"<xliff:g id="NEW_APP">%s</xliff:g> ಅನ್ನು ನಿಮ್ಮ ಡಿಫಾಲ್ಟ್ ಫೋನ್ ಆ್ಯಪ್ ಆಗಿ ಮಾಡಬೇಕೆ?"</string>
     <string name="change_default_dialer_dialog_affirmative" msgid="8604665314757739550">"ಡಿಫಾಲ್ಟ್ ಹೊಂದಿಸಿ"</string>
     <string name="change_default_dialer_dialog_negative" msgid="8648669840052697821">"ರದ್ದುಮಾಡಿ"</string>
-    <string name="change_default_dialer_warning_message" msgid="8461963987376916114">"<xliff:g id="NEW_APP">%s</xliff:g> ಗೆ ನಿಮ್ಮ ಕರೆಗಳ ಎಲ್ಲಾ ಅಂಶಗಳನ್ನು ನಿಯಂತ್ರಿಸಲು ಮತ್ತು ಕರೆಗಳನ್ನು ಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತದೆ. ನೀವು ವಿಶ್ವಾಸವಿರಿಸಿರುವಂತಹ ಅಪ್ಲಿಕೇಶನ್‌ಗಳನ್ನು ಮಾತ್ರ ನಿಮ್ಮ ಡಿಫಾಲ್ಟ್ ಅಪ್ಲಿಕೇಶನ್ ಆಗಿ ಹೊಂದಿಸಬೇಕು."</string>
+    <string name="change_default_dialer_warning_message" msgid="8461963987376916114">"<xliff:g id="NEW_APP">%s</xliff:g> ಗೆ ನಿಮ್ಮ ಕರೆಗಳ ಎಲ್ಲಾ ಅಂಶಗಳನ್ನು ನಿಯಂತ್ರಿಸಲು ಮತ್ತು ಕರೆಗಳನ್ನು ಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತದೆ. ನೀವು ವಿಶ್ವಾಸವಿರಿಸಿರುವಂತಹ ಆ್ಯಪ್‌ಗಳನ್ನು ಮಾತ್ರ ನಿಮ್ಮ ಡಿಫಾಲ್ಟ್ ಆ್ಯಪ್‌ ಆಗಿ ಹೊಂದಿಸಬೇಕು."</string>
     <string name="change_default_call_screening_dialog_title" msgid="5365787219927262408">"<xliff:g id="NEW_APP">%s</xliff:g> ನಿಮ್ಮ ಡೀಫಾಲ್ಟ್ ಕರೆ ಸ್ಕ್ರೀನಿಂಗ್ ಆ್ಯಪ್‌ ಆಗಿ ಮಾಡಬೇಕೇ?"</string>
     <string name="change_default_call_screening_warning_message_for_disable_old_app" msgid="2039830033533243164">"<xliff:g id="OLD_APP">%s</xliff:g> ಇನ್ನು ಮುಂದೆ ಕರೆಗಳನ್ನು ಸ್ಕ್ರೀನ್‌ ಮಾಡಲು ಸಾಧ್ಯವಾಗುವುದಿಲ್ಲ."</string>
     <string name="change_default_call_screening_warning_message" msgid="9020537562292754269">"<xliff:g id="NEW_APP">%s</xliff:g> ಗೆ ನಿಮ್ಮ ಸಂಪರ್ಕಗಳಲ್ಲಿ ಇಲ್ಲದ ಕರೆದಾರರ ಬಗ್ಗೆ ಮಾಹಿತಿಯನ್ನು ನೋಡಲು ಮತ್ತು ಈ ಕರೆಗಳನ್ನು ಬ್ಲಾಕ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತದೆ. ನೀವು ವಿಶ್ವಾಸವಿರಿಸಿರುವಂತಹ ಆ್ಯಪ್‌ಗಳನ್ನು ಮಾತ್ರ ನಿಮ್ಮ ಡೀಫಾಲ್ಟ್ ಕರೆ ಸ್ಕ್ರೀನಿಂಗ್ ಆ್ಯಪ್‌ ಆಗಿ ಹೊಂದಿಸಬೇಕು."</string>
