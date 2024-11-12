@@ -1101,6 +1101,9 @@ public class CallAudioManager extends CallsManagerListenerBase {
                     call.getId());
             disconnectedToneFuture.complete(null);
         }
+        // Make sure we schedule the unbinding of the BT ICS once the disconnected tone future has
+        // been completed.
+        mCallsManager.getInCallController().maybeScheduleBtUnbind(call);
     }
 
     @VisibleForTesting
