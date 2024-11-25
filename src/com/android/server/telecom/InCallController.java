@@ -305,7 +305,7 @@ public class InCallController extends CallsManagerListenerBase implements
 
         //this is really used for cases where the userhandle for a call
         //does not match what we want to use for bindAsUser
-        private final UserHandle mUserHandleToUseForBinding;
+        private UserHandle mUserHandleToUseForBinding;
 
         public InCallServiceBindingConnection(InCallServiceInfo info) {
             mInCallServiceInfo = info;
@@ -388,6 +388,8 @@ public class InCallController extends CallsManagerListenerBase implements
                                     + "INTERACT_ACROSS_USERS permission");
                 }
             }
+            // Used for referencing what user we used to bind to the given ICS.
+            mUserHandleToUseForBinding = userToBind;
             Log.i(this, "using user id: %s for binding. User from Call is: %s", userToBind,
                     userFromCall);
             if (!mContext.bindServiceAsUser(intent, mServiceConnection,
@@ -1230,7 +1232,7 @@ public class InCallController extends CallsManagerListenerBase implements
             mCombinedInCallServiceMap = new ArrayMap<>();
 
     private final CallIdMapper mCallIdMapper = new CallIdMapper(Call::getId);
-    private final Collection<Call> mPendingEndToneCall = new ArraySet<>();
+    private final Collection<Call> mBtIcsCallTracker = new ArraySet<>();
 
     private final Context mContext;
     private final AppOpsManager mAppOpsManager;
@@ -1246,7 +1248,7 @@ public class InCallController extends CallsManagerListenerBase implements
             mInCallServiceConnections = new ArrayMap<>();
     private final Map<UserHandle, NonUIInCallServiceConnectionCollection>
             mNonUIInCallServiceConnections = new ArrayMap<>();
-    private final Map<UserHandle, InCallServiceConnection> mBTInCallServiceConnections =
+    private final Map<UserHandle, InCallServiceBindingConnection> mBTInCallServiceConnections =
             new ArrayMap<>();
     private final ClockProxy mClockProxy;
     private final IBinder mToken = new Binder();
@@ -1421,6 +1423,7 @@ public class InCallController extends CallsManagerListenerBase implements
                 bindingToBtRequired = true;
                 bindToBTService(call, null);
             }
+
             if (!isBoundAndConnectedToServices(userFromCall)) {
                 Log.i(this, "onCallAdded: %s; not bound or connected to other ICS.", call);
                 // We are not bound, or we're not connected.
@@ -1565,36 +1568,83 @@ public class InCallController extends CallsManagerListenerBase implements
                                 + "disconnected tone future");
                         mDisconnectedToneBtFutures.get(call.getId()).complete(null);
                     }
-                    mPendingEndToneCall.remove(call);
-                    if (!mPendingEndToneCall.isEmpty()) {
-                        return;
-                    }
-                    UserHandle userHandle = getUserFromCall(call);
-                    if (mBTInCallServiceConnections.containsKey(userHandle)) {
-                        Log.i(this, "onDisconnectedTonePlaying: Schedule unbind BT service");
-                        final InCallServiceConnection connection =
-                                mBTInCallServiceConnections.get(userHandle);
 
-                        // Similar to in onCallRemoved when we unbind from the other ICS, we need to
-                        // delay unbinding from the BT ICS because we need to give the ICS a
-                        // moment to finish the onCallRemoved signal it got just prior.
-                        mHandler.postDelayed(new Runnable("ICC.oDCTP", mLock) {
-                            @Override
-                            public void loggedRun() {
-                                Log.i(this, "onDisconnectedTonePlaying: unbinding");
-                                connection.disconnect();
-                            }
-                        }.prepare(), mTimeoutsAdapter.getCallRemoveUnbindInCallServicesDelay(
-                                mContext.getContentResolver()));
-
-                        mBTInCallServiceConnections.remove(userHandle);
-                    }
-                    // Ensure that BT ICS instance is cleaned up
-                    if (mBTInCallServices.remove(userHandle) != null) {
-                        updateCombinedInCallServiceMap(userHandle);
-                    }
+                    // Schedule unbinding of BT ICS.
+                    maybeScheduleBtUnbind(call);
                 }
             }
+        }
+    }
+
+    public void maybeScheduleBtUnbind(Call call) {
+        mBtIcsCallTracker.remove(call);
+        // Track the current calls that are being tracked by the BT ICS and determine the
+        // associated users of those calls as well as the users which have been used to bind to the
+        // ICS.
+        Set<UserHandle> usersFromOngoingCalls = new ArraySet<>();
+        Set<UserHandle> usersCurrentlyBound = new ArraySet<>();
+        for (Call pendingCall : mBtIcsCallTracker) {
+            UserHandle userFromPendingCall = getUserFromCall(pendingCall);
+            final InCallServiceBindingConnection pendingCallConnection =
+                    mBTInCallServiceConnections.get(userFromPendingCall);
+            usersFromOngoingCalls.add(userFromPendingCall);
+            if (pendingCallConnection != null) {
+                usersCurrentlyBound.add(pendingCallConnection.mUserHandleToUseForBinding);
+            }
+        }
+
+        UserHandle userHandle = getUserFromCall(call);
+        // Refrain from unbinding ICS and clearing the ICS mapping if there's an ongoing call under
+        // the same associated user. Make sure we keep the internal mappings so that they aren't
+        // cleared until that call is disconnected. Note here that if the associated users are the
+        // same, the user used for the binding will also be the same.
+        if (usersFromOngoingCalls.contains(userHandle)) {
+            Log.i(this, "scheduleBtUnbind: Refraining from unbinding BT service due to an ongoing "
+                    + "call detected under the same user (%s).", userHandle);
+            return;
+        }
+
+        if (mBTInCallServiceConnections.containsKey(userHandle)) {
+            Log.i(this, "scheduleBtUnbind: Schedule unbind BT service");
+            final InCallServiceBindingConnection connection =
+                    mBTInCallServiceConnections.get(userHandle);
+            // The user that was used for binding may be different than the user from call
+            // (associated user), which is what we use to reference the BT ICS bindings. For
+            // example, consider the work profile scenario where the BT ICS is only available under
+            // User 0: in this case, the user to bind to will be User 0 whereas we store the
+            // references to this connection and BT ICS under the work user. This logic ensures
+            // that we prevent unbinding the BT ICS if there is a personal (associatedUser: 0) call
+            // + work call (associatedUser: 10) and one of them gets disconnected.
+            if (usersCurrentlyBound.contains(connection.mUserHandleToUseForBinding)) {
+                Log.i(this, "scheduleBtUnbind: Refraining from unbinding BT service to an "
+                        + "ongoing call detected which is bound to the same user (%s).",
+                        connection.mUserHandleToUseForBinding);
+            } else {
+                // Similar to in onCallRemoved when we unbind from the other ICS, we need to
+                // delay unbinding from the BT ICS because we need to give the ICS a
+                // moment to finish the onCallRemoved signal it got just prior.
+                mHandler.postDelayed(new Runnable("ICC.sBU", mLock) {
+                    @Override
+                    public void loggedRun() {
+                        Log.i(this, "onDisconnectedTonePlaying: unbinding from BT ICS.");
+                        // Prevent unbinding in the case that this is run while another call
+                        // has been placed/received. Otherwise, we will early unbind from
+                        // the BT ICS and not be able to properly relay call state updates.
+                        if (!mBTInCallServiceConnections.containsKey(userHandle)) {
+                            connection.disconnect();
+                        } else {
+                            Log.i(this, "onDisconnectedTonePlaying: Refraining from "
+                                    + "unbinding BT ICS. Another call is ongoing.");
+                        }
+                    }
+                }.prepare(), mTimeoutsAdapter.getCallRemoveUnbindInCallServicesDelay(
+                        mContext.getContentResolver()));
+            }
+            mBTInCallServiceConnections.remove(userHandle);
+        }
+        // Ensure that BT ICS instance is cleaned up
+        if (mBTInCallServices.remove(userHandle) != null) {
+            updateCombinedInCallServiceMap(userHandle);
         }
     }
 
@@ -2832,7 +2882,7 @@ public class InCallController extends CallsManagerListenerBase implements
             mCallIdMapper.addCall(call);
             call.addListener(mCallListener);
             if (mFeatureFlags.separatelyBindToBtIncallService()) {
-                mPendingEndToneCall.add(call);
+                mBtIcsCallTracker.add(call);
             }
         }
 
