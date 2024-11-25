@@ -2472,10 +2472,10 @@ public class InCallController extends CallsManagerListenerBase implements
                                 TelecomManager.METADATA_INCLUDE_SELF_MANAGED_CALLS, false);
 
                 int currentType = getInCallServiceType(userHandle,
-                        entry.serviceInfo, packageManager, packageName);
+                        entry.serviceInfo, userPackageManager, packageName);
 
                 boolean hasInteractAcrossUserOrProfilePerm = canInteractAcrossUsersOrProfiles(
-                        entry.serviceInfo, packageManager);
+                        entry.serviceInfo, userPackageManager);
 
                 ComponentName foundComponentName =
                         new ComponentName(serviceInfo.packageName, serviceInfo.name);
