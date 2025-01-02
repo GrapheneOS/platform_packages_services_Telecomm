@@ -68,6 +68,7 @@ import android.telecom.DisconnectCause;
 import android.telecom.Log;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
+import android.telecom.StatusHints;
 import android.telecom.TelecomAnalytics;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
@@ -3434,15 +3435,13 @@ public class TelecomServiceImpl {
         // incompatible types.
         if (icon != null && (icon.getType() == Icon.TYPE_URI
                 || icon.getType() == Icon.TYPE_URI_ADAPTIVE_BITMAP)) {
-            String encodedUser = icon.getUri().getEncodedUserInfo();
-            // If there is no encoded user, the URI is calling into the calling user space
-            if (encodedUser != null) {
-                int userId = Integer.parseInt(encodedUser);
-                if (userId != UserHandle.getUserId(Binder.getCallingUid())) {
-                    // If we are transcending the profile boundary, throw an error.
-                    throw new IllegalArgumentException("Attempting to register a phone account with"
-                            + " an image icon belonging to another user.");
-                }
+            int callingUserId = UserHandle.getCallingUserId();
+            int requestingUserId = StatusHints.getUserIdFromAuthority(
+                    icon.getUri().getAuthority(), callingUserId);
+            if(callingUserId != requestingUserId) {
+                // If we are transcending the profile boundary, throw an error.
+                throw new IllegalArgumentException("Attempting to register a phone account with"
+                        + " an image icon belonging to another user.");
             }
         }
     }
