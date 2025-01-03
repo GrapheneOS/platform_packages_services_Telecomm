@@ -221,6 +221,9 @@ public class CallRedirectionProcessorTest extends TelecomTestCase {
         verify(mCallsManager, times(1)).onCallRedirectionComplete(eq(mCall), any(),
                 eq(mPhoneAccountHandle), eq(null), eq(SPEAKER_PHONE_ON), eq(VIDEO_STATE),
                 eq(false), eq(CallRedirectionProcessor.UI_TYPE_NO_ACTION));
+        // Verify service was unbound
+        verify(mContext, times(1)).
+                unbindService(any(ServiceConnection.class));
     }
 
     @Test
@@ -249,6 +252,9 @@ public class CallRedirectionProcessorTest extends TelecomTestCase {
         verify(mCallsManager, times(1)).onCallRedirectionComplete(eq(mCall), any(),
                 eq(mPhoneAccountHandle), eq(null), eq(SPEAKER_PHONE_ON), eq(VIDEO_STATE),
                 eq(true), eq(CallRedirectionProcessor.UI_TYPE_USER_DEFINED_TIMEOUT));
+        // Verify service was unbound
+        verify(mContext, times(1)).
+                unbindService(any(ServiceConnection.class));
     }
 
     @Test
@@ -280,6 +286,9 @@ public class CallRedirectionProcessorTest extends TelecomTestCase {
         verify(mCallsManager, times(1)).onCallRedirectionComplete(eq(mCall), any(),
                 eq(mPhoneAccountHandle), eq(null), eq(SPEAKER_PHONE_ON), eq(VIDEO_STATE),
                 eq(true), eq(CallRedirectionProcessor.UI_TYPE_USER_DEFINED_TIMEOUT));
+        // Verify service was unbound
+        verify(mContext, times(1)).
+                unbindService(any(ServiceConnection.class));
 
         // Wait for another carrier timeout time, but should not expect any carrier service request
         // is triggered.
@@ -289,6 +298,9 @@ public class CallRedirectionProcessorTest extends TelecomTestCase {
         verify(mCallsManager, times(1)).onCallRedirectionComplete(eq(mCall), any(),
                 eq(mPhoneAccountHandle), eq(null), eq(SPEAKER_PHONE_ON), eq(VIDEO_STATE),
                 eq(true), eq(CallRedirectionProcessor.UI_TYPE_USER_DEFINED_TIMEOUT));
+        // Verify service was unbound
+        verify(mContext, times(1)).
+                unbindService(any(ServiceConnection.class));
     }
 
     @Test
