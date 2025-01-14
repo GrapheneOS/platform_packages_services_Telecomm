@@ -1090,6 +1090,20 @@ public class TelecomServiceImplTest extends TelecomTestCase {
         // This should fail; security exception will be thrown.
         registerPhoneAccountTestHelper(phoneAccount, false);
 
+        icon = Icon.createWithContentUri(
+                new Uri.Builder().scheme("content")
+                        .encodedAuthority("10%40media")
+                        .path("external/images/media/${mediaId.text}".trim())
+                        .build());
+        phoneAccount = makePhoneAccount(phHandle).setIcon(icon).build();
+        // This should fail; security exception will be thrown
+        registerPhoneAccountTestHelper(phoneAccount, false);
+
+        icon = Icon.createWithContentUri( Uri.parse("content://10%40play.ground"));
+        phoneAccount = makePhoneAccount(phHandle).setIcon(icon).build();
+        // This should fail; security exception will be thrown
+        registerPhoneAccountTestHelper(phoneAccount, false);
+
         icon = Icon.createWithContentUri("content://0@media/external/images/media/");
         phoneAccount = makePhoneAccount(phHandle).setIcon(icon).build();
         // This should succeed.
