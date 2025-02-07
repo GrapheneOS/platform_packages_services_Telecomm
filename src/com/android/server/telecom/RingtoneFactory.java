@@ -74,18 +74,12 @@ public class RingtoneFactory {
         Ringtone ringtone = null;
 
         if (ringtoneUri != null && userContext != null) {
-            if (currentUserOwnsRingtone(ringtoneUri, incomingCall)) {
-                // Ringtone URI is explicitly specified and owned by the current user - try to
-                // create a Ringtone with that.
-                try {
-                    ringtone = RingtoneManager.getRingtone(
-                            userContext, ringtoneUri, volumeShaperConfig, audioAttrs);
-                } catch (Exception e) {
-                    Log.e(this, e, "getRingtone: exception while getting ringtone.");
-                }
-            } else {
-                Log.w(this, "getRingtone: Failed to verify that the custom ringtone URI"
-                        + " is owned by the current user. Falling back to the default ringtone.");
+            // Ringtone URI is explicitly specified. First, try to create a Ringtone with that.
+            try {
+                ringtone = RingtoneManager.getRingtone(
+                        userContext, ringtoneUri, volumeShaperConfig, audioAttrs);
+            } catch (Exception e) {
+                Log.e(this, e, "getRingtone: exception while getting ringtone.");
             }
         }
         if (ringtone == null) {
@@ -123,21 +117,6 @@ public class RingtoneFactory {
             }
         }
         return new Pair(ringtoneUri, ringtone);
-    }
-
-    private static boolean currentUserOwnsRingtone(Uri ringtoneUri, Call incomingCall) {
-        if (TextUtils.isEmpty(ringtoneUri.getUserInfo()) ||
-                incomingCall.getAssociatedUser() == null) {
-            return false;
-        }
-
-        UserHandle associatedUser = incomingCall.getAssociatedUser();
-        if (associatedUser == null) {
-            return false;
-        }
-
-        String currentUserId = String.valueOf(associatedUser.getIdentifier());
-        return currentUserId.equals(ringtoneUri.getUserInfo());
     }
 
     private AudioAttributes getDefaultRingtoneAudioAttributes(boolean hapticChannelsMuted) {
