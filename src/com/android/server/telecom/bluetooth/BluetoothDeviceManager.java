@@ -240,15 +240,13 @@ public class BluetoothDeviceManager {
                 .getBluetoothRoutes();
         List<Pair<AudioRoute, BluetoothDevice>> btRoutesToRemove =
                 new ArrayList<>();
-        for (AudioRoute route: btRoutes.keySet()) {
-            if (route.getType() != PROFILE_TO_AUDIO_ROUTE_MAP.get(profile)) {
-                continue;
+        // forEach() is needed to prevent ConcurrentModificationExceptions (btRoutes is a
+        // Collections.synchronizedMap)
+        btRoutes.forEach((AudioRoute route, BluetoothDevice device) -> {
+            if (route.getType() == PROFILE_TO_AUDIO_ROUTE_MAP.get(profile)) {
+                btRoutesToRemove.add(new Pair<>(route, device));
             }
-            BluetoothDevice device = btRoutes.get(route);
-            // Prevent concurrent modification exception by just iterating through keys instead of
-            // simultaneously removing them.
-            btRoutesToRemove.add(new Pair<>(route, device));
-        }
+        });
 
         for (Pair<AudioRoute, BluetoothDevice> routeToRemove:
                 btRoutesToRemove) {
