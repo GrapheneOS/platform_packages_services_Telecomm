@@ -7,6 +7,7 @@ import com.android.server.telecom.components.ErrorDialogActivity;
 import com.android.server.telecom.flags.FeatureFlags;
 
 import android.content.ActivityNotFoundException;
+import android.app.role.RoleManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -239,6 +240,20 @@ public class CallIntentProcessor {
     }
 
     /**
+     * Determines if the {@link RoleManager} for the specified user has a role holder for the dialer
+     * role.
+     * @param context the context.
+     * @param user the user to check.
+     * @return {@code true} if the dialer role is held by a valid apk that meets the requirements of
+     * being a dialer app, {@code false} otherwise.
+     */
+    private static boolean doesUserHaveDialerRoleHolder(Context context, UserHandle user) {
+        Context userContext = context.createContextAsUser(user, 0);
+        RoleManager roleManager = userContext.getSystemService(RoleManager.class);
+        return roleManager.getRoleHolders(RoleManager.ROLE_DIALER).size() > 0;
+    }
+
+    /**
      * If the call is initiated from managed profile but there is no work dialer installed, treat
      * the call is initiated from its parent user.
      *
@@ -248,8 +263,15 @@ public class CallIntentProcessor {
             FeatureFlags featureFlags) {
         final UserHandle initiatingUser = intent.getParcelableExtra(KEY_INITIATING_USER);
         if (UserUtil.isManagedProfile(context, initiatingUser, featureFlags)) {
-            boolean noDialerInstalled = DefaultDialerManager.getInstalledDialerApplications(context,
-                    initiatingUser.getIdentifier()).size() == 0;
+            // Note: We used to just check DefaultDialerManager.getInstalledDialerApplications to
+            // see if some activity handles the ACTION_DIAL intent.  An OS bug was introduced
+            // where we were seeing that a work profile had something handling the ACTION_DIAL
+            // intent in the android package, despite none existing. (╯°□°)╯︵ ┻━┻
+            // That method was introduced in 2015 when there was no concept of a dialer role and
+            // RoleManager.  It is much more reliable to check if the RoleManager reports that
+            // there is a role holder for that user instead.  Just because you handle the dial
+            // intent it does not mean you are actually a dialer.
+            boolean noDialerInstalled = !doesUserHaveDialerRoleHolder(context, initiatingUser);
             if (noDialerInstalled) {
                 final UserManager userManager = context.getSystemService(UserManager.class);
                 UserHandle parentUserHandle = featureFlags.telecomResolveHiddenDependencies()
