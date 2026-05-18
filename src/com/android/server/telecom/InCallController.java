@@ -2600,31 +2600,6 @@ public class InCallController extends CallsManagerListenerBase implements
                 || hasInteractAcrossProfilesAppOp);
     }
 
-    /**
-     * Verifies that the class for a given ServiceInfo exists within its package.
-     * This prevents a system crash if a service is declared in the manifest but its
-     * class was not included in the compiled code.
-     * @param serviceInfo The ServiceInfo of the service to check.
-     * @param userHandle The user under which to check for the service.
-     * @return {@code true} if the class exists, {@code false} otherwise.
-     */
-    private boolean serviceClassExists(ServiceInfo serviceInfo, UserHandle userHandle) {
-        Log.i(this, "serviceClassExists check");
-        try {
-            Context packageContext = mContext.createPackageContextAsUser(
-                    serviceInfo.packageName,
-                    Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY, userHandle);
-            ClassLoader classLoader = packageContext.getClassLoader();
-            Class.forName(serviceInfo.name, false, classLoader);
-            return true;
-        } catch (NameNotFoundException | ClassNotFoundException e) {
-            Log.w(this, "Skipping InCallService: class not found for " + serviceInfo.name);
-            return false;
-        } catch (Exception e) {
-            Log.e(this, e, "Error checking for existence of " + serviceInfo.name);
-            return false;
-        }
-    }
 
     private List<InCallServiceInfo> getInCallServiceComponents(UserHandle userHandle,
             String packageName, ComponentName componentName,
@@ -2655,12 +2630,6 @@ public class InCallController extends CallsManagerListenerBase implements
             ServiceInfo serviceInfo = entry.serviceInfo;
 
             if (serviceInfo != null) {
-                boolean isMetaFlag = serviceInfo.metaData != null &&
-                        serviceInfo.metaData.getBoolean(
-                                "android.telecom.CLASS_EXISTENCE_CHECK", false);
-                if (isMetaFlag && !serviceClassExists(serviceInfo, userHandle)) {
-                    continue;
-                }
                 boolean isExternalCallsSupported = serviceInfo.metaData != null &&
                         serviceInfo.metaData.getBoolean(
                                 TelecomManager.METADATA_INCLUDE_EXTERNAL_CALLS, false);
