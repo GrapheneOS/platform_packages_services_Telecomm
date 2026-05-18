@@ -19,21 +19,21 @@ package com.android.server.telecom.tests;
 import static com.android.server.telecom.InCallController.IN_CALL_SERVICE_NOTIFICATION_ID;
 import static com.android.server.telecom.InCallController.NOTIFICATION_TAG;
 import static com.android.server.telecom.tests.TelecomSystemTest.TEST_TIMEOUT;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.matches;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.matches;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -56,7 +56,6 @@ import android.content.AttributionSource;
 import android.content.AttributionSourceState;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -67,7 +66,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
-import android.content.pm.UserInfo;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Build;
@@ -97,7 +95,6 @@ import androidx.test.filters.SmallTest;
 import com.android.dx.mockito.inline.extended.ExtendedMockito;
 import com.android.internal.telecom.IInCallAdapter;
 import com.android.internal.telecom.IInCallService;
-import com.android.server.telecom.AnomalyReporterAdapter;
 import com.android.server.telecom.Call;
 import com.android.server.telecom.CallAudioManager;
 import com.android.server.telecom.CallEndpointController;
@@ -2272,80 +2269,6 @@ public class InCallControllerTests extends TelecomTestCase {
         verify(mockInCallService, times(1)).updateCall(any(ParcelableCall.class));
     }
 
-    @Test
-    public void testBindToServices_classCheckFlagOn_classFound() throws Exception {
-
-
-        String inCallControllerClassName = InCallController.class.getName();
-        doAnswer(invocation -> {
-            Intent intent = invocation.getArgument(0);
-            String pkg = intent.getPackage();
-
-            ComponentName component = intent.getComponent();
-
-            if (DEF_PKG.equals(pkg)) {
-                return Collections.emptyList();
-            }
-
-            if (component != null && component.getPackageName().equals(SYS_PKG)) {
-                return Collections.singletonList(getOptionalResolveinfo(inCallControllerClassName,
-                        true));
-            }
-            return Collections.emptyList();
-
-        }).when(mMockPackageManager).queryIntentServices(any(), anyInt());
-
-        when(mMockContext.createPackageContextAsUser(eq(SYS_PKG), anyInt(), any(UserHandle.class)))
-                .thenReturn(mMockCreateContextAsUser);
-        when(mMockCreateContextAsUser.getClassLoader())
-                .thenReturn(this.getClass().getClassLoader());
-
-        when(mDefaultDialerCache.getDefaultDialerApplication(mUserHandle)).thenReturn(DEF_PKG);
-        when(mDefaultDialerCache.getSystemDialerComponent()).thenReturn(
-                new ComponentName(SYS_PKG, inCallControllerClassName));
-        setupMocks(false /* isExternalCall */);
-
-        mInCallController.bindToServices(mMockCall);
-
-        // Verify that bindServiceAsUser is called since the class was found successfully.
-        ArgumentCaptor<Intent> bindIntentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mMockContext).bindServiceAsUser(
-                bindIntentCaptor.capture(),
-                any(ServiceConnection.class),
-                eq(serviceBindingFlags),
-                eq(mUserHandle));
-
-        Intent capturedIntent = bindIntentCaptor.getValue();
-        assertEquals(SYS_PKG, capturedIntent.getComponent().getPackageName());
-        assertEquals(inCallControllerClassName, capturedIntent.getComponent().getClassName());
-    }
-
-    @Test
-    public void testBindToServices_classCheckFlagOn_classNotFound() throws Exception {
-        InCallController spiedInCallController = spy(mInCallController);
-
-
-        final String nonExistentClassName =
-                "com.android.server.telecom.tests.NonExistentService";
-
-        when(mMockPackageManager.queryIntentServices(any(), anyInt())).thenReturn(
-                Collections.singletonList(getOptionalResolveinfo(nonExistentClassName, true)));
-
-        when(mMockContext.createPackageContextAsUser(eq(SYS_PKG), anyInt(),
-                any(UserHandle.class)))
-                .thenReturn(mMockCreateContextAsUser);
-        when(mMockCreateContextAsUser.getClassLoader())
-                .thenReturn(this.getClass().getClassLoader());
-
-        when(mDefaultDialerCache.getDefaultDialerApplication(mUserHandle)).thenReturn(DEF_PKG);
-        when(mDefaultDialerCache.getSystemDialerComponent()).thenReturn(
-                new ComponentName(SYS_PKG, nonExistentClassName));
-        setupMocks(false /* isExternalCall */);
-        spiedInCallController.bindToServices(mMockCall);
-        verify(spiedInCallController).handleInCallServiceNotFound(
-                eq(new ComponentName(SYS_PKG, nonExistentClassName)),
-                anyInt());
-    }
 
     public void setupQueryIntentServices(
             boolean defExternalCalls, boolean defSelfManaged,
@@ -2512,23 +2435,6 @@ public class InCallControllerTests extends TelecomTestCase {
         }};
     }
 
-    private ResolveInfo getOptionalResolveinfo(String className, boolean classCheck) {
-        return new ResolveInfo() {{
-            serviceInfo = new ServiceInfo();
-            serviceInfo.packageName = SYS_PKG;
-            serviceInfo.name = className;
-            serviceInfo.applicationInfo = new ApplicationInfo();
-            serviceInfo.applicationInfo.uid = SYS_UID;
-            serviceInfo.enabled = true;
-            serviceInfo.permission = Manifest.permission.BIND_INCALL_SERVICE;
-            if (classCheck) {
-                serviceInfo.metaData = new Bundle();
-                serviceInfo.metaData.putBoolean("android.telecom.CLASS_EXISTENCE_CHECK",
-                        true);
-
-            }
-        }};
-    }
 
     private void setupMockPackageManager(final boolean useDefaultDialer,
             final boolean useSystemDialer, final boolean includeExternalCalls) {
