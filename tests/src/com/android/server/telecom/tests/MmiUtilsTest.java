@@ -56,6 +56,12 @@ public class MmiUtilsTest extends TelecomTestCase {
         "*721234", // Call Forwarding Activation
         "*77", // Anonymous Call Rejection Activation
         "*78", // Do Not Disturb Activation
+
+        // Dial strings with whitespace
+        " *21*1234567#",
+        "*21*1234567# ",
+        "  *67*1234567#  ",
+        " *721234 ",
     };
 
     private MmiUtils mMmiUtils = new MmiUtils();

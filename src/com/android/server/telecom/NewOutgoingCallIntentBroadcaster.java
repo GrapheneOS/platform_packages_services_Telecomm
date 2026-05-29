@@ -209,7 +209,9 @@ public class NewOutgoingCallIntentBroadcaster {
                     result.callImmediately = true;
                     result.requestRedirection = false;
                 }
-            } else if (mMmiUtils.isDangerousMmiOrVerticalCode(intent.getData())) {
+            } else if (mMmiUtils.isDangerousMmiOrVerticalCode(Uri.fromParts(
+                    handle.getScheme(),
+                    number, null))) {
                 if (!mIsDefaultOrSystemPhoneApp) {
                     Log.w(this,
                             "Potentially dangerous MMI code %s with CALL Intent %s can only be "

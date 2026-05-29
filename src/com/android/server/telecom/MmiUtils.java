@@ -95,6 +95,9 @@ public class MmiUtils {
     private static boolean isCallForwardingMmiCode(Uri handle) {
         Matcher m;
         String dialString = handle.getSchemeSpecificPart();
+        if (dialString != null) {
+            dialString = dialString.trim();
+        }
         m = sPatternSuppService.matcher(dialString);
 
         if (m.matches()) {
@@ -119,7 +122,11 @@ public class MmiUtils {
     private boolean isDangerousVerticalServiceCode(Uri handle) {
         if (isTelScheme(handle)) {
             String dialedNumber = handle.getSchemeSpecificPart();
-            if (dialedNumber.length() >= mMinLenInDangerousSet && dialedNumber.charAt(0) == '*') {
+            if (dialedNumber != null) {
+                dialedNumber = dialedNumber.trim();
+            }
+            if (dialedNumber != null && dialedNumber.length() >= mMinLenInDangerousSet
+                    && dialedNumber.charAt(0) == '*') {
                 //we only check vertical codes defined by The North American Numbering Plan Admin
                 //see: https://nationalnanpa.com/number_resource_info/vsc_assignments.html
                 //only two or 3-digit codes are valid as of today, but the code is generic enough.
@@ -148,19 +155,25 @@ public class MmiUtils {
     public boolean isPotentialInCallMMICode(Uri handle) {
         if (isTelScheme(handle)) {
             String dialedNumber = handle.getSchemeSpecificPart();
-            return (dialedNumber.equals("0") ||
+            if (dialedNumber != null) {
+                dialedNumber = dialedNumber.trim();
+            }
+            return (dialedNumber != null && (dialedNumber.equals("0") ||
                     (dialedNumber.startsWith("1") && dialedNumber.length() <= 2) ||
                     (dialedNumber.startsWith("2") && dialedNumber.length() <= 2) ||
                     dialedNumber.equals("3") ||
                     dialedNumber.equals("4") ||
-                    dialedNumber.equals("5"));
+                    dialedNumber.equals("5")));
         }
         return false;
     }
 
     public boolean isPotentialMMICode(Uri handle) {
-        return (handle != null && handle.getSchemeSpecificPart() != null
-                && handle.getSchemeSpecificPart().contains("#"));
+        if (handle == null || handle.getSchemeSpecificPart() == null) {
+            return false;
+        }
+        String dialString = handle.getSchemeSpecificPart().trim();
+        return dialString.contains("#");
     }
 
     /**
