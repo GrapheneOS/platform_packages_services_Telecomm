@@ -249,7 +249,7 @@ public class NewOutgoingCallIntentBroadcasterTest extends TelecomTestCase {
     @Test
     public void testDangerousMmiCodeWithNonDefaultDialer() {
         Uri handle = Uri.parse("tel:*21*1234567#");
-        doReturn(true).when(mMmiUtils).isDangerousMmiOrVerticalCode(handle);
+        doReturn(true).when(mMmiUtils).isDangerousMmiOrVerticalCode(any());
         Intent intent = new Intent(Intent.ACTION_CALL, handle);
 
         String ui_package_string = "sample_string_1";
@@ -277,6 +277,40 @@ public class NewOutgoingCallIntentBroadcasterTest extends TelecomTestCase {
                 dialerIntent.getComponent());
         assertEquals(Intent.ACTION_DIAL, dialerIntent.getAction());
         assertEquals(handle, dialerIntent.getData());
+        assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, dialerIntent.getFlags());
+    }
+
+    @Test
+    public void testDangerousMmiCodeWithLeadingSpacesAndNonDefaultDialer() {
+        Uri handleWithSpace = Uri.parse("tel: *21*1234567#");
+        doReturn(true).when(mMmiUtils).isDangerousMmiOrVerticalCode(any());
+        Intent intent = new Intent(Intent.ACTION_CALL, handleWithSpace);
+
+        String ui_package_string = "sample_string_1";
+        String dialer_default_class_string = "sample_string_2";
+        int mockConfigDefaultDialer = Resources.getSystem().getIdentifier("config_defaultDialer",
+                "string", "android");
+        mComponentContextFixture.putResource(mockConfigDefaultDialer,
+                ui_package_string);
+        mComponentContextFixture.putResource(R.string.dialer_default_class,
+                dialer_default_class_string);
+        when(mDefaultDialerCache.getSystemDialerApplication()).thenReturn(ui_package_string);
+        when(mDefaultDialerCache.getDialtactsSystemDialerComponent()).thenReturn(
+                new ComponentName(ui_package_string, dialer_default_class_string));
+
+        int result = processIntent(intent, false).disconnectCause;
+
+        assertEquals(DisconnectCause.OUTGOING_CANCELED, result);
+        verifyNoBroadcastSent();
+        verifyNoCallPlaced();
+
+        ArgumentCaptor<Intent> dialerIntentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext).startActivityAsUser(dialerIntentCaptor.capture(), any(UserHandle.class));
+        Intent dialerIntent = dialerIntentCaptor.getValue();
+        assertEquals(new ComponentName(ui_package_string, dialer_default_class_string),
+                dialerIntent.getComponent());
+        assertEquals(Intent.ACTION_DIAL, dialerIntent.getAction());
+        assertEquals(handleWithSpace, dialerIntent.getData());
         assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, dialerIntent.getFlags());
     }
 
