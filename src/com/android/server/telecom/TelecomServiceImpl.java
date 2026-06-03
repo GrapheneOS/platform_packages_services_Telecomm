@@ -3887,6 +3887,16 @@ public class TelecomServiceImpl {
             // ignore
         }
 
+        // Needed for calls with multi sim phones, since AA cannot hold
+        // READ_PRIVILEGED_PHONE_STATE as a sandboxed app, causing getPhoneAccount()
+        // to fail and SIM selection to never appear. Mirrors getUserSelectedOutgoingPhoneAccount.
+        try {
+            mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE_ANDROID_AUTO, null);
+            return true;
+        } catch (SecurityException e) {
+            // ignore
+        }
+
         try {
             mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE, null);
             return true;
