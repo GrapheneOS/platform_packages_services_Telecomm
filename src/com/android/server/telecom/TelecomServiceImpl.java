@@ -168,6 +168,19 @@ public class TelecomServiceImpl {
     // provide the user with a means to exit car mode at all priority levels.
     private static final int DISABLE_CAR_MODE_ALL_PRIORITIES = 0x0002;
 
+    /**
+     * Constant used in permission checks to indicate that the PID should be ignored,
+     * and only the UID should be evaluated. This is used when overriding calling identity
+     * to evaluate the permissions of a known package/UID across process boundaries.
+     */
+    private static final int IGNORE_PID = -1;
+
+    @VisibleForTesting
+    public static final String EXTRA_TRAMPOLINE_CALLING_PACKAGE =
+            "android.telecom.extra.TRAMPOLINE_CALLING_PACKAGE";
+    public static final String EXTRA_TRAMPOLINE_CALLING_UID =
+            "android.telecom.extra.TRAMPOLINE_CALLING_UID";
+
     private static final String TAG = "TelecomServiceImpl";
     private static final String TIME_LINE_ARG = "timeline";
     private static final int DEFAULT_VIDEO_STATE = -1;
@@ -2325,6 +2338,31 @@ public class TelecomServiceImpl {
                 Log.startSession("TSI.pC", Log.getPackageAbbreviation(callingPackage));
                 enforceCallingPackage(callingPackage, "placeCall");
 
+                // We must use the actual calling UID and package for all subsequent permission
+                // and app-op checks to prevent the Confused Deputy vulnerability. When a call
+                // is trampolined through TelecomUi, we securely extract the original caller's
+                // package and UID instead of evaluating privileges against TelecomUi's identity.
+                int actualCallingUid = Binder.getCallingUid();
+                String actualCallingPackage = callingPackage;
+                String actualCallingFeatureId = callingFeatureId;
+
+                if (isCallerTelecomUi(callingPackage) && extras != null) {
+                    if (extras.containsKey(EXTRA_TRAMPOLINE_CALLING_PACKAGE)) {
+                        actualCallingPackage = extras.getString(EXTRA_TRAMPOLINE_CALLING_PACKAGE);
+                        // Remove the extra so it doesn't leak to downstream targets.
+                        extras.remove(EXTRA_TRAMPOLINE_CALLING_PACKAGE);
+                        // We do not have the original feature ID, so we must set it to null.
+                        // Passing TelecomUi's feature ID with the trampolined package will cause
+                        // AppOpsManager to throw a SecurityException due to attribution mismatch.
+                        actualCallingFeatureId = null;
+
+                        if (extras.containsKey(EXTRA_TRAMPOLINE_CALLING_UID)) {
+                            actualCallingUid = extras.getInt(EXTRA_TRAMPOLINE_CALLING_UID);
+                            extras.remove(EXTRA_TRAMPOLINE_CALLING_UID);
+                        }
+                    }
+                }
+
                 PhoneAccountHandle phoneAccountHandle = null;
                 if (extras != null) {
                     phoneAccountHandle = extras.getParcelable(
@@ -2354,13 +2392,23 @@ public class TelecomServiceImpl {
                     mContext.enforceCallingOrSelfPermission(
                             Manifest.permission.MANAGE_OWN_CALLS,
                             "Self-managed ConnectionServices require MANAGE_OWN_CALLS permission.");
-                } else if (!canCallPhone(callingPackage, callingFeatureId,
-                        "CALL_PHONE permission required to place calls.")) {
-                    // not self-managed, so CALL_PHONE is required.
-                    mAnomalyReporter.reportAnomaly(PLACE_CALL_SECURITY_EXCEPTION_ERROR_UUID,
-                            PLACE_CALL_SECURITY_EXCEPTION_ERROR_MSG);
-                    throw new SecurityException(
-                            "CALL_PHONE permission required to place calls.");
+                } else {
+                    boolean canCall;
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        canCall = canCallPhone(actualCallingPackage, actualCallingFeatureId,
+                                actualCallingUid,
+                                "CALL_PHONE permission required to place calls.");
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                    if (!canCall) {
+                        // not self-managed, so CALL_PHONE is required.
+                        mAnomalyReporter.reportAnomaly(PLACE_CALL_SECURITY_EXCEPTION_ERROR_UUID,
+                                PLACE_CALL_SECURITY_EXCEPTION_ERROR_MSG);
+                        throw new SecurityException(
+                                "CALL_PHONE permission required to place calls.");
+                    }
                 }
 
                 // An application can not place a call with a self-managed PhoneAccount that
@@ -2379,19 +2427,28 @@ public class TelecomServiceImpl {
                 // call is being made to a non-emergency number, the call will be denied later on
                 // by {@link UserCallIntentProcessor}.
 
-                final boolean hasCallAppOp = mAppOpsManager.noteOp(AppOpsManager.OPSTR_CALL_PHONE,
-                        Binder.getCallingUid(), callingPackage, callingFeatureId, null)
-                        == AppOpsManager.MODE_ALLOWED;
-
-                final boolean hasCallPermission = mContext.checkCallingOrSelfPermission(CALL_PHONE)
-                        == PackageManager.PERMISSION_GRANTED;
-                // The Emergency Dialer has call privileged permission and uses this to place
-                // emergency calls.  We ensure permission checks in
-                // NewOutgoingCallIntentBroadcaster#process pass by sending this to
-                // Telecom as an ACTION_CALL_PRIVILEGED intent (which makes sense since the
-                // com.android.phone process has that permission).
-                final boolean hasCallPrivilegedPermission = mContext.checkCallingOrSelfPermission(
-                        CALL_PRIVILEGED) == PackageManager.PERMISSION_GRANTED;
+                boolean hasCallAppOp;
+                boolean hasCallPermission;
+                boolean hasCallPrivilegedPermission;
+                long checkToken = Binder.clearCallingIdentity();
+                try {
+                    hasCallAppOp = mAppOpsManager.noteOp(AppOpsManager.OPSTR_CALL_PHONE,
+                            actualCallingUid, actualCallingPackage, actualCallingFeatureId, null)
+                            == AppOpsManager.MODE_ALLOWED;
+                    hasCallPermission = mContext.checkPermission(CALL_PHONE, IGNORE_PID,
+                            actualCallingUid)
+                            == PackageManager.PERMISSION_GRANTED;
+                    // The Emergency Dialer has call privileged permission and uses this to place
+                    // emergency calls.  We ensure permission checks in
+                    // NewOutgoingCallIntentBroadcaster#process pass by sending this to
+                    // Telecom as an ACTION_CALL_PRIVILEGED intent (which makes sense since the
+                    // com.android.phone process has that permission).
+                    hasCallPrivilegedPermission = mContext.checkPermission(
+                            CALL_PRIVILEGED, IGNORE_PID, actualCallingUid)
+                            == PackageManager.PERMISSION_GRANTED;
+                } finally {
+                    Binder.restoreCallingIdentity(checkToken);
+                }
 
                 synchronized (mLock) {
                     final UserHandle userHandle = Binder.getCallingUserHandle();
@@ -2405,7 +2462,7 @@ public class TelecomServiceImpl {
                             intent.putExtras(extras);
                         }
                         mUserCallIntentProcessorFactory.create(mContext, userHandle)
-                                .processIntent(intent, callingPackage, isSelfManagedRequest,
+                                .processIntent(intent, actualCallingPackage, isSelfManagedRequest,
                                         (hasCallAppOp && hasCallPermission)
                                                 || hasCallPrivilegedPermission,
                                         true /* isLocalInvocation */);
@@ -2417,6 +2474,20 @@ public class TelecomServiceImpl {
                 logEvent(event);
                 Log.endSession();
             }
+        }
+
+        /**
+         * Checks if the binder caller is the trusted TelecomUi package. This is used to
+         * verify if an incoming call might be a trampolined intent from another application.
+         *
+         * @param callingPackage The package name of the binder caller.
+         * @return true if the caller is the TelecomUi package, false otherwise.
+         */
+        private boolean isCallerTelecomUi(String callingPackage) {
+            return mContext.checkCallingOrSelfPermission(CALL_PRIVILEGED)
+                    == PackageManager.PERMISSION_GRANTED
+                    && mTelecomUiPackageName != null
+                    && mTelecomUiPackageName.equals(callingPackage);
         }
 
         /**
@@ -4130,26 +4201,29 @@ public class TelecomServiceImpl {
     }
 
     private boolean canCallPhone(String callingPackage, String message) {
-        return canCallPhone(callingPackage, null /* featureId */, message);
+        return canCallPhone(callingPackage, null /* featureId */, Binder.getCallingUid(), message);
     }
 
     private boolean canCallPhone(String callingPackage, String callingFeatureId, String message) {
-        // The system/default dialer can always read phone state - so that emergency calls will
-        // still work.
-        if (isPrivilegedDialerCalling(callingPackage)) {
+        return canCallPhone(callingPackage, callingFeatureId, Binder.getCallingUid(), message);
+    }
+
+    private boolean canCallPhone(String callingPackage, String callingFeatureId, int callingUid,
+            String message) {
+        if (isPrivilegedDialerCalling(callingPackage, callingUid)) {
             return true;
         }
 
-        if (mContext.checkCallingOrSelfPermission(CALL_PRIVILEGED)
+        if (mContext.checkPermission(CALL_PRIVILEGED, IGNORE_PID, callingUid)
                 == PackageManager.PERMISSION_GRANTED) {
             return true;
         }
 
         // Accessing phone state is gated by a special permission.
-        mContext.enforceCallingOrSelfPermission(CALL_PHONE, message);
+        mContext.enforcePermission(CALL_PHONE, IGNORE_PID, callingUid, message);
 
         // Some apps that have the permission can be restricted via app ops.
-        return mAppOpsManager.noteOp(AppOpsManager.OPSTR_CALL_PHONE, Binder.getCallingUid(),
+        return mAppOpsManager.noteOp(AppOpsManager.OPSTR_CALL_PHONE, callingUid,
                 callingPackage, callingFeatureId, message)
                 == AppOpsManager.MODE_ALLOWED;
     }
@@ -4221,12 +4295,16 @@ public class TelecomServiceImpl {
     }
 
     private boolean isPrivilegedDialerCalling(String callingPackage) {
-        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+        return isPrivilegedDialerCalling(callingPackage, Binder.getCallingUid());
+    }
+
+    private boolean isPrivilegedDialerCalling(String callingPackage, int callingUid) {
+        mAppOpsManager.checkPackage(callingUid, callingPackage);
 
         // Note: Important to clear the calling identity since the code below calls into RoleManager
         // to check who holds the dialer role, and that requires MANAGE_ROLE_HOLDERS permission
         // which is a system permission.
-        int callingUserId = Binder.getCallingUserHandle().getIdentifier();
+        int callingUserId = UserHandle.getUserHandleForUid(callingUid).getIdentifier();
         long token = Binder.clearCallingIdentity();
         try {
             return mDefaultDialerCache.isDefaultOrSystemDialer(

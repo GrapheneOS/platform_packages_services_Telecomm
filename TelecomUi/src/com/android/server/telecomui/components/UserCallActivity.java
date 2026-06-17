@@ -48,7 +48,6 @@ public class UserCallActivity extends Activity {
 
         try {
             Intent intent = getIntent();
-            verifyCallAction(intent);
 
             TelecomManager tm = getSystemService(TelecomManager.class);
             if (tm != null && intent != null) {
@@ -58,16 +57,5 @@ public class UserCallActivity extends Activity {
             wakelock.release();
         }
         finish();
-    }
-
-    private void verifyCallAction(Intent intent) {
-        if (getClass().getName().equals(intent.getComponent().getClassName())) {
-            // If we were launched directly from the CallActivity, not one of its more privileged
-            // aliases, then make sure that only the non-privileged actions are allowed.
-            if (!Intent.ACTION_CALL.equals(intent.getAction())) {
-                Log.w(TAG, "Attempt to deliver non-CALL action; forcing to CALL");
-                intent.setAction(Intent.ACTION_CALL);
-            }
-        }
     }
 }

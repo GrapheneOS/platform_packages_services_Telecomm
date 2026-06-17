@@ -257,6 +257,19 @@ public class TelecomServiceImplTest extends TelecomTestCase {
                 anyString());
         when(mContext.checkCallingOrSelfPermission(Manifest.permission.INTERACT_ACROSS_USERS))
                 .thenReturn(PackageManager.PERMISSION_GRANTED);
+
+        doAnswer(invocation -> {
+            String permission = invocation.getArgument(0);
+            return mContext.checkCallingOrSelfPermission(permission);
+        }).when(mContext).checkPermission(anyString(), anyInt(), anyInt());
+
+        doAnswer(invocation -> {
+            String permission = invocation.getArgument(0);
+            String message = invocation.getArgument(3);
+            mContext.enforceCallingOrSelfPermission(permission, message);
+            return null;
+        }).when(mContext).enforcePermission(anyString(), anyInt(), anyInt(),
+                nullable(String.class));
         doAnswer(invocation -> {
             mDefaultDialerObserver = invocation.getArgument(1);
             return null;
@@ -1856,6 +1869,53 @@ public class TelecomServiceImplTest extends TelecomTestCase {
         mTSIBinder.placeCall(handle, extras, DEFAULT_DIALER_PACKAGE, null);
         placeCallTestHelper(handle, extras, /*isSelfManagedExpected*/ false,
                 /*shouldNonEmergencyBeAllowed*/ false);
+    }
+
+    /**
+     * Ensure that trampolined intents from unprivileged apps have their intent action downgraded
+     * from ACTION_CALL_PRIVILEGED to ACTION_CALL so that MMI codes are correctly blocked.
+     */
+    @SmallTest
+    @Test
+    public void testPlaceCallTrampolinePrivilegeDowngrade() throws Exception {
+        Uri handle = Uri.parse("tel:6505551234");
+        Bundle extras = createSampleExtras();
+        extras.putString(TelecomServiceImpl.EXTRA_TRAMPOLINE_CALLING_PACKAGE, "com.malicious.app");
+
+        int maliciousUid = 10001;
+        extras.putInt(TelecomServiceImpl.EXTRA_TRAMPOLINE_CALLING_UID, maliciousUid);
+
+        // TelecomUI is the caller. It has CALL_PRIVILEGED.
+        doReturn(PackageManager.PERMISSION_GRANTED)
+                .when(mContext).checkCallingOrSelfPermission(CALL_PRIVILEGED);
+
+        // However, the original trampoline package is unprivileged.
+        // It has CALL_PHONE but NOT CALL_PRIVILEGED.
+        doReturn(PackageManager.PERMISSION_GRANTED)
+                .when(mContext).checkPermission(eq(CALL_PHONE), eq(-1), eq(maliciousUid));
+        doReturn(PackageManager.PERMISSION_DENIED)
+                .when(mContext).checkPermission(eq(CALL_PRIVILEGED), eq(-1), eq(maliciousUid));
+
+        doNothing().when(mContext).enforcePermission(eq(CALL_PHONE), eq(-1), eq(maliciousUid),
+                anyString());
+
+        when(mAppOpsManager.noteOp(eq(AppOpsManager.OPSTR_CALL_PHONE), eq(maliciousUid),
+                eq("com.malicious.app"),
+                nullable(String.class), nullable(String.class)))
+                .thenReturn(AppOpsManager.MODE_ALLOWED);
+
+        // So the intent should be downgraded to ACTION_CALL.
+        mTSIBinder.placeCall(handle, extras, TELECOM_UI_PACKAGE_NAME, null);
+
+        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mUserCallIntentProcessor).processIntent(intentCaptor.capture(), anyString(),
+                eq(false), eq(true), eq(true));
+        Intent capturedIntent = intentCaptor.getValue();
+
+        // The intent should be downgraded to ACTION_CALL, NOT ACTION_CALL_PRIVILEGED
+        assertEquals(Intent.ACTION_CALL, capturedIntent.getAction());
+        assertEquals(handle, capturedIntent.getData());
+        assertFalse(capturedIntent.hasExtra(TelecomServiceImpl.EXTRA_TRAMPOLINE_CALLING_PACKAGE));
     }
 
     /**

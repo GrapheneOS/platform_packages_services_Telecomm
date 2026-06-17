@@ -215,7 +215,8 @@ public class NewOutgoingCallIntentBroadcaster {
                 if (!mIsDefaultOrSystemPhoneApp) {
                     Log.w(this,
                             "Potentially dangerous MMI code %s with CALL Intent %s can only be "
-                                    + "sent if caller is the system or default dialer",
+                                    + "sent if caller is the system or default dialer "
+                                    + "(and not trampolined).",
                             number, intent);
                     launchSystemDialer(intent.getData());
                     result.disconnectCause = DisconnectCause.OUTGOING_CANCELED;
