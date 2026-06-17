@@ -36,6 +36,11 @@ public class UserCallActivity extends Activity {
     private static final String ACTION_ACTIVITY_NAME =
             "com.android.server.telecomui.components.UserCallActivity";
 
+    private static final String EXTRA_TRAMPOLINE_CALLING_PACKAGE =
+            "android.telecom.extra.TRAMPOLINE_CALLING_PACKAGE";
+    private static final String EXTRA_TRAMPOLINE_CALLING_UID =
+            "android.telecom.extra.TRAMPOLINE_CALLING_UID";
+
     @Override
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
@@ -46,6 +51,27 @@ public class UserCallActivity extends Activity {
         newIntent.setAction(ACTION_CALL_TRAMPOLINE);
         newIntent.setComponent(new ComponentName(pkgName, ACTION_ACTIVITY_NAME));
         newIntent.setFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT);
+
+        // SECURE IDENTIFICATION OF SENDER:
+        // Only append trampoline extras if the target component is the unprivileged
+        // UserCallActivity.
+        // If the intent targeted EmergencyCallActivity or PrivilegedCallActivity, ActivityManager
+        // already enforced CALL_PRIVILEGED on the creator/sender, so we preserve the privilege
+        // delegation.
+        ComponentName targetComponent = intent.getComponent();
+        if (targetComponent != null && targetComponent.getClassName().equals(
+                UserCallActivity.class.getName())) {
+            String callingPackage = getLaunchedFromPackage();
+            int callingUid = getLaunchedFromUid();
+            Log.i(TAG, "Unprivileged trampoline: forwarding calling package " + callingPackage
+                    + " uid " + callingUid);
+            newIntent.putExtra(EXTRA_TRAMPOLINE_CALLING_PACKAGE, callingPackage);
+            newIntent.putExtra(EXTRA_TRAMPOLINE_CALLING_UID, callingUid);
+        } else {
+            Log.i(TAG, "Privileged trampoline: skipping calling package extraction "
+                    + (targetComponent != null ? targetComponent.getClassName() : "null"));
+        }
+
         startActivity(newIntent);
         finish();
     }
