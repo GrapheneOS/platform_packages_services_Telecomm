@@ -23,6 +23,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -117,6 +119,67 @@ public class CallerInfoLookupHelperTest extends TelecomTestCase {
         mCallerInfoLookupHelper.startLookup(Uri.EMPTY, listener);
 
         verify(listener).onCallerInfoQueryComplete(eq(Uri.EMPTY), isNull());
+        verifyProperCleanup();
+    }
+
+    @SmallTest
+    @Test
+    public void testUserScopedLookupKeepsContextsAndResultsSeparate() {
+        Context firstUser = mock(Context.class);
+        Context secondUser = mock(Context.class);
+        CallerInfoLookupHelper.OnQueryCompleteListener firstListener =
+                mock(CallerInfoLookupHelper.OnQueryCompleteListener.class);
+        CallerInfoLookupHelper.OnQueryCompleteListener secondListener =
+                mock(CallerInfoLookupHelper.OnQueryCompleteListener.class);
+        when(mFactory.startQueryForUser(anyInt(), any(Context.class), anyString(),
+                any(CallerInfoAsyncQuery.OnQueryCompleteListener.class), any()))
+                .thenReturn(mock(CallerInfoAsyncQuery.class));
+
+        mCallerInfoLookupHelper.startLookupForUser(firstUser, URI1, firstListener);
+        mCallerInfoLookupHelper.startLookupForUser(secondUser, URI1, secondListener);
+
+        ArgumentCaptor<CallerInfoAsyncQuery.OnQueryCompleteListener> firstCallback =
+                ArgumentCaptor.forClass(CallerInfoAsyncQuery.OnQueryCompleteListener.class);
+        ArgumentCaptor<CallerInfoAsyncQuery.OnQueryCompleteListener> secondCallback =
+                ArgumentCaptor.forClass(CallerInfoAsyncQuery.OnQueryCompleteListener.class);
+        verify(mFactory, timeout(1000)).startQueryForUser(eq(0), eq(firstUser),
+                eq(URI1.getSchemeSpecificPart()), firstCallback.capture(), isNull());
+        verify(mFactory, timeout(1000)).startQueryForUser(eq(0), eq(secondUser),
+                eq(URI1.getSchemeSpecificPart()), secondCallback.capture(), isNull());
+
+        firstCallback.getValue().onQueryComplete(0, null, mCallerInfo1);
+        secondCallback.getValue().onQueryComplete(0, null, mCallerInfo2);
+        verify(firstListener).onCallerInfoQueryComplete(URI1, mCallerInfo1);
+        verify(firstListener, never()).onCallerInfoQueryComplete(URI1, mCallerInfo2);
+        verify(secondListener).onCallerInfoQueryComplete(URI1, mCallerInfo2);
+        verify(secondListener, never()).onCallerInfoQueryComplete(URI1, mCallerInfo1);
+        verify(mFactory, never()).startQuery(anyInt(), any(Context.class), anyString(),
+                any(CallerInfoAsyncQuery.OnQueryCompleteListener.class), any());
+        verifyProperCleanup();
+    }
+
+    @SmallTest
+    @Test
+    public void testUserScopedLookupWithMissingHandle() {
+        CallerInfoLookupHelper.OnQueryCompleteListener listener =
+                mock(CallerInfoLookupHelper.OnQueryCompleteListener.class);
+        mCallerInfoLookupHelper.startLookupForUser(mContext, null, listener);
+        verify(listener).onCallerInfoQueryComplete(isNull(), isNull());
+        verify(mFactory, never()).startQueryForUser(anyInt(), any(Context.class), anyString(),
+                any(CallerInfoAsyncQuery.OnQueryCompleteListener.class), any());
+        verifyProperCleanup();
+    }
+
+    @SmallTest
+    @Test
+    public void testUserScopedLookupFailureCompletesWithoutCrashingTelecom() {
+        CallerInfoLookupHelper.OnQueryCompleteListener listener =
+                mock(CallerInfoLookupHelper.OnQueryCompleteListener.class);
+        when(mFactory.startQueryForUser(anyInt(), eq(mContext), anyString(),
+                any(CallerInfoAsyncQuery.OnQueryCompleteListener.class), any()))
+                .thenThrow(new IllegalStateException("User is no longer available"));
+        mCallerInfoLookupHelper.startLookupForUser(mContext, URI1, listener);
+        verify(listener, timeout(1000)).onCallerInfoQueryComplete(eq(URI1), isNull());
         verifyProperCleanup();
     }
 

@@ -21,6 +21,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.CallLog;
 import android.telecom.Log;
@@ -128,7 +129,27 @@ public class BlockCheckerFilter extends CallFilter {
         Bundle extras = new Bundle();
         final Context userContext;
 
-        if (Flags.getMainUserForBlockChecker()) {
+        UserHandle associatedUser = mCall.getAssociatedUser();
+        final Context associatedContext;
+        final boolean isFullSecondaryUser;
+        try {
+            associatedContext = associatedUser == null ? null
+                    : mContext.createContextAsUser(associatedUser, 0);
+            UserManager associatedUserManager = associatedContext == null ? null
+                    : associatedContext.getSystemService(UserManager.class);
+            isFullSecondaryUser = associatedUserManager != null
+                    && associatedUserManager.isUserOfType(UserManager.USER_TYPE_FULL_SECONDARY)
+                    && !associatedUserManager.isMainUser();
+        } catch (RuntimeException e) {
+            // A removed/unavailable user must not cause rejection using some other user's list.
+            Log.e(this, e, "Unable to determine the call's blocking user");
+            completeResult(resultFuture, STATUS_NOT_BLOCKED);
+            return resultFuture;
+        }
+
+        if (isFullSecondaryUser) {
+            userContext = associatedContext;
+        } else if (Flags.getMainUserForBlockChecker()) {
             UserManager userManager = mContext.getSystemService(UserManager.class);
             // UserManager#getMainUser requires either the MANAGE_USERS,
             // CREATE_USERS, or QUERY_USERS permission.
@@ -138,13 +159,13 @@ public class BlockCheckerFilter extends CallFilter {
                 userContext = mContext;
             }
         } else {
-            userContext = mContext.createContextAsUser(mCall.getAssociatedUser(), 0);
+            userContext = associatedContext == null ? mContext : associatedContext;
         }
         if (BlockedNumbersUtil.isEnhancedCallBlockingEnabledByPlatform(userContext)) {
             int presentation = mCall.getHandlePresentation();
             extras.putInt(Constants.EXTRA_CALL_PRESENTATION, presentation);
             if (presentation == TelecomManager.PRESENTATION_ALLOWED) {
-                mCallerInfoLookupHelper.startLookup(mCall.getHandle(),
+                CallerInfoLookupHelper.OnQueryCompleteListener listener =
                         new CallerInfoLookupHelper.OnQueryCompleteListener() {
                             @Override
                             public void onCallerInfoQueryComplete(Uri handle, CallerInfo info) {
@@ -158,7 +179,13 @@ public class BlockCheckerFilter extends CallFilter {
                             public void onContactPhotoQueryComplete(Uri handle, CallerInfo info) {
                                 // Ignore
                             }
-                        });
+                        };
+                if (isFullSecondaryUser) {
+                    mCallerInfoLookupHelper.startLookupForUser(userContext, mCall.getHandle(),
+                            listener);
+                } else {
+                    mCallerInfoLookupHelper.startLookup(mCall.getHandle(), listener);
+                }
             } else {
                 getBlockStatus(resultFuture, userContext);
             }

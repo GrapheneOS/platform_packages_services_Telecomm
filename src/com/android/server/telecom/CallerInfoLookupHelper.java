@@ -179,6 +179,35 @@ public class CallerInfoLookupHelper {
         }.prepare());
     }
 
+    /**
+     * Looks up contact membership in a fixed user's context for call blocking. This deliberately
+     * does not share the foreground-user cache or start a contact-photo lookup.
+     */
+    public void startLookupForUser(Context userContext, Uri handle,
+            OnQueryCompleteListener listener) {
+        if (handle == null || TextUtils.isEmpty(handle.getSchemeSpecificPart())) {
+            listener.onCallerInfoQueryComplete(handle, null);
+            return;
+        }
+        mHandler.post(new Runnable("CILH.sLFU", null) {
+            @Override
+            public void loggedRun() {
+                try {
+                    CallerInfoAsyncQuery query = mCallerInfoAsyncQueryFactory.startQueryForUser(
+                            0, userContext, handle.getSchemeSpecificPart(),
+                            (token, cookie, info) -> listener.onCallerInfoQueryComplete(handle, info),
+                            null);
+                    if (query != null) {
+                        return;
+                    }
+                } catch (RuntimeException e) {
+                    Log.e(this, e, "Unable to start user-scoped caller lookup");
+                }
+                listener.onCallerInfoQueryComplete(handle, null);
+            }
+        }.prepare());
+    }
+
     private CallerInfoAsyncQuery.OnQueryCompleteListener makeCallerInfoQueryListener(
             final Uri handle) {
         return (token, cookie, ci) -> {

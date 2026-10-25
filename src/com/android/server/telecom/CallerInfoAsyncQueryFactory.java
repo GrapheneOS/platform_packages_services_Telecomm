@@ -22,4 +22,9 @@ import com.android.server.telecom.util.CallerInfoAsyncQuery;
 public interface CallerInfoAsyncQueryFactory {
     CallerInfoAsyncQuery startQuery(int token, Context context, String number,
             CallerInfoAsyncQuery.OnQueryCompleteListener listener, Object cookie);
+
+    default CallerInfoAsyncQuery startQueryForUser(int token, Context userContext, String number,
+            CallerInfoAsyncQuery.OnQueryCompleteListener listener, Object cookie) {
+        return CallerInfoAsyncQuery.startQueryForUser(token, userContext, number, listener, cookie);
+    }
 }
