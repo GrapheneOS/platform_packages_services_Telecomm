@@ -66,6 +66,7 @@
                         android:paddingEnd="@dimen/blocked_numbers_large_padding">
 
                     <TextView
+                            android:id="@+id/blocked_numbers_description"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/blocked_numbers_msg"

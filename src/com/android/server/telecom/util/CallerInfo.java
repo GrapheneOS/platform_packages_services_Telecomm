@@ -290,8 +290,15 @@ public class CallerInfo {
      *     CallerInfo is null if no number is supplied.
      */
     public static CallerInfo getCallerInfo(Context context, Uri contactRef) {
+        return getCallerInfo(context, contactRef, true);
+    }
+
+    private static CallerInfo getCallerInfo(Context context, Uri contactRef,
+            boolean useForegroundUser) {
         CallerInfo info = null;
-        ContentResolver cr = CallerInfoAsyncQuery.getCurrentProfileContentResolver(context);
+        ContentResolver cr = useForegroundUser
+                ? CallerInfoAsyncQuery.getCurrentProfileContentResolver(context)
+                : context.getContentResolver();
         if (cr != null) {
             try {
                 info = getCallerInfo(context, contactRef,
@@ -382,14 +389,19 @@ public class CallerInfo {
      * @return previousResult if it's not the case
      */
     static CallerInfo doSecondaryLookupIfNecessary(Context context,
-        String number, CallerInfo previousResult) {
+         String number, CallerInfo previousResult) {
+        return doSecondaryLookupIfNecessary(context, number, previousResult, true);
+    }
+
+    static CallerInfo doSecondaryLookupIfNecessary(Context context, String number,
+            CallerInfo previousResult, boolean useForegroundUser) {
         if (!previousResult.contactExists
             && PhoneNumberUtils.isUriNumber(number)) {
             String username = PhoneNumberUtils.getUsernameFromUriNumber(number);
             if (PhoneNumberUtils.isGlobalPhoneNumber(username)) {
                 previousResult = getCallerInfo(context,
                     Uri.withAppendedPath(PhoneLookup.ENTERPRISE_CONTENT_FILTER_URI,
-                        Uri.encode(username)));
+                        Uri.encode(username)), useForegroundUser);
             }
         }
         return previousResult;

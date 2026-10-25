@@ -92,6 +92,17 @@ public class BlockedNumbersActivity extends ListActivity
 
     private BroadcastReceiver mBlockingStatusReceiver;
 
+    private boolean isCallBlockingOnly() {
+        try {
+            Bundle result = getContentResolver().call(BlockedNumberContract.AUTHORITY_URI,
+                    "can_current_user_block_numbers", null, null);
+            return result == null || result.getBoolean("call_blocking_only", false);
+        } catch (RuntimeException e) {
+            android.util.Log.w("BlockedNumbersActivity", "Unable to query blocking scope", e);
+            return true;
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -107,12 +118,18 @@ public class BlockedNumbersActivity extends ListActivity
 
         if (!BlockedNumberContract.canCurrentUserBlockNumbers(this)) {
             TextView nonPrimaryUserText = (TextView) findViewById(R.id.non_primary_user);
+            nonPrimaryUserText.setText(R.string.user_cannot_manage_blocked_numbers);
             nonPrimaryUserText.setVisibility(View.VISIBLE);
 
             LinearLayout manageBlockedNumbersUi =
                     (LinearLayout) findViewById(R.id.manage_blocked_ui);
             manageBlockedNumbersUi.setVisibility(View.GONE);
             return;
+        }
+
+        if (isCallBlockingOnly()) {
+            TextView description = findViewById(R.id.blocked_numbers_description);
+            description.setText(R.string.blocked_numbers_calls_only_msg);
         }
 
         FragmentManager fm = getFragmentManager();
@@ -267,7 +284,8 @@ public class BlockedNumbersActivity extends ListActivity
         editText.addTextChangedListener(new PhoneNumberFormattingTextWatcher());
         editText.addTextChangedListener(this);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(R.string.add_blocked_dialog_body)
+                .setTitle(isCallBlockingOnly() ? R.string.add_blocked_calls_only_dialog_body
+                        : R.string.add_blocked_dialog_body)
                 .setView(dialogView)
                 .setPositiveButton(R.string.block_button, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {

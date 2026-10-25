@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="blocked_numbers_calls_only_msg">Anrufe von blockierten Nummern werden für diesen Nutzer abgewiesen. Textnachrichten werden nicht blockiert. Nach einem Notruf wird die Anrufsperre vorübergehend aufgehoben.</string>
+    <string name="add_blocked_calls_only_dialog_body">Anrufe blockieren von</string>
+    <string name="user_cannot_manage_blocked_numbers">Dieser Nutzer kann blockierte Nummern nicht ansehen oder verwalten.</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="blocked_numbers_calls_only_msg">Calls from blocked numbers will be rejected for this user. Text messages will not be blocked. Call blocking is temporarily disabled after an emergency call.</string>
+    <string name="add_blocked_calls_only_dialog_body">Block calls from</string>
+    <string name="user_cannot_manage_blocked_numbers">This user cannot view or manage blocked numbers.</string>
+</resources>

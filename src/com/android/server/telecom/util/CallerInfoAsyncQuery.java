@@ -144,7 +144,21 @@ public class CallerInfoAsyncQuery {
      * the phone type of the incoming connection.
      */
     public static CallerInfoAsyncQuery startQuery(int token, Context context, String number,
-        OnQueryCompleteListener listener, Object cookie, int subId) {
+         OnQueryCompleteListener listener, Object cookie, int subId) {
+
+        return startQuery(token, context, number, listener, cookie, subId, true);
+    }
+
+    /** Starts a lookup in the supplied user's resolver, unaffected by foreground-user changes. */
+    public static CallerInfoAsyncQuery startQueryForUser(int token, Context userContext,
+            String number, OnQueryCompleteListener listener, Object cookie) {
+        return startQuery(token, userContext, number, listener, cookie,
+                SubscriptionManager.getDefaultSubscriptionId(), false);
+    }
+
+    private static CallerInfoAsyncQuery startQuery(int token, Context context, String number,
+            OnQueryCompleteListener listener, Object cookie, int subId,
+            boolean useForegroundUser) {
 
         if (DBG) {
             Log.d(LOG_TAG, "##### CallerInfoAsyncQuery startQuery()... #####");
@@ -165,7 +179,7 @@ public class CallerInfoAsyncQuery {
         }
 
         CallerInfoAsyncQuery c = new CallerInfoAsyncQuery();
-        c.allocate(context, contactRef);
+        c.allocate(context, contactRef, useForegroundUser);
 
         //create cookieWrapper, start query
         CookieWrapper cw = new CookieWrapper();
@@ -253,10 +267,14 @@ public class CallerInfoAsyncQuery {
      * and uri.
      */
     private void allocate(Context context, Uri contactRef) {
+        allocate(context, contactRef, true);
+    }
+
+    private void allocate(Context context, Uri contactRef, boolean useForegroundUser) {
         if ((context == null) || (contactRef == null)) {
             throw new QueryPoolException("Bad context or query uri.");
         }
-        mHandler = new CallerInfoAsyncQueryHandler(context);
+        mHandler = new CallerInfoAsyncQueryHandler(context, useForegroundUser);
         mHandler.mQueryUri = contactRef;
     }
 
@@ -327,6 +345,7 @@ public class CallerInfoAsyncQuery {
          * {@link #getCurrentProfileContentResolver} and pass it to the super class.
          */
         private Context mContext;
+        private final boolean mUseForegroundUser;
         private Uri mQueryUri;
         private CallerInfo mCallerInfo;
         private final List<Runnable> mPendingListenerCallbacks = new ArrayList<>();
@@ -334,9 +353,11 @@ public class CallerInfoAsyncQuery {
         /**
          * Asynchronous query handler class for the contact / callerinfo object.
          */
-        private CallerInfoAsyncQueryHandler(Context context) {
-            super(getCurrentProfileContentResolver(context));
+        private CallerInfoAsyncQueryHandler(Context context, boolean useForegroundUser) {
+            super(useForegroundUser ? getCurrentProfileContentResolver(context)
+                    : context.getContentResolver());
             mContext = context;
+            mUseForegroundUser = useForegroundUser;
         }
 
         @Override
@@ -409,8 +430,8 @@ public class CallerInfoAsyncQuery {
                     }
 
                     CallerInfo newCallerInfo = CallerInfo.doSecondaryLookupIfNecessary(
-                        mContext, cw.number, mCallerInfo);
-                    if (newCallerInfo != mCallerInfo) {
+                        mContext, cw.number, mCallerInfo, mUseForegroundUser);
+                    if (newCallerInfo != null && newCallerInfo != mCallerInfo) {
                         mCallerInfo = newCallerInfo;
                         if (DBG) {
                             Log.d(LOG_TAG, "#####async contact look up with numeric username"
